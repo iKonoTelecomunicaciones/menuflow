@@ -1,0 +1,13 @@
+maubot: 0.1.0
+id: com.bramenn.menubot
+version: 1.0.0
+license: MIT
+modules:
+- menubot
+main_class: MenuBot
+extra_files:
+- base-config.yaml
+dependencies:
+- dataclass_wizard
+soft_dependencies:
+- dataclass-wizard==0.22.1

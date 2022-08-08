@@ -1,0 +1,15 @@
+whatsapp_bridge:
+  mxid: "@whatsappbot:darknet"
+
+menu:
+  id: Menu id
+  description: Welcome to Bramen's menu
+  options:
+  - id: '1'
+    text: Development
+  - id: '1-1'
+    text: "Yes"
+  - id: '1-2'
+    text: 'No'
+  - id: '2'
+    text: Comercial
