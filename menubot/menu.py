@@ -80,11 +80,11 @@ class Filter:
                 return
 
         if self.operator == "empty":
-            if self.__is_none(self.var_x):
+            if self.__is_empty(self.var_x):
                 return
 
         if self.operator == "not_empty":
-            if self.__not_is_none(self.var_x):
+            if self.__not_is_empty(self.var_x):
                 return
 
         self.o_connection = self.else_o_connection
@@ -101,11 +101,11 @@ class Filter:
     def __less_than(self, x: Any, y: Any) -> bool:
         return True if x < y else False
 
-    def __is_none(self, x: Any) -> bool:
-        return bool(x is None)
+    def __is_empty(self, x: Any) -> bool:
+        return bool(x)
 
-    def __not_is_none(self, x: Any) -> bool:
-        return bool(x is None)
+    def __not_is_empty(self, x: Any) -> bool:
+        return not bool(x)
 
 
 @dataclass
