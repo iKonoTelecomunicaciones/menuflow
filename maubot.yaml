@@ -7,7 +7,5 @@ modules:
 main_class: MenuBot
 extra_files:
 - base-config.yaml
-dependencies:
-- dataclass_wizard
 soft_dependencies:
 - dataclass-wizard==0.22.1

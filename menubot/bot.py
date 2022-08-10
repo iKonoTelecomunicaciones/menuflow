@@ -8,21 +8,20 @@ from mautrix.types import EventType
 from mautrix.util.config import BaseProxyConfig
 
 from .config import Config
-from .menu import Menu
+from .menu import MenuFlow
+
+user_context = "origin"
 
 
 class MenuBot(Plugin):
 
-    menu: Menu
+    menu: MenuFlow
 
     async def start(self):
         await super().start()
         self.on_external_config_update()
 
-        menu = Menu.from_dict(self.config["menu"])
-        menu.log = self.log
-        menu.build_menu_message()
-        self.menu = menu
+        self.menu = MenuFlow.from_dict(self.config["menu"])
 
     @classmethod
     def get_config_class(cls) -> Type[BaseProxyConfig]:
@@ -31,8 +30,11 @@ class MenuBot(Plugin):
     @event.on(EventType.ROOM_MESSAGE)
     async def event_handler(self, evt: MessageEvent) -> None:
 
+        self.log.debug(f"incoming message : {evt}")
         # Ignore bot messages
         if evt.sender in [self.client.mxid, self.config["whatsapp_bridge.mxid"]]:
             return
 
-        await self.client.send_text(room_id=evt.room_id, text=self.menu.menu_message)
+        message_opt = self.menu.get_message_by_id(user_context)
+        if message_opt:
+            await evt.client.send_text(room_id=evt.room_id, text=message_opt.text)
