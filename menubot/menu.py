@@ -7,8 +7,14 @@ from typing import Any, Dict, List, Optional, Union
 from dataclass_wizard import JSONWizard
 from jinja2 import Template
 
-from .jinja_template import (DEFAULT, GREATER_THAN, IS_EQUAL, LESS_THAN,
-                             NOT_IS_EQUAL, NUMBER)
+from .jinja_template import (
+    DEFAULT,
+    GREATER_THAN,
+    IS_EQUAL,
+    LESS_THAN,
+    NOT_IS_EQUAL,
+    NUMBER,
+)
 from .primitive import ElseOConnection, IConnection, OConnection
 
 I_RULES_TEMPLATES = {"NUMBER": NUMBER}
@@ -70,6 +76,7 @@ class Validation:
 class Filter(JSONWizard):
     id: str
     validations: List[Validation] = field(default_factory=list)
+
 
 @dataclass
 class Message:
