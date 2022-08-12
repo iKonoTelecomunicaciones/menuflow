@@ -9,3 +9,4 @@ extra_files:
 - base-config.yaml
 soft_dependencies:
 - dataclass-wizard==0.22.1
+- Jinja2==3.1.2

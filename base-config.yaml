@@ -1,51 +1,34 @@
 whatsapp_bridge:
-  mxid: "@whatsappbot:darknet"
-
-
+    mxid: '@whatsappbot:darknet'
 menu:
-  id: Menu id
-  variables:
+    id: Menu id
+    variables:
     - id: test
       data: 1500
     - id: prueba
       data: 2500
-    - id: texto
-      data: "comida"
 
-  filters:
-    - id: test-1
-      var_x: test
-      var_y: prueba
-      operator: "=="
-      o_connection: "a2"
-      else_o_connection: "a3"
+    filters:
+    - id: r1
+      validations:
+      - o_connection: a2
+        else_o_connection: a2
+        var_x: prueba
+        var_y: test
+        operator: IS_EQUAL
 
-    - id: test-2
-      var_x: texto
-      var_y:
-      operator: "empty"
-      o_connection: "a3"
-      else_o_connection: "a3"
+    messages:
+    - id: origin
+      text: Ingrese un numero porfavor
+      i_connection: origin
+      o_connection: r1
 
-  messages:
-    - id: "origin"
-      text: "Ingrese un numero porfavor"
-      i_connection: "origin"
-      o_connection: "test-1"
-
-      i_rule: "number"
-      i_rule_fail_message: "No sabemos que hacer con este mensaje"
-
-      timeout: 120
-      active: true
-      reset: true
-
-    - id: "a2"
-      text: "Rebien papi"
-      i_connection: "test-1"
-      o_connection: "a3"
+      i_rule: NUMBER
+      i_rule_fail_message: No sabemos que hacer con este mensaje
 
 
-    - id: "a3"
-      text: "Hasta la proxima amigo"
-      i_connection: "origin"
+    - id: a2
+      text: Rebien papi
+
+    - id: a3
+      text: Error

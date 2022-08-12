@@ -8,7 +8,7 @@ from mautrix.types import EventType
 from mautrix.util.config import BaseProxyConfig
 
 from .config import Config
-from .menu import MenuFlow
+from .menu import MenuFlow, Variable
 
 user_context = "origin"
 
@@ -37,4 +37,5 @@ class MenuBot(Plugin):
 
         message_opt = self.menu.get_message_by_id(user_context)
         if message_opt:
-            await evt.client.send_text(room_id=evt.room_id, text=message_opt.text)
+            message_opt.i_variable = Variable("i_variable", evt.content.body)
+            await evt.client.send_text(room_id=evt.room_id, text=message_opt.check)
