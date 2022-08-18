@@ -1,34 +1,38 @@
 whatsapp_bridge:
     mxid: '@whatsappbot:darknet'
+
+ignore_list:
+    - "@whatsappbot:darknet"
+
 menu:
     id: Menu id
     variables:
-    - id: test
-      data: 1500
-    - id: prueba
-      data: 2500
+    - id: "$opt"
+      data: ""
 
     filters:
-    - id: r1
+    - id: "#filter_1"
+      o_connection: "#message_1"
+      else_o_connection: "#message_2"
       validations:
-      - o_connection: a2
-        else_o_connection: a2
-        var_x: prueba
-        var_y: test
+      - var_x: "$opt"
+        var_y: 1
         operator: IS_EQUAL
 
     messages:
-    - id: origin
-      text: Ingrese un numero porfavor
-      i_connection: origin
-      o_connection: r1
+    - id: "#origin"
+      text: "Ingrese:\n1- Para mas información \nOtra cosa para error"
+      i_connection: "#origin"
+      o_connection: "#filter_1"
+
+      variable: "$opt"
 
       i_rule: NUMBER
       i_rule_fail_message: No sabemos que hacer con este mensaje
 
 
-    - id: a2
+    - id: "#message_1"
       text: Rebien papi
 
-    - id: a3
+    - id: "#message_2"
       text: Error
