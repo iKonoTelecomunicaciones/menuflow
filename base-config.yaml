@@ -6,33 +6,53 @@ ignore_list:
 
 menu:
     id: Menu id
-    variables:
-    - id: "$opt"
-      data: ""
+
+    global_variables:
+      - id: email_regex
+        value: "^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$"
 
     filters:
     - id: "#filter_1"
-      o_connection: "#message_1"
-      else_o_connection: "#message_2"
-      validations:
-      - var_x: "$opt"
-        var_y: 1
-        operator: IS_EQUAL
+      validation: "{% opt|switch %}"
+      cases:
+        - id: 1
+          value: "#message_1"
+        - id: 2
+          value: "#message_2"
+        - id: default
+          value: "#message_3"
+
+    - id: "#filter_2"
+      variable: email
+      validation: "{% email_regex|validate_regex %}"
+      o_connection: "#message_3"
+      else_o_connection: "#message_4"
+
+    - id: "#filter_3"
+      validation: "{{ opt.isdigit() }}"
+      o_connection: "#filter_1"
+      else_o_connection: "#message_5"
 
     messages:
     - id: "#origin"
       text: "Ingrese:\n1- Para mas información \nOtra cosa para error"
-      i_connection: "#origin"
-      o_connection: "#filter_1"
-
-      variable: "$opt"
-
-      i_rule: NUMBER
-      i_rule_fail_message: No sabemos que hacer con este mensaje
-
+      variable: opt
+      o_connection: "#filter_3"
 
     - id: "#message_1"
-      text: Rebien papi
+      text: Enviame un email
+      variable: email
+      o_connection: "#filter_2"
+
 
     - id: "#message_2"
-      text: Error
+      text: Segundo mensaje
+
+    - id: "#message_3"
+      text: Todo termina aqui
+
+    - id: "#message_4"
+      text: Esto no es un email
+
+    - id: "#message_5"
+      text: No sabemos que hacer con este mensaje

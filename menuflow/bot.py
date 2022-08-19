@@ -8,22 +8,22 @@ from mautrix.types import EventType
 from mautrix.util.config import BaseProxyConfig
 
 from .config import Config
-from .menu import MenuFlow, Variable
+from .menu import Menu, Variable
 from .primitive import IConnection, OConnection
 
 USER_CONTEXT: IConnection = "#origin"
 USER_STATE = "SHOW_MSG"
 
 
-class MenuBot(Plugin):
+class MenuFlow(Plugin):
 
-    menu: MenuFlow
+    menu: Menu
 
     async def start(self):
         await super().start()
         self.on_external_config_update()
 
-        self.menu = MenuFlow.from_dict(self.config["menu"])
+        self.menu = Menu.from_dict(self.config["menu"])
         self.menu.log = self.log
         self.log.debug(repr(self.menu))
 
