@@ -27,7 +27,6 @@ class MenuFlow(Plugin):
     def get_db_upgrade_table(cls) -> UpgradeTable:
         return upgrade_table
 
-
     @classmethod
     def get_config_class(cls) -> Type[BaseProxyConfig]:
         return Config
