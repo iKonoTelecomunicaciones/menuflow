@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import re
-from abc import abstractmethod
 from typing import Dict
+from abc import abstractmethod
+import re
 
 from asyncpg import Record
 from attr import dataclass
+
 from mautrix.types import UserID
 from mautrix.util.async_db import Database
 
@@ -25,6 +26,8 @@ class User:
     def from_row(cls, row: Record | None) -> User | None:
         if not row:
             return None
+
+        id = row["id"]
         user_id = row["user_id"]
         context = row["context"]
         state = row["state"]
@@ -33,6 +36,7 @@ class User:
             return None
 
         return cls(
+            id=id,
             user_id=user_id,
             context=context,
             state=state,
@@ -135,19 +139,20 @@ class DBManager:
         self.db = db
 
     async def create_user(self, user_id: UserID, context: str, state: str) -> str:
-        q = "INSERT INTO user (user_id, context, state) VALUES ($1, $2, $3)"
+        q = 'INSERT INTO "user" (user_id, context, state) VALUES ($1, $2, $3)'
         return await self.db.execute(q, user_id, context, state)
 
     async def update_user(self, user_id: UserID, context: str, state: str) -> None:
-        q = "UPDATE user SET context = $2, state = $3 WHERE id = $1"
+        q = 'UPDATE "user" SET context = $2, state = $3 WHERE id = $1'
         await self.db.execute(q, user_id, context, state)
 
     async def get_user_by_user_id(self, user_id: UserID, create: bool = False) -> User:
-        q = "SELECT * FROM user WHERE user_id = $1"
+        q = 'SELECT id, user_id, context, state FROM "user" WHERE user_id=$1'
         row = await self.db.fetchrow(q, user_id)
         if not row and create:
             row = await self.create_user(
                 user_id=user_id, context="#message_1", state="SHOW_MESSAGE"
             )
 
-        await User.from_row(row)
+        self.db.log.debug(row)
+        return User.from_row(row)
