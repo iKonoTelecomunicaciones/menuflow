@@ -1,15 +1,43 @@
 from __future__ import annotations
 
-from typing import Dict
+from typing import Any, Dict, List, Optional
 from abc import abstractmethod
 import re
 
 from asyncpg import Record
 from attr import dataclass
+import attr
 
-from mautrix.types import UserID
+from mautrix.types import SerializableAttrs, UserID
 from mautrix.util.async_db import Database
-from menuflow.menu import Variable
+
+
+@dataclass
+class Variable(SerializableAttrs):
+    id: str = attr.ib(metadata={"json": "id"})
+    value: Any = attr.ib(metadata={"json": "value"})
+    pk: int = None
+    fk_user: int = None
+
+    @classmethod
+    def from_row(cls, row: Record | None) -> User | None:
+        if not row:
+            return None
+
+        id = row["variable_id"]
+        pk = row["pk"]
+        value = row["value"]
+        fk_user = row["fk_user"]
+
+        if not id:
+            return None
+
+        return cls(
+            id=id,
+            pk=pk,
+            value=value,
+            fk_user=fk_user,
+        )
 
 
 @dataclass
@@ -18,6 +46,8 @@ class User:
     user_id: UserID
     context: str
     state: str
+
+    variables: Optional[List[Variable]] = []
 
     variable_by_id: Dict = {}
     by_phone: Dict = {}
@@ -66,7 +96,7 @@ class User:
         except KeyError:
             pass
 
-    def get_varibale(self, variable_id: str) -> m.Variable:
+    def get_varibale(self, variable_id: str) -> Variable:
         """If the variable is already in the cache, return it.
         Otherwise, search the list of variables for the variable with the given id,
         and if found, add it to the cache and return it
@@ -92,12 +122,12 @@ class User:
                 self.set_variable(variable=variable)
                 return variable
 
-    def set_variable(self, variable: m.Variable):
+    def set_variable(self, variable: Variable):
         """It adds a variable to the list of variables
 
         Parameters
         ----------
-        variable : m.Variable
+        variable : Variable
             The variable to add to the list of variables.
 
         Returns
@@ -107,7 +137,7 @@ class User:
         """
         if not variable:
             return
-        self.variable_by_id[variable.id] = variable
+        self.variable_by_id[variable.id] = variable.value
         self.variables.append(variable)
 
     def update_menu(self, context: str):
@@ -119,6 +149,8 @@ class User:
             The context of the menu. This is the text that the user has entered.
 
         """
+        if not context:
+            return
 
         self.context = context
 
@@ -158,20 +190,34 @@ class DBManager:
     ############# Variable #############
     async def create_variable(self, user_id, variable_id, value) -> Variable | None:
 
+        variable = await self.get_variable_by_id(variable_id=variable_id)
+
+        if variable:
+            return variable
+
         user = await self.get_user_by_user_id(user_id=user_id, create=True)
         if not user:
             return
 
-        q = "INSERT INTO variable (id, value, fk_user) VALUES ($1, $2, $3)"
+        q = "INSERT INTO variable (variable_id, value, fk_user) VALUES ($1, $2, $3)"
         return await self.db.execute(q, variable_id, value, user.id)
 
-    async def update_variable(self, id: str, value: str) -> None:
+    async def update_variable(self, variable_id: str, value: str) -> None:
         q = "UPDATE variable SET value = $2 WHERE id = $1"
-        await self.db.execute(q, id, value)
+        await self.db.execute(q, variable_id, value)
 
-    async def get_variable_by_user_id(self, user_id: UserID) -> User:
-        q = "SELECT id, value, fk_user FROM variable WHERE user_id=$1"
-        row = await self.db.fetchrow(q, user_id)
+    async def get_variable_by_user(self, user: User) -> User:
+        q = "SELECT pk, variable_id, value, fk_user FROM variable WHERE fk_user=$1"
+        row = await self.db.fetchrow(q, user.id)
+
+        if not row:
+            return
+
+        return Variable.from_row(row)
+
+    async def get_variable_by_id(self, variable_id: str) -> User:
+        q = "SELECT pk, variable_id, value, fk_user FROM variable WHERE variable_id=$1"
+        row = await self.db.fetchrow(q, variable_id)
 
         if not row:
             return

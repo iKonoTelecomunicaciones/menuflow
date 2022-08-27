@@ -15,10 +15,11 @@ async def upgrade_v1(conn: Connection) -> None:
     )
     await conn.execute(
         """CREATE TABLE variable (
-        id          SERIAL PRIMARY KEY,
+        pk          SERIAL PRIMARY KEY,
+        variable_id TEXT,
         value       TEXT,
-        fk_user     INT NOT NULL
-        UNIQUE (id, fk_user)
+        fk_user     INT NOT NULL,
+        UNIQUE (variable_id, fk_user)
         )"""
     )
     await conn.execute(

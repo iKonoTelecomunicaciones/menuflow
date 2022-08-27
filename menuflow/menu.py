@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+import asyncio
 import logging
 
 from asyncpg import Record
@@ -10,39 +11,15 @@ from markdown import markdown
 import attr
 
 from maubot.client import MaubotMatrixClient
-from mautrix.types import Format, MessageEventContent, MessageType, RoomID, SerializableAttrs
+from mautrix.types import Format, MessageType, RoomID, SerializableAttrs, TextMessageEventContent
 from mautrix.util.logging import TraceLogger
 
-from .db.models import User
+from .db.models import User, Variable
 from .primitive import OConnection
 
 
 class BaseLogger:
     log: TraceLogger = logging.getLogger("maubot.menu")
-
-
-@dataclass
-class Variable(SerializableAttrs):
-    id: str = attr.ib(metadata={"json": "id"})
-    value: Any = attr.ib(metadata={"json": "value"})
-
-    @classmethod
-    def from_row(cls, row: Record | None) -> User | None:
-        if not row:
-            return None
-
-        id = row["id"]
-        value = row["value"]
-        fk_user = row["fk_user"]
-
-        if not id:
-            return None
-
-        return cls(
-            id=id,
-            value=value,
-            fk_user=fk_user,
-        )
 
 
 @dataclass
@@ -55,6 +32,7 @@ class Case(SerializableAttrs):
 class Message(SerializableAttrs, BaseLogger):
     id: str = attr.ib(metadata={"json": "id"})
     text: str = attr.ib(metadata={"json": "text"})
+    wait: int = attr.ib(default=None, metadata={"json": "wait"})
     o_connection: OConnection = attr.ib(default=None, metadata={"json": "o_connection"})
     variable: str = attr.ib(default=None, metadata={"json": "variable"})
     # actions: List[str] = attr.ib(default=None, metadata={"json": "actions"}, factory=list)
@@ -82,12 +60,8 @@ class Message(SerializableAttrs, BaseLogger):
         if self.variable and i_variable:
             user.set_variable(variable=Variable(self.variable, i_variable))
 
-        # if self.actions:
-        #     for action in self.actions:
-        #         getattr(actions, action)(**user.variable_by_id)
-
         if user.state == "SHOW_MESSAGE":
-            msg_content = MessageEventContent(
+            msg_content = TextMessageEventContent(
                 msgtype=MessageType.TEXT,
                 body=self.text,
                 format=Format.HTML,
@@ -112,26 +86,27 @@ class Pipeline(SerializableAttrs, BaseLogger):
 
         self.log.debug(f"Running pipeline {self.id}")
 
-        variables = {}
         case_res = None
 
-        if self.variable:
-            variable = user.get_varibale(variable_id=self.variable)
-            variables = (
-                {variable.id: variable.value}
-                if user.get_varibale(variable_id=self.variable)
-                else None
-            )
+        self.log.debug(f"#### {user.variable_by_id}")
 
         try:
-            res = self.template.render(**variables)
+            res = self.template.render(**user.variable_by_id)
+            if res == "True":
+                res = True
+
+            if res == "False":
+                res = False
+
             case_res = Case(id=res)
-        except Exception:
+        except Exception as e:
+            self.log.warning(f"An exception has occurred in the pipeline {self.id} :: {e}")
             case_res = Case(id="except")
 
         for case in self.cases:
             if case_res.id == case.id:
                 user.update_menu(context=case.o_connection)
+                self.log.debug(f"##### {user}")
                 break
 
 
@@ -169,7 +144,7 @@ class Menu(SerializableAttrs, BaseLogger):
         """
 
         try:
-            return self.message_by_id[message_id]
+            return Message.deserialize(self.message_by_id[message_id].serialize())
         except KeyError:
             pass
 
@@ -195,7 +170,7 @@ class Menu(SerializableAttrs, BaseLogger):
         """
 
         try:
-            return self.pipeline_by_id[pipeline_id]
+            return Pipeline.deserialize(self.pipeline_by_id[pipeline_id].serialize())
         except KeyError:
             pass
 

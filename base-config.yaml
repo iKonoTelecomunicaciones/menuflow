@@ -1,70 +1,57 @@
 whatsapp_bridge:
     mxid: '@whatsappbot:darknet'
-
 ignore:
-    - "@whatsappbot:darknet"
-
+- '@whatsappbot:darknet'
 menu:
     id: Menu id
-
     global_variables:
-      - id: simple_flag
-        value: "Nice test"
+    - id: simple_flag
+      value: Nice test
 
     pipelines:
-    - id: "#pipeline_1"
-      validation: "{{ opt }}"
+    - id: '#pipeline_1'
+      validation: '{{ opt }}'
       cases:
-        - id: 1
-          o_connection: "#message_2"
-        - id: 2
-          o_connection: "#message_3"
-        - id: default
-          o_connection: "#message_3"
+      - id: 1
+        o_connection: '#message_2'
+      - id: 2
+        o_connection: '#message_3'
+      - id: default
+        o_connection: '#message_3'
 
-    - id: "#pipeline_2"
-      variable: email
+    - id: '#pipeline_2'
       validation: "{% '^[a-z0-9]+[\\._]?[a-z0-9]+[@]\\w+[.]\\w{2,3}$' | validate_regex %}"
       cases:
-        - id: true
-          o_connection: "#message_3"
-        - id: false
-          o_connection: "#message_4"
-        - id: default
-          o_connection: "#message_5"
+      - id: true
+        o_connection: '#message_3'
+      - id: false
+        o_connection: '#message_4'
+      - id: default
+        o_connection: '#message_5'
 
-    - id: "#pipeline_3"
-      validation: "{{ opt.isdigit() }}"
+    - id: '#pipeline_3'
+      validation: '{{ opt.isdigit() }}'
       cases:
-        - id: true
-          o_connection: "#message_3"
-        - id: false
-          o_connection: "#message_4"
-        - id: default
-          o_connection: "#message_5"
+      - id: true
+        o_connection: '#message_3'
+      - id: false
+        o_connection: '#message_4'
 
     messages:
-    - id: "#message_1"
-      text: "Ingrese:\n1- Para mas información \nOtra cosa para error"
+    - id: '#message_1'
+      text: Hola **Bienvenido** al menu de pruebas de  🤖 MenuFlow <br>Ingrese:<br> Porfavor ingresa un numero
+      wait: 5
       variable: opt
-      o_connection: "#pipeline_3"
+      o_connection: '#pipeline_3'
 
-    - id: "#message_2"
+    - id: '#message_2'
       text: Enviame un email
       variable: email
-      o_connection: "#pipeline_2"
+      o_connection: '#pipeline_2'
 
 
-    - id: "#message_3"
-      text: Segundo mensaje {email}
+    - id: '#message_3'
+      text: "**{opt}** es un número"
 
-    - id: "#message_3"
-      text: Todo termina aqui {res_pow}
-      # actions:
-      #   - pow
-
-    - id: "#message_4"
-      text: Esto no es un email
-
-    - id: "#message_5"
-      text: No sabemos que hacer con este mensaje
+    - id: '#message_4'
+      text: "**{opt}** no es un número"
