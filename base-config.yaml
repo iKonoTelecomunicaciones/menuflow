@@ -44,7 +44,7 @@ menu:
           o_connection: "#message_5"
 
     messages:
-    - id: "#origin"
+    - id: "#message_1"
       text: "Ingrese:\n1- Para mas información \nOtra cosa para error"
       variable: opt
       o_connection: "#pipeline_3"

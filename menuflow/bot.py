@@ -41,18 +41,36 @@ class MenuFlow(Plugin):
 
         user = await self.dbm.get_user_by_user_id(user_id=evt.sender, create=True)
 
+        self.log.debug(self.menu.__dict__)
+        self.log.debug(user.__dict__)
+
         if user.context.startswith("#message"):
+            self.log.debug(f"A message node [{user.context}] will be executed")
+
             message = self.menu.get_message_by_id(user.context)
+
+            self.log.debug(message)
 
             if message:
                 await message.run(
                     user=user, room_id=evt.room_id, client=evt.client, i_variable=evt.content.body
                 )
+            else:
+                self.log.warning(
+                    f"The message [{user.context}] was not executed because it was not found"
+                )
 
         if user.context.startswith("#pipeline"):
+
+            self.log.debug(f"A pipeline node [{user.context}] will be executed")
+
             pipeline = self.menu.get_pipeline_by_id(user.context)
 
             if pipeline:
                 await pipeline.run(
                     user=user, room_id=evt.room_id, client=evt.client, i_variable=evt.content.body
+                )
+            else:
+                self.log.warning(
+                    f"The pipeline [{user.context}] was not executed because it was not found"
                 )

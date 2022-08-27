@@ -1,23 +1,48 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
+import logging
 
-import attr
+from asyncpg import Record
 from attr import dataclass
 from jinja2 import Template
 from markdown import markdown
+import attr
+
 from maubot.client import MaubotMatrixClient
-from mautrix.types import (Format, MessageEventContent, MessageType, RoomID,
-                           SerializableAttrs)
+from mautrix.types import Format, MessageEventContent, MessageType, RoomID, SerializableAttrs
+from mautrix.util.logging import TraceLogger
 
 from .db.models import User
 from .primitive import OConnection
+
+
+class BaseLogger:
+    log: TraceLogger = logging.getLogger("maubot.menu")
 
 
 @dataclass
 class Variable(SerializableAttrs):
     id: str = attr.ib(metadata={"json": "id"})
     value: Any = attr.ib(metadata={"json": "value"})
+
+    @classmethod
+    def from_row(cls, row: Record | None) -> User | None:
+        if not row:
+            return None
+
+        id = row["id"]
+        value = row["value"]
+        fk_user = row["fk_user"]
+
+        if not id:
+            return None
+
+        return cls(
+            id=id,
+            value=value,
+            fk_user=fk_user,
+        )
 
 
 @dataclass
@@ -27,7 +52,7 @@ class Case(SerializableAttrs):
 
 
 @dataclass
-class Message(SerializableAttrs):
+class Message(SerializableAttrs, BaseLogger):
     id: str = attr.ib(metadata={"json": "id"})
     text: str = attr.ib(metadata={"json": "text"})
     o_connection: OConnection = attr.ib(default=None, metadata={"json": "o_connection"})
@@ -37,7 +62,7 @@ class Message(SerializableAttrs):
     async def run(
         self, user: User, room_id: RoomID, client: MaubotMatrixClient, i_variable: str = None
     ):
-        '''It sends a message to the user, and updates the menu
+        """It sends a message to the user, and updates the menu
 
         Parameters
         ----------
@@ -50,7 +75,10 @@ class Message(SerializableAttrs):
         i_variable : str
             The variable that the user has inputted.
 
-        '''
+        """
+
+        self.log.debug(f"Running message {self.id}")
+
         if self.variable and i_variable:
             user.set_variable(variable=Variable(self.variable, i_variable))
 
@@ -70,7 +98,7 @@ class Message(SerializableAttrs):
 
 
 @dataclass
-class Pipeline(SerializableAttrs):
+class Pipeline(SerializableAttrs, BaseLogger):
     id: str = attr.ib(metadata={"json": "id"})
     validation: str = attr.ib(metadata={"json": "validation"})
     variable: str = attr.ib(default=None, metadata={"json": "variable"})
@@ -81,6 +109,9 @@ class Pipeline(SerializableAttrs):
         return Template(self.validation)
 
     def run(self, user: User):
+
+        self.log.debug(f"Running pipeline {self.id}")
+
         variables = {}
         case_res = None
 
@@ -105,7 +136,7 @@ class Pipeline(SerializableAttrs):
 
 
 @dataclass
-class Menu(SerializableAttrs):
+class Menu(SerializableAttrs, BaseLogger):
     id: str = attr.ib(metadata={"json": "id"})
     global_variables: Optional[List[Variable]] = attr.ib(
         metadata={"json": "global_variables"}, factory=list
@@ -117,7 +148,7 @@ class Menu(SerializableAttrs):
     pipeline_by_id: Dict = {}
 
     def get_message_by_id(self, message_id: str) -> "Message" | None:
-        '''"If the message is in the cache, return it. Otherwise,
+        """ "If the message is in the cache, return it. Otherwise,
         search the list of messages for the message with the given ID,
         and if it's found, add it to the cache and return it."
 
@@ -135,7 +166,7 @@ class Menu(SerializableAttrs):
         -------
             A message object
 
-        '''
+        """
 
         try:
             return self.message_by_id[message_id]
@@ -145,10 +176,10 @@ class Menu(SerializableAttrs):
         for message in self.messages:
             if message_id == message.id:
                 self.message_by_id[message_id] = message
-                return message
+                return Message.deserialize(message.serialize())
 
     def get_pipeline_by_id(self, pipeline_id: str) -> "Pipeline" | None:
-        '''If the pipeline is in the cache, return it.
+        """If the pipeline is in the cache, return it.
         Otherwise, search the list of pipelines for the pipeline with the given ID,
         and if found, add it to the cache and return it
 
@@ -161,7 +192,7 @@ class Menu(SerializableAttrs):
         -------
             A pipeline object
 
-        '''
+        """
 
         try:
             return self.pipeline_by_id[pipeline_id]
@@ -171,4 +202,4 @@ class Menu(SerializableAttrs):
         for pipeline in self.pipelines:
             if pipeline_id == pipeline.id:
                 self.pipeline_by_id[pipeline_id] = pipeline
-                return pipeline
+                return Pipeline.deserialize(pipeline.serialize())

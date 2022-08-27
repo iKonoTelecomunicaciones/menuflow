@@ -13,3 +13,14 @@ async def upgrade_v1(conn: Connection) -> None:
         state       TEXT
         )"""
     )
+    await conn.execute(
+        """CREATE TABLE variable (
+        id          SERIAL PRIMARY KEY,
+        value       TEXT,
+        fk_user     INT NOT NULL
+        UNIQUE (id, fk_user)
+        )"""
+    )
+    await conn.execute(
+        'ALTER TABLE variable ADD CONSTRAINT FK_user FOREIGN KEY (fk_user) references "user" (id)'
+    )

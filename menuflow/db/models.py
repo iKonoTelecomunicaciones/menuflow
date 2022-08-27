@@ -9,6 +9,7 @@ from attr import dataclass
 
 from mautrix.types import UserID
 from mautrix.util.async_db import Database
+from menuflow.menu import Variable
 
 
 @dataclass
@@ -35,6 +36,8 @@ class User:
         if not user_id or not context or not state:
             return None
 
+        cls.add_to_cache
+
         return cls(
             id=id,
             user_id=user_id,
@@ -55,12 +58,6 @@ class User:
 
         if self.phone:
             self.by_phone[self.phone] = self
-
-    def __init__(self, user_id, variables, context, state) -> None:
-        self.user_id = user_id
-        self.variables = variables
-        self.context = context
-        self.state = state
 
     @abstractmethod
     def get_by_phone(cls, phone) -> "User" | None:
@@ -138,7 +135,8 @@ class DBManager:
     def __init__(self, db: Database) -> None:
         self.db = db
 
-    async def create_user(self, user_id: UserID, context: str, state: str) -> str:
+    ############# User #############
+    async def create_user(self, user_id: UserID, context: str, state: str) -> User:
         q = 'INSERT INTO "user" (user_id, context, state) VALUES ($1, $2, $3)'
         return await self.db.execute(q, user_id, context, state)
 
@@ -156,3 +154,26 @@ class DBManager:
 
         self.db.log.debug(row)
         return User.from_row(row)
+
+    ############# Variable #############
+    async def create_variable(self, user_id, variable_id, value) -> Variable | None:
+
+        user = await self.get_user_by_user_id(user_id=user_id, create=True)
+        if not user:
+            return
+
+        q = "INSERT INTO variable (id, value, fk_user) VALUES ($1, $2, $3)"
+        return await self.db.execute(q, variable_id, value, user.id)
+
+    async def update_variable(self, id: str, value: str) -> None:
+        q = "UPDATE variable SET value = $2 WHERE id = $1"
+        await self.db.execute(q, id, value)
+
+    async def get_variable_by_user_id(self, user_id: UserID) -> User:
+        q = "SELECT id, value, fk_user FROM variable WHERE user_id=$1"
+        row = await self.db.fetchrow(q, user_id)
+
+        if not row:
+            return
+
+        return Variable.from_row(row)
