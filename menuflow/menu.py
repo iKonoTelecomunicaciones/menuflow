@@ -83,6 +83,15 @@ class Pipeline(SerializableAttrs, BaseLogger):
         return Template(self.validation)
 
     def run(self, user: User):
+        """It takes a user object, runs the pipeline,
+        and updates the user's menu based on the result
+
+        Parameters
+        ----------
+        user : User
+            User
+
+        """
 
         self.log.debug(f"Running pipeline {self.id}")
 

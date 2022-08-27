@@ -43,6 +43,27 @@ class MenuFlow(Plugin):
         await self.algorithm(user=user, evt=evt)
 
     async def algorithm(self, user: User, evt: MessageEvent):
+        """If the user's context is a message node, execute the message node,
+        if the message node has a variable, set the variable,
+        if the message node has a wait, return,
+        if the message node has a message node as a context, execute the message node,
+        if the user's context is a pipeline node, execute the pipeline node,
+        if the pipeline node has a message node as a context, execute the message node.
+
+        Parameters
+        ----------
+        user : User
+            User
+        evt : MessageEvent
+            MessageEvent
+
+        Returns
+        -------
+            The return value is the value of the last expression in the function body,
+            or None if the function executes a return statement with no arguments
+            or if the function ends without executing a return statement.
+
+        """
 
         self.log.debug(user.__dict__)
 
