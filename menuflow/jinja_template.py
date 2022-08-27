@@ -1,11 +1,9 @@
 import re
 
-from jinja2 import Template
-from jinja2.filters import FILTERS, environmentfilter
+from jinja2.filters import FILTERS
 
 
-@environmentfilter
-def validate_regex(environment, value: str, arg: str) -> bool:
+def validate_regex(value: str, arg: str) -> bool:
     if re.compile(value, arg):
         return True
     else:

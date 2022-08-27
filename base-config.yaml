@@ -16,15 +16,15 @@ menu:
       validation: "{{ opt }}"
       cases:
         - id: 1
-          o_connection: "#message_1"
-        - id: 2
           o_connection: "#message_2"
+        - id: 2
+          o_connection: "#message_3"
         - id: default
           o_connection: "#message_3"
 
     - id: "#pipeline_2"
       variable: email
-      validation: "{% '^[a-z0-9]+[\._]?[a-z0-9]+[@]\w+[.]\w{2,3}$' | validate_regex %}"
+      validation: "{% '^[a-z0-9]+[\\._]?[a-z0-9]+[@]\\w+[.]\\w{2,3}$' | validate_regex %}"
       cases:
         - id: true
           o_connection: "#message_3"
@@ -49,13 +49,13 @@ menu:
       variable: opt
       o_connection: "#pipeline_3"
 
-    - id: "#message_1"
+    - id: "#message_2"
       text: Enviame un email
       variable: email
       o_connection: "#pipeline_2"
 
 
-    - id: "#message_2"
+    - id: "#message_3"
       text: Segundo mensaje {email}
 
     - id: "#message_3"

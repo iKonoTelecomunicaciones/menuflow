@@ -10,8 +10,8 @@ from maubot.client import MaubotMatrixClient
 from mautrix.types import (Format, MessageEventContent, MessageType, RoomID,
                            SerializableAttrs)
 
+from .db.models import User
 from .primitive import OConnection
-from .user import User
 
 
 @dataclass
@@ -37,6 +37,20 @@ class Message(SerializableAttrs):
     async def run(
         self, user: User, room_id: RoomID, client: MaubotMatrixClient, i_variable: str = None
     ):
+        '''It sends a message to the user, and updates the menu
+
+        Parameters
+        ----------
+        user : User
+            The user object
+        room_id : RoomID
+            The room ID of the room the user is in.
+        client : MaubotMatrixClient
+            The MaubotMatrixClient object.
+        i_variable : str
+            The variable that the user has inputted.
+
+        '''
         if self.variable and i_variable:
             user.set_variable(variable=Variable(self.variable, i_variable))
 
@@ -103,6 +117,25 @@ class Menu(SerializableAttrs):
     pipeline_by_id: Dict = {}
 
     def get_message_by_id(self, message_id: str) -> "Message" | None:
+        '''"If the message is in the cache, return it. Otherwise,
+        search the list of messages for the message with the given ID,
+        and if it's found, add it to the cache and return it."
+
+        The first line of the function is a try/except block.
+        If the message is in the cache, the first line will return it.
+        If the message is not in the cache, the first line will raise a KeyError exception,
+        which will be caught by the except block
+
+        Parameters
+        ----------
+        message_id : str
+            The ID of the message to get.
+
+        Returns
+        -------
+            A message object
+
+        '''
 
         try:
             return self.message_by_id[message_id]
@@ -115,6 +148,20 @@ class Menu(SerializableAttrs):
                 return message
 
     def get_pipeline_by_id(self, pipeline_id: str) -> "Pipeline" | None:
+        '''If the pipeline is in the cache, return it.
+        Otherwise, search the list of pipelines for the pipeline with the given ID,
+        and if found, add it to the cache and return it
+
+        Parameters
+        ----------
+        pipeline_id : str
+            The ID of the pipeline you want to get.
+
+        Returns
+        -------
+            A pipeline object
+
+        '''
 
         try:
             return self.pipeline_by_id[pipeline_id]
