@@ -7,20 +7,21 @@ from mautrix.util.async_db import UpgradeTable
 from mautrix.util.config import BaseProxyConfig
 
 from .config import Config
-from .db.migrations import upgrade_table
-from .db.models import DBManager, User, Variable
-from .jinja_template import FILTERS
+from .db import User, Variable, upgrade_table
+from .jinja.jinja_template import FILTERS
 from .menu import Menu
 
 
 class MenuFlow(Plugin):
-    dbm: DBManager
     menu: Menu
 
     async def start(self):
         await super().start()
         self.on_external_config_update()
-        self.dbm = DBManager(self.database)
+
+        for table in [User, Variable]:
+            table.db = self.database
+
         self.menu = Menu.deserialize(self.config["menu"])
 
     @classmethod
@@ -38,7 +39,7 @@ class MenuFlow(Plugin):
         if evt.sender in self.config["ignore"] or evt.sender == evt.client.mxid:
             return
 
-        user = await self.dbm.get_user_by_user_id(user_id=evt.sender, create=True)
+        user = await User.get_by_user_id(user_id=evt.sender, create=True)
 
         await self.algorithm(user=user, evt=evt)
 
@@ -74,8 +75,8 @@ class MenuFlow(Plugin):
 
             if message.variable:
                 user.set_variable(Variable(id=message.variable, value=evt.content.body))
-                await self.dbm.create_variable(
-                    user_id=user.user_id, variable_id=message.variable, value=evt.content.body
+                await Variable.insert(
+                    fk_user=user.id, variable_id=message.variable, value=evt.content.body
                 )
 
             if message:
@@ -104,7 +105,7 @@ class MenuFlow(Plugin):
             pipeline = self.menu.get_pipeline_by_id(user.context)
 
             if pipeline:
-                pipeline.run(user=user)
+                await pipeline.run(user=user)
             else:
                 self.log.warning(
                     f"The pipeline [{user.context}] was not executed because it was not found"
@@ -117,8 +118,8 @@ class MenuFlow(Plugin):
 
                 if message.variable:
                     user.set_variable(Variable(id=message.variable, value=evt.content.body))
-                    await self.dbm.create_variable(
-                        user_id=user.user_id, variable_id=message.variable, value=evt.content.body
+                    await Variable.insert(
+                        fk_user=user.id, variable_id=message.variable, value=evt.content.body
                     )
 
                 if message:

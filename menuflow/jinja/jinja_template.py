@@ -9,4 +9,5 @@ def validate_regex(value: str, arg: str) -> bool:
     else:
         return False
 
+
 FILTERS["validate_regex"] = validate_regex
