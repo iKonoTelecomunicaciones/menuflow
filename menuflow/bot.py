@@ -7,7 +7,9 @@ from mautrix.util.async_db import UpgradeTable
 from mautrix.util.config import BaseProxyConfig
 
 from .config import Config
-from .db import User as DBUser, Variable as DBVariable, upgrade_table
+from .db.migrations import upgrade_table
+from .db.user import User as DBUser
+from .db.variable import Variable as DBVariable
 from .jinja.jinja_template import FILTERS
 from .menu import Menu
 from .user import User
@@ -43,6 +45,9 @@ class MenuFlow(Plugin):
             return
 
         user = await User.get_by_user_id(user_id=evt.sender, create=True)
+
+        if not user:
+            return
 
         await self.algorithm(user=user, evt=evt)
 
