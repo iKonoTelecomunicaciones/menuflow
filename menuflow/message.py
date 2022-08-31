@@ -48,7 +48,7 @@ class Message(SerializableAttrs, BaseLogger):
                 msgtype=MessageType.TEXT,
                 body=self.text,
                 format=Format.HTML,
-                formatted_body=markdown(self.text.format(**user.variable_by_id)),
+                formatted_body=markdown(self.text.format(**user.variables_data)),
             )
             await client.send_message(room_id=room_id, content=msg_content)
             await user.update_menu(context=self.o_connection)

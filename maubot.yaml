@@ -6,7 +6,7 @@ modules:
 - menuflow
 main_class: MenuFlow
 extra_files:
-- config.yaml
+- base-config.yaml
 soft_dependencies:
 - Jinja2==3.1.2
 database: true

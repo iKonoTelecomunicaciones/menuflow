@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Optional
+from typing import TYPE_CHECKING, ClassVar
 
 from asyncpg import Record
 from attr import dataclass
@@ -16,10 +16,10 @@ class User:
 
     db: ClassVar[Database] = fake_db
 
-    id: int | None
     user_id: UserID
     context: str
     state: str
+    id: int = None
 
     @classmethod
     def _from_row(cls, row: Record) -> User | None:

@@ -46,7 +46,7 @@ class Pipeline(SerializableAttrs, BaseLogger):
         self.log.debug(f"#### {user.variable_by_id}")
 
         try:
-            res = self.template.render(**user.variable_by_id)
+            res = self.template.render(**user.variables_data)
             if res == "True":
                 res = True
 

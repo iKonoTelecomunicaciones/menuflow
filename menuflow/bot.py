@@ -7,9 +7,11 @@ from mautrix.util.async_db import UpgradeTable
 from mautrix.util.config import BaseProxyConfig
 
 from .config import Config
-from .db import User, Variable, upgrade_table
+from .db import User as DBUser, Variable as DBVariable, upgrade_table
 from .jinja.jinja_template import FILTERS
 from .menu import Menu
+from .user import User
+from .variable import Variable
 
 
 class MenuFlow(Plugin):
@@ -18,11 +20,12 @@ class MenuFlow(Plugin):
     async def start(self):
         await super().start()
         self.on_external_config_update()
-
-        for table in [User, Variable]:
-            table.db = self.database
-
+        self.initialize_tables()
         self.menu = Menu.deserialize(self.config["menu"])
+
+    def initialize_tables(self):
+        for table in [DBUser, DBVariable]:
+            table.db = self.database
 
     @classmethod
     def get_db_upgrade_table(cls) -> UpgradeTable:
@@ -74,10 +77,11 @@ class MenuFlow(Plugin):
             message = self.menu.get_message_by_id(user.context)
 
             if message.variable:
-                user.set_variable(Variable(id=message.variable, value=evt.content.body))
-                await Variable.insert(
-                    fk_user=user.id, variable_id=message.variable, value=evt.content.body
-                )
+                variable = await Variable.get(variable_id=message.variable, fk_user=user.id)
+                if variable:
+                    await variable.update(variable_id=message.variable, value=evt.content.body)
+                else:
+                    await user.set_variable(variable_id=message.variable, value=evt.content.body)
 
             if message:
                 await message.run(
@@ -117,10 +121,13 @@ class MenuFlow(Plugin):
                 message = self.menu.get_message_by_id(user.context)
 
                 if message.variable:
-                    user.set_variable(Variable(id=message.variable, value=evt.content.body))
-                    await Variable.insert(
-                        fk_user=user.id, variable_id=message.variable, value=evt.content.body
-                    )
+                    variable = await Variable.get(variable_id=message.variable, fk_user=user.id)
+                    if variable:
+                        await variable.update(variable_id=message.variable, value=evt.content.body)
+                    else:
+                        await user.set_variable(
+                            variable_id=message.variable, value=evt.content.body
+                        )
 
                 if message:
                     await message.run(

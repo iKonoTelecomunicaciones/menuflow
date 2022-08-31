@@ -9,9 +9,6 @@ class Variable(DBVariable):
     def __init__(self, variable_id: str, value: Any, fk_user: int | None) -> None:
         super().__init__(variable_id=variable_id, value=value, fk_user=fk_user)
 
-    async def save(self) -> None:
-        await self.update()
-
     @classmethod
     async def get(cls, fk_user: int, variable_id: str) -> Variable:
         variable = await cast(cls, await super().get(fk_user, variable_id))
