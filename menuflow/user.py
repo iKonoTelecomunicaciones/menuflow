@@ -15,8 +15,8 @@ class User(DBUser):
 
     variables: Dict[str, Variable] = {}
 
-    def __init__(self, user_id: UserID, context: str, state: str) -> None:
-        super().__init__(user_id=user_id, context=context, state=state)
+    def __init__(self, user_id: UserID, context: str, state: str, id: int = None) -> None:
+        super().__init__(id=id, user_id=user_id, context=context, state=state)
 
     def _add_to_cache(self) -> None:
         if self.user_id:
@@ -62,8 +62,9 @@ class User(DBUser):
             return user
 
         if create:
-            user = cls(user_id, "message_1", "SHOW_MESSAGE")
+            user = cls(user_id=user_id, context="m1", state="SHOW_MESSAGE")
             await user.insert()
+            user = cast(cls, await super().get_by_user_id(user_id))
             user._add_to_cache()
             await user.load_variables()
             return user
@@ -106,13 +107,18 @@ class User(DBUser):
             The value of the variable.
 
         """
-        variable = Variable(variable_id=variable_id, value=value, fk_user=self.id)
+        variable = await Variable.get(variable_id=variable_id, fk_user=self.id)
 
+        if variable is None:
+            variable = Variable(variable_id, value, self.id)
+            await variable.insert()
+        else:
+            await variable.update(variable_id=variable_id, value=value)
+
+        self.variables_data[variable_id] = value
         self.variables[variable_id] = variable
 
-        await variable.insert()
-
-    async def update_menu(self, context: str):
+    async def update_menu(self, context: str, state: str = None):
         """It updates the menu's state and context, and then adds it to the cache
 
         Parameters
@@ -130,10 +136,15 @@ class User(DBUser):
 
         self.context = context
 
-        if context.startswith("#pipeline"):
+        if state:
+            self.state = state
+            await self.update(context=self.context, state=self.state)
+            return
+
+        if context.startswith("p"):
             self.state = "VALIDATE_PIPE"
 
-        if context.startswith("#message"):
+        if context.startswith("m"):
             self.state = "SHOW_MESSAGE"
 
         await self.update(context=self.context, state=self.state)

@@ -6,12 +6,12 @@ from .db.variable import Variable as DBVariable
 
 
 class Variable(DBVariable):
-    def __init__(self, variable_id: str, value: Any, fk_user: int | None) -> None:
-        super().__init__(variable_id=variable_id, value=value, fk_user=fk_user)
+    def __init__(self, variable_id: str, value: Any, fk_user: int | None, pk: int = None) -> None:
+        super().__init__(variable_id=variable_id, value=value, fk_user=fk_user, pk=None)
 
     @classmethod
     async def get(cls, fk_user: int, variable_id: str) -> Variable:
-        variable = await cast(cls, await super().get(fk_user, variable_id))
+        variable = cast(cls, await super().get(fk_user, variable_id))
 
         if variable is not None:
             return variable

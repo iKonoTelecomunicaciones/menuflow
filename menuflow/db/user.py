@@ -16,10 +16,10 @@ class User:
 
     db: ClassVar[Database] = fake_db
 
+    id: int
     user_id: UserID
     context: str
     state: str
-    id: int = None
 
     @classmethod
     def _from_row(cls, row: Record) -> User | None:
@@ -29,9 +29,9 @@ class User:
     def values(self) -> tuple:
         return (self.user_id, self.context, self.state)
 
-    async def insert(self) -> User:
+    async def insert(self) -> str:
         q = 'INSERT INTO "user" (user_id, context, state) VALUES ($1, $2, $3)'
-        return await self.db.execute(q, *self.values)
+        await self.db.execute(q, *self.values)
 
     async def update(self, context: str, state: str) -> None:
         q = 'UPDATE "user" SET context = $2, state = $3 WHERE user_id = $1'
@@ -50,4 +50,4 @@ class User:
         if not row:
             return
 
-        return cls(**row)
+        return cls._from_row(row)

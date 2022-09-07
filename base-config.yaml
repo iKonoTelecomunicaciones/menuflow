@@ -9,49 +9,62 @@ menu:
       value: Nice test
 
     pipelines:
-    - id: '#pipeline_1'
+    - id: 'p1'
       validation: '{{ opt }}'
       cases:
       - id: 1
-        o_connection: '#message_2'
+        o_connection: 'm2'
       - id: 2
-        o_connection: '#message_3'
+        o_connection: 'm3'
       - id: default
-        o_connection: '#message_3'
+        o_connection: 'm3'
 
-    - id: '#pipeline_2'
+    - id: 'p2'
       validation: "{% '^[a-z0-9]+[\\._]?[a-z0-9]+[@]\\w+[.]\\w{2,3}$' | validate_regex %}"
       cases:
       - id: true
-        o_connection: '#message_3'
+        o_connection: 'm3'
       - id: false
-        o_connection: '#message_4'
+        o_connection: 'm4'
       - id: default
-        o_connection: '#message_5'
+        o_connection: 'm5'
 
-    - id: '#pipeline_3'
-      validation: '{{ opt.isdigit() }}'
+    - id: 'p3'
+      validation: '{{ dni.isdigit() }}'
       cases:
       - id: true
-        o_connection: '#message_3'
+        o_connection: 'm6'
       - id: false
-        o_connection: '#message_4'
+        o_connection: 'm5'
 
     messages:
-    - id: '#message_1'
-      text: Hola **Bienvenido** al menu de pruebas de  🤖 MenuFlow <br>Ingrese:<br> Porfavor ingresa un numero
-      wait: 5
-      variable: opt
-      o_connection: '#pipeline_3'
+    - id: 'm1'
+      text: Hello **Welcome** to MenuFlow test menu
+      o_connection: 'm2'
 
-    - id: '#message_2'
-      text: Enviame un email
-      variable: email
-      o_connection: '#pipeline_2'
+    - id: 'm2'
+      text: "Please enter your name:"
+      o_connection: 'm3'
+      variable: name
 
 
-    - id: '#message_3'
-      text: "**{opt}** es un número"
+    - id: 'm3'
+      text: "Nice talking to you **{name}**"
+      o_connection: 'm4'
 
-    - id: '#message_4'
-      text: "**{opt}** no es un número"
+    - id: 'm4'
+      text: "**{name}** please enter your ID number:"
+      variable: dni
+      o_connection: 'p3'
+
+    - id: 'm5'
+      text: "**{dni}** is not an ID number"
+      o_connection: 'm4'
+
+    - id: 'm6'
+      text: "Thank you very much **{name}**, your ID number is {dni}"
+      o_connection: 'm7'
+
+    - id: 'm7'
+      text: "See you next time"
+      o_connection: 'm1'

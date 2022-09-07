@@ -43,8 +43,6 @@ class Pipeline(SerializableAttrs, BaseLogger):
 
         case_res = None
 
-        self.log.debug(f"#### {user.variable_by_id}")
-
         try:
             res = self.template.render(**user.variables_data)
             if res == "True":
@@ -61,5 +59,4 @@ class Pipeline(SerializableAttrs, BaseLogger):
         for case in self.cases:
             if case_res.id == case.id:
                 await user.update_menu(context=case.o_connection)
-                self.log.debug(f"##### {user}")
                 break
