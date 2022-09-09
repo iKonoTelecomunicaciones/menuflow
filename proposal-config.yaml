@@ -53,9 +53,9 @@ menu:
         email: results.0.email
         city: results.0.location.city
         version: version
-        # all_results: resutls
-        # all_results_names: resutls.[].name.first
-        # all_results_email: resutls.[].email
+        # all_results: results
+        # all_results_names: results.[].name.first
+        # all_results_email: results.[].email
 
       response:
         status:
