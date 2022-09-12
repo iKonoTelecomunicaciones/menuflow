@@ -59,14 +59,25 @@ class MenuFlow(Plugin):
         await self.algorithm(user=user, evt=evt)
 
     async def algorithm(self, user: User, evt: MessageEvent) -> None:
-        """> If the current node is an input node, then show the message and wait for the user to input a value. If the current node is a message node, then show the message and move to the next node
+        """If the user is in the input state, then set the variable to the user's input,
+        and if the node has an output connection, then update the menu to the output connection.
+        Otherwise, run the node and update the menu to the output connection.
+        If the node is an input node and the user is not in the input state,
+        then show the message and update the menu to the node's id and set the state to input.
+        If the node is a message node, then show the message and if the node has an output connection,
+        then update the menu to the output connection and run the algorithm again
 
         Parameters
         ----------
         user : User
-            User - The user object that is currently interacting with the bot.
+            User - the user object
         evt : MessageEvent
-            Incoming MessageEvent
+            The event that triggered the algorithm.
+
+        Returns
+        -------
+            The return value is the result of the last expression in the function body.
+
         """
 
         if user.state == "input":
