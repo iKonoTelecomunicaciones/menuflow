@@ -6,7 +6,7 @@ from mautrix.types import UserID
 from menuflow.menu import Menu
 
 from .db.user import User as DBUser
-from .node import HTTPRequest, Input, Message
+from .nodes import HTTPRequest, Input, Message
 from .variable import Variable
 
 

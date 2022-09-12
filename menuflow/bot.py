@@ -7,7 +7,7 @@ from maubot.handlers import event
 from mautrix.types import EventType
 from mautrix.util.async_db import UpgradeTable
 from mautrix.util.config import BaseProxyConfig
-from menuflow.node import Input, Message
+from menuflow.nodes import Input, Message
 
 from .config import Config
 from .db.migrations import upgrade_table

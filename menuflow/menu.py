@@ -6,7 +6,7 @@ from attr import dataclass, ib
 
 from mautrix.types import SerializableAttrs
 
-from .node import HTTPRequest, Input, Message
+from .nodes import HTTPRequest, Input, Message
 from .utils.base_logger import BaseLogger
 from .variable import Variable
 
