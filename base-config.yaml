@@ -1,35 +1,33 @@
-whatsapp_bridge:
-    mxid: '@whatsappbot:darknet'
-ignore:
+users_ignore:
 - '@whatsappbot:darknet'
+
 menu:
     id: Menu id
     global_variables:
     - id: simple_flag
       value: Nice test
 
-    pipelines:
-    - id: 'p1'
-      validation: '{{ opt }}'
-      cases:
-      - id: 1
-        o_connection: 'm2'
-      - id: 2
-        o_connection: 'm3'
-      - id: default
-        o_connection: 'm3'
+    nodes:
+    - id: 'm1'
+      type: 'message'
+      text: Hello **Welcome** to MenuFlow test menu
+      o_connection: 'm2'
 
-    - id: 'p2'
-      validation: "{% '^[a-z0-9]+[\\._]?[a-z0-9]+[@]\\w+[.]\\w{2,3}$' | validate_regex %}"
-      cases:
-      - id: true
-        o_connection: 'm3'
-      - id: false
-        o_connection: 'm4'
-      - id: default
-        o_connection: 'm5'
+    - id: 'm2'
+      type: 'input'
+      text: "Please enter your name:"
+      o_connection: 'm3'
+      variable: name
 
-    - id: 'p3'
+    - id: 'm3'
+      type: 'message'
+      text: "Nice talking to you **{{name}}**"
+      o_connection: 'm4'
+
+    - id: 'm4'
+      type: 'input'
+      text: "**{{name}}** please enter your ID number:"
+      variable: dni
       validation: '{{ dni.isdigit() }}'
       cases:
       - id: true
@@ -37,34 +35,42 @@ menu:
       - id: false
         o_connection: 'm5'
 
-    messages:
-    - id: 'm1'
-      text: Hello **Welcome** to MenuFlow test menu
-      o_connection: 'm2'
-
-    - id: 'm2'
-      text: "Please enter your name:"
-      o_connection: 'm3'
-      variable: name
-
-
-    - id: 'm3'
-      text: "Nice talking to you **{name}**"
-      o_connection: 'm4'
-
-    - id: 'm4'
-      text: "**{name}** please enter your ID number:"
-      variable: dni
-      o_connection: 'p3'
-
     - id: 'm5'
-      text: "**{dni}** is not an ID number"
+      type: 'message'
+      text: "**{{dni}}** is not an ID number"
       o_connection: 'm4'
 
     - id: 'm6'
-      text: "Thank you very much **{name}**, your ID number is {dni}"
+      type: 'message'
+      text: "Thank you very much **{{name}}**, your ID number is {{dni}}"
       o_connection: 'm7'
 
     - id: 'm7'
+      type: 'message'
       text: "See you next time"
       o_connection: 'm1'
+
+    - id: 'r1'
+      type: 'http_request'
+      metohd: GET # POST
+      url: https://randomuser.me/api/
+      # query_params:
+      #   "foo": "foo"
+      # headers:
+      #   "foo": "foo"
+      # data:
+      #   "user_email": "foo@foo.com"
+      #   "phone": "{phone}"
+
+      response:
+        cases:
+          - id: 200
+            o_connection: m5
+          - id: 404
+            o_connection: m6
+
+      variables:
+        name: results.0.name.first
+        email: results.0.email
+        city: results.0.location.city
+        version: version

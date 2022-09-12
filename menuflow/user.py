@@ -3,8 +3,10 @@ from __future__ import annotations
 from typing import Any, Dict, cast
 
 from mautrix.types import UserID
+from menuflow.menu import Menu
 
 from .db.user import User as DBUser
+from .node import HTTPRequest, Input, Message
 from .variable import Variable
 
 
@@ -15,7 +17,9 @@ class User(DBUser):
 
     variables: Dict[str, Variable] = {}
 
-    def __init__(self, user_id: UserID, context: str, state: str, id: int = None) -> None:
+    menu: Menu
+
+    def __init__(self, user_id: UserID, context: str, state: str = None, id: int = None) -> None:
         super().__init__(id=id, user_id=user_id, context=context, state=state)
 
     def _add_to_cache(self) -> None:
@@ -32,6 +36,27 @@ class User(DBUser):
     #     user_match = match("^@(?P<user_prefix>.+)_(?P<number>[0-9]{8,}):.+$", self.user_id)
     #     if user_match:
     #         return user_match.group("number")
+
+    def build_node(
+        self, data: Dict, type_class: Message | Input | HTTPRequest
+    ) -> Message | Input | HTTPRequest:
+        return type_class.deserialize(data)
+
+    @property
+    def node(self) -> Message | Input | HTTPRequest | None:
+
+        node = self.menu.get_node_by_id(node_id=self.context)
+
+        if node.type == "message":
+            node = self.build_node(node.serialize(), Message)
+        elif node.type == "input":
+            node = self.build_node(node.serialize(), Input)
+        elif node.type == "http_request":
+            node = self.build_node(node.serialize(), HTTPRequest)
+        else:
+            return
+
+        return node
 
     @classmethod
     async def get_by_user_id(cls, user_id: UserID, create: bool = True) -> "User" | None:
@@ -62,7 +87,7 @@ class User(DBUser):
             return user
 
         if create:
-            user = cls(user_id=user_id, context="m1", state="SHOW_MESSAGE")
+            user = cls(user_id=user_id, context="m1")
             await user.insert()
             user = cast(cls, await super().get_by_user_id(user_id))
             user._add_to_cache()
@@ -119,33 +144,17 @@ class User(DBUser):
         self.variables[variable_id] = variable
 
     async def update_menu(self, context: str, state: str = None):
-        """It updates the menu's state and context, and then adds it to the cache
+        """Updates the menu's context and state, and then updates the menu's content
 
         Parameters
         ----------
         context : str
-            The context of the menu. This is used to determine what the menu is for.
-
-        Returns
-        -------
-            The return value is a list of dictionaries.
+            The context of the menu. This is used to determine which menu to display.
+        state : str
+            The state of the menu. This is used to determine which menu to display.
 
         """
-        if not context:
-            return
-
         self.context = context
-
-        if state:
-            self.state = state
-            await self.update(context=self.context, state=self.state)
-            return
-
-        if context.startswith("p"):
-            self.state = "VALIDATE_PIPE"
-
-        if context.startswith("m"):
-            self.state = "SHOW_MESSAGE"
-
-        await self.update(context=self.context, state=self.state)
+        self.state = state
+        await self.update(context=context, state=state)
         self._add_to_cache()

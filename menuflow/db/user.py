@@ -16,10 +16,10 @@ class User:
 
     db: ClassVar[Database] = fake_db
 
-    id: int
+    id: int | None
     user_id: UserID
     context: str
-    state: str
+    state: str | None
 
     @classmethod
     def _from_row(cls, row: Record) -> User | None:
