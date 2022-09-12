@@ -7,6 +7,10 @@ menu:
     - id: simple_flag
       value: Nice test
 
+    # Nodes currently supported
+    #   - Message
+    #   - Input
+
     nodes:
     - id: 'm1'
       type: 'message'
