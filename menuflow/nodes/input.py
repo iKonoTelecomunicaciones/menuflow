@@ -26,6 +26,16 @@ class Input(Message):
     def rule(self) -> Template:
         return Template(self.validation)
 
+    @property
+    def load_cases(self):
+
+        cases_dict = {}
+
+        for case in self.cases:
+            cases_dict[case.id] = case.o_connection
+
+        return cases_dict
+
     async def run(self, variables: dict) -> OConnection:
         """It takes a dictionary of variables, runs the rule,
         and returns the connection that matches the case
@@ -43,7 +53,7 @@ class Input(Message):
 
         self.log.debug(f"Running pipeline {self.id}")
 
-        case_res = None
+        res = None
 
         try:
             res = self.rule.render(**variables)
@@ -53,14 +63,18 @@ class Input(Message):
             if res == "False":
                 res = False
 
-            case_res = Case(id=res)
-
         except Exception as e:
             self.log.warning(f"An exception has occurred in the pipeline {self.id} :: {e}")
-            case_res = Case(id="except")
+            res = "except"
 
-        self.log.debug(case_res)
+        self.log.debug(res)
 
-        for case in self.cases:
-            if case_res.id == case.id:
-                return case.o_connection
+        return self.get_case_by_id(res)
+
+    def get_case_by_id(self, id: str) -> str:
+
+        try:
+            cases = self.load_cases
+            return cases[id]
+        except KeyError:
+            self.log.debug(f"Case not found {id}")

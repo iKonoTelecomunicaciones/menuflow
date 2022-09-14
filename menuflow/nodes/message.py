@@ -14,7 +14,7 @@ from .node import Node
 @dataclass
 class Message(Node):
 
-    text: str = ib(metadata={"json": "text"})
+    text: str = ib(default=None, metadata={"json": "text"})
     o_connection: OConnection = ib(default=None, metadata={"json": "o_connection"})
     variable: str = ib(default=None, metadata={"json": "variable"})
 

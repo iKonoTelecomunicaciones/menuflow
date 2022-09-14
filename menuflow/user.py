@@ -143,6 +143,18 @@ class User(DBUser):
         self.variables_data[variable_id] = value
         self.variables[variable_id] = variable
 
+    async def set_variables(self, variables: Dict):
+        """It takes a dictionary of variable IDs and values, and sets the variables to the values
+
+        Parameters
+        ----------
+        variables : Dict
+            A dictionary of variable names and values.
+
+        """
+        for variable in variables:
+            await self.set_variable(variable_id=variable, value=variables[variable])
+
     async def update_menu(self, context: str, state: str = None):
         """Updates the menu's context and state, and then updates the menu's content
 

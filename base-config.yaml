@@ -52,12 +52,12 @@ menu:
     - id: 'm7'
       type: 'message'
       text: "See you next time"
-      o_connection: 'm1'
+      o_connection: 'r1'
 
     - id: 'r1'
       type: 'http_request'
-      metohd: GET # POST
-      url: https://randomuser.me/api/
+      method: GET # POST
+      url: https://httpbin.org/get
       # query_params:
       #   "foo": "foo"
       # headers:
@@ -66,15 +66,22 @@ menu:
       #   "user_email": "foo@foo.com"
       #   "phone": "{phone}"
 
-      response:
-        cases:
-          - id: 200
-            o_connection: m5
-          - id: 404
-            o_connection: m6
-
       variables:
-        name: results.0.name.first
-        email: results.0.email
-        city: results.0.location.city
-        version: version
+        origin: origin
+        url: url
+
+      cases:
+        - id: 200
+          o_connection: m8
+        - id: default
+          o_connection: m9
+
+    - id: 'm8'
+      type: 'message'
+      text: "Test url {{url}}"
+      o_connection: 'm1'
+
+    - id: 'm9'
+      type: 'message'
+      text: "No tuvimos suerte"
+      o_connection: 'm1'
