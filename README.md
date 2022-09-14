@@ -1,7 +1,7 @@
 # Proposals
 
 ## Variables:
-- `TODO` Variables created when making http requests
+- `TODO` The variables should not be stored in a specific table, they should be part of the user table, in an attribute called variables of type json, this allows to store variables of type json, list, int ...
 
 ## Nodes:
 
