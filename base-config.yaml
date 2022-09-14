@@ -8,8 +8,9 @@ menu:
       value: Nice test
 
     # Nodes currently supported
-    #   - Message
-    #   - Input
+    #   - message
+    #   - input
+    #   - http_request
 
     nodes:
     - id: 'm1'
