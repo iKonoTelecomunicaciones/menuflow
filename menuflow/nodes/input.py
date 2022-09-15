@@ -78,3 +78,4 @@ class Input(Message):
             return cases[id]
         except KeyError:
             self.log.debug(f"Case not found {id}")
+            return cases["default"]
