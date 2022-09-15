@@ -4,10 +4,12 @@ from typing import Dict, Tuple
 
 from aiohttp import ClientSession
 from attr import dataclass, ib
+from jinja2 import Template
 from ruamel.yaml.comments import CommentedMap
 
 from mautrix.util.config import RecursiveDict
 
+from ..user import User
 from .input import Input
 
 
@@ -20,32 +22,63 @@ class HTTPRequest(Input):
     headers: Dict = ib(metadata={"json": "headers"}, factory=dict)
     data: Dict = ib(metadata={"json": "data"}, factory=dict)
 
-    async def request(self, session: ClientSession) -> Tuple[str, Dict]:
+    @property
+    def _headers(self) -> Dict[str, Template]:
+        return {header: Template(self.headers[header]) for header in self.headers}
+
+    @property
+    def _query_params(self) -> Dict:
+        return {
+            query_param: Template(self.query_params[query_param])
+            for query_param in self.query_params
+        }
+
+    @property
+    def _data(self) -> Dict:
+        return {value: Template(self.data[value]) for value in self.data}
+
+    @property
+    def _url(self) -> Template:
+        return Template(self.url)
+
+    def _render(self, templates: Dict[str, Template], variables: Dict) -> Dict:
+        try:
+            return {header: self._headers[header].render(**variables) for header in templates}
+        except Exception as e:
+            self.log.exception(e)
+
+    async def request(self, user: User, session: ClientSession) -> Tuple[str, Dict]:
 
         self.log.debug(self.variables)
 
         try:
             response = await session.request(
                 self.method,
-                self.url,
-                headers=self.headers,
-                params=self.query_params,
-                data=self.data,
+                self._url.render(**user.variables_data),
+                headers=self._render(self._headers, user.variables_data),
+                params=self._render(self._query_params, user.variables_data),
+                data=self._render(self._data, user.variables_data),
             )
         except Exception as e:
             self.log.exception(e)
             return
 
         # Tulir and its magic since time immemorial
-        response_data = RecursiveDict(CommentedMap(**await response.json()))
-
         variables = {}
         o_connection = None
 
-        for variable in self.variables.__dict__:
-            variables[variable] = response_data[self.variables[variable]]
+        try:
+            response_data = RecursiveDict(CommentedMap(**await response.json()))
+            for variable in self.variables.__dict__:
+                variables[variable] = str(response_data[self.variables[variable]])
+        except Exception as e:
+            self.log.exception(e)
 
         if self.cases:
             o_connection = self.get_case_by_id(id=response.status)
 
-        return o_connection, variables
+        if o_connection:
+            await user.update_menu(context=o_connection)
+
+        if variables:
+            await user.set_variables(variables=variables)

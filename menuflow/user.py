@@ -3,10 +3,9 @@ from __future__ import annotations
 from typing import Any, Dict, cast
 
 from mautrix.types import UserID
-from menuflow.menu import Menu
 
+from . import menu as m, nodes as n
 from .db.user import User as DBUser
-from .nodes import HTTPRequest, Input, Message
 from .variable import Variable
 
 
@@ -17,7 +16,7 @@ class User(DBUser):
 
     variables: Dict[str, Variable] = {}
 
-    menu: Menu
+    menu: m.Menu
 
     def __init__(self, user_id: UserID, context: str, state: str = None, id: int = None) -> None:
         super().__init__(id=id, user_id=user_id, context=context, state=state)
@@ -37,26 +36,9 @@ class User(DBUser):
     #     if user_match:
     #         return user_match.group("number")
 
-    def build_node(
-        self, data: Dict, type_class: Message | Input | HTTPRequest
-    ) -> Message | Input | HTTPRequest:
-        return type_class.deserialize(data)
-
     @property
-    def node(self) -> Message | Input | HTTPRequest | None:
-
-        node = self.menu.get_node_by_id(node_id=self.context)
-
-        if node.type == "message":
-            node = self.build_node(node.serialize(), Message)
-        elif node.type == "input":
-            node = self.build_node(node.serialize(), Input)
-        elif node.type == "http_request":
-            node = self.build_node(node.serialize(), HTTPRequest)
-        else:
-            return
-
-        return node
+    def node(self) -> n.Node | None:
+        return self.menu.node(context=self.context)
 
     @classmethod
     async def get_by_user_id(cls, user_id: UserID, create: bool = True) -> "User" | None:

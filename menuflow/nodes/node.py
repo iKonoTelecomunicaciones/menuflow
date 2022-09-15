@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, Dict
+
 from attr import dataclass, ib
 
 from mautrix.types import SerializableAttrs

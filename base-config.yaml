@@ -15,74 +15,43 @@ menu:
     nodes:
     - id: 'm1'
       type: 'message'
-      text: Hello **Welcome** to MenuFlow test menu
+      text: Hello **Welcome** to MenuFlow
       o_connection: 'm2'
 
     - id: 'm2'
       type: 'input'
-      text: "Please enter your name:"
+      text: "Please enter a pokemon name:"
       o_connection: 'm3'
-      variable: name
+      variable: pokemon_name
 
     - id: 'm3'
       type: 'message'
-      text: "Nice talking to you **{{name}}**"
-      o_connection: 'm4'
-
-    - id: 'm4'
-      type: 'input'
-      text: "**{{name}}** please enter your ID number:"
-      variable: dni
-      validation: '{{ dni.isdigit() }}'
-      cases:
-      - id: true
-        o_connection: 'm6'
-      - id: false
-        o_connection: 'm5'
-
-    - id: 'm5'
-      type: 'message'
-      text: "**{{dni}}** is not an ID number"
-      o_connection: 'm4'
-
-    - id: 'm6'
-      type: 'message'
-      text: "Thank you very much **{{name}}**, your ID number is {{dni}}"
-      o_connection: 'm7'
-
-    - id: 'm7'
-      type: 'message'
-      text: "See you next time"
+      text: "Ok, let's look for information about {{ pokemon_name }}"
       o_connection: 'r1'
 
     - id: 'r1'
       type: 'http_request'
       method: GET # POST
-      url: https://httpbin.org/get
-      # query_params:
-      #   "foo": "foo"
-      # headers:
-      #   "foo": "foo"
-      # data:
-      #   "user_email": "foo@foo.com"
-      #   "phone": "{phone}"
+      url: https://pokeapi.co/api/v2/pokemon/{{ pokemon_name }}
 
       variables:
-        origin: origin
-        url: url
+        pokemon: name
+        height: height
+        weight: weight
+        base_experience: base_experience
 
       cases:
         - id: 200
-          o_connection: m8
-        - id: default
-          o_connection: m9
+          o_connection: m4
+        - id: 404
+          o_connection: m5
 
-    - id: 'm8'
+    - id: 'm4'
       type: 'message'
-      text: "Test url {{url}}"
+      text: "I found that {{pokemon_name}} has a height of {{height}} a weight of {{weight}} and its experience base is {{base_experience}}"
       o_connection: 'm1'
 
-    - id: 'm9'
+    - id: 'm5'
       type: 'message'
-      text: "No tuvimos suerte"
-      o_connection: 'm1'
+      text: "I did not find {{pokemon_name}} :("
+      o_connection: 'm2'
