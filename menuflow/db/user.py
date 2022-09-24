@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Dict
 
 from asyncpg import Record
 from attr import dataclass
@@ -18,6 +18,7 @@ class User:
 
     id: int | None
     user_id: UserID
+    variables: Dict | None
     context: str
     state: str | None
 
@@ -27,20 +28,20 @@ class User:
 
     @property
     def values(self) -> tuple:
-        return (self.user_id, self.context, self.state)
+        return (self.user_id, self.variables, self.context, self.state)
 
     async def insert(self) -> str:
-        q = 'INSERT INTO "user" (user_id, context, state) VALUES ($1, $2, $3)'
+        q = 'INSERT INTO "user" (user_id, variables, context, state) VALUES ($1, $2, $3, $4)'
         await self.db.execute(q, *self.values)
 
-    async def update(self, context: str, state: str) -> None:
-        q = 'UPDATE "user" SET context = $2, state = $3 WHERE user_id = $1'
-        await self.db.execute(q, self.user_id, context, state)
+    async def update(self) -> None:
+        q = 'UPDATE "user" SET variables = $2, context = $3, state = $4 WHERE user_id = $1'
+        await self.db.execute(q, *self.values)
 
     @classmethod
     @property
     def query(cls) -> str:
-        return 'SELECT id, user_id, context, state FROM "user" WHERE'
+        return 'SELECT id, user_id, variables, context, state FROM "user" WHERE'
 
     @classmethod
     async def get_by_user_id(cls, user_id: UserID) -> User | None:

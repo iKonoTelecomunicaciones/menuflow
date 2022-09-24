@@ -1,34 +1,36 @@
 from __future__ import annotations
 
 from typing import Any, Dict, cast
+import json
 
 from mautrix.types import UserID
 
 from . import menu as m, nodes as n
 from .db.user import User as DBUser
-from .variable import Variable
 
 
 class User(DBUser):
 
     by_user_id: Dict[UserID, "User"] = {}
-    variables_data: Dict[str, Any] = {}
-
-    variables: Dict[str, Variable] = {}
 
     menu: m.Menu
 
-    def __init__(self, user_id: UserID, context: str, state: str = None, id: int = None) -> None:
-        super().__init__(id=id, user_id=user_id, context=context, state=state)
+    def __init__(
+        self,
+        user_id: UserID,
+        context: str,
+        state: str = None,
+        id: int = None,
+        variables: str = "{}",
+    ) -> None:
+        self._variables = json.loads(variables)
+        super().__init__(
+            id=id, user_id=user_id, context=context, state=state, variables=f"{variables}"
+        )
 
     def _add_to_cache(self) -> None:
         if self.user_id:
             self.by_user_id[self.user_id] = self
-
-    async def load_variables(self):
-        for variable in await Variable.all_variables_by_fk_user(self.id):
-            self.variables_data[variable.variable_id] = variable.value
-            self.variables[variable.variable_id] = variable
 
     # @property
     # def phone(self) -> str | None:
@@ -65,65 +67,35 @@ class User(DBUser):
 
         if user is not None:
             user._add_to_cache()
-            await user.load_variables()
             return user
 
         if create:
             user = cls(user_id=user_id, context="m1")
+
             await user.insert()
             user = cast(cls, await super().get_by_user_id(user_id))
             user._add_to_cache()
-            await user.load_variables()
             return user
 
-    async def get_varibale(self, variable_id: str) -> Variable | None:
-        """This function returns a variable object from the database if it exists,
-        otherwise it returns None
+    async def get_varibale(self, variable_id: str) -> Any | None:
+        """This function returns the value of a variable with the given ID
 
         Parameters
         ----------
         variable_id : str
-            The variable ID.
+            The id of the variable you want to get.
 
         Returns
         -------
-            A variable object
+            The value of the variable with the given id.
 
         """
-        try:
-            return self.variables[variable_id]
-        except KeyError:
-            pass
-
-        variable = await Variable.get(fk_user=self.id, variable_id=variable_id)
-
-        if not variable:
-            return
-
-        return variable
+        return self._variables.get(variable_id)
 
     async def set_variable(self, variable_id: str, value: Any):
-        """It creates a new variable object, adds it to the user's variables dictionary,
-        and then inserts it into the database
-
-        Parameters
-        ----------
-        variable_id : str
-            The variable's name.
-        value : Any
-            The value of the variable.
-
-        """
-        variable = await Variable.get(variable_id=variable_id, fk_user=self.id)
-
-        if variable is None:
-            variable = Variable(variable_id, value, self.id)
-            await variable.insert()
-        else:
-            await variable.update(variable_id=variable_id, value=value)
-
-        self.variables_data[variable_id] = value
-        self.variables[variable_id] = variable
+        self._variables[variable_id] = value
+        self.variables = json.dumps(self._variables)
+        await self.update()
 
     async def set_variables(self, variables: Dict):
         """It takes a dictionary of variable IDs and values, and sets the variables to the values
@@ -150,5 +122,5 @@ class User(DBUser):
         """
         self.context = context
         self.state = state
-        await self.update(context=context, state=state)
+        await self.update()
         self._add_to_cache()

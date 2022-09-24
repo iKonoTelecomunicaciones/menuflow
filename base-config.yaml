@@ -1,11 +1,8 @@
 users_ignore:
-- '@whatsappbot:darknet'
+- '@whatsappbot:localhost'
 
 menu:
     id: Menu id
-    global_variables:
-    - id: simple_flag
-      value: Nice test
 
     # Nodes currently supported
     #   - message
@@ -15,43 +12,121 @@ menu:
     nodes:
     - id: 'm1'
       type: 'message'
-      text: Hello **Welcome** to MenuFlow
+      text: This is a menu that helps you to get 3 random news items
       o_connection: 'm2'
 
     - id: 'm2'
       type: 'input'
-      text: "Please enter a pokemon name:"
-      o_connection: 'm3'
-      variable: pokemon_name
+      variable: opt
+      text: "
+              We have the following categories:<br>
+              1️⃣ All<br>
+              2️⃣ National // Indian news only<br>
+              3️⃣ Business<br>
+              4️⃣ Sports<br>
+              5️⃣ World<br>
+              6️⃣ Politics<br>
+              7️⃣ Technology<br>
+              8️⃣ Startup<br>
+              9️⃣ Entertainment<br>
+              1️⃣0️⃣ Misc<br>
+              1️⃣1️⃣ Hatke<br>
+              1️⃣2️⃣ Science<br>
+              1️⃣3️⃣ Automobile<br>
+              Send your choice:
+            "
+      validation: "{{ opt }}"
+      cases:
+        - id: 1
+          o_connection: r1
+          variables:
+            category: all
+        - id: 2
+          o_connection: r1
+          variables:
+            category: national
+        - id: 3
+          o_connection: r1
+          variables:
+            category: business
+        - id: 4
+          o_connection: r1
+          variables:
+            category: sports
+        - id: 5
+          o_connection: r1
+          variables:
+            category: world
+        - id: 6
+          o_connection: r1
+          variables:
+            category: politics
+        - id: 7
+          o_connection: r1
+          variables:
+            category: technology
+        - id: 8
+          o_connection: r1
+          variables:
+            category: startup
+        - id: 9
+          o_connection: r1
+          variables:
+            category: entertainment
+        - id: 10
+          o_connection: r1
+          variables:
+            category: miscellaneous
+        - id: 11
+          o_connection: r1
+          variables:
+            category: hatke
+        - id: 12
+          o_connection: r1
+          variables:
+            category: science
+        - id: 13
+          o_connection: r1
+          variables:
+            category: automobile
+        - id: default
+          o_connection: m2
 
-    - id: 'm3'
-      type: 'message'
-      text: "Ok, let's look for information about {{ pokemon_name }}"
-      o_connection: 'r1'
 
     - id: 'r1'
       type: 'http_request'
       method: GET # POST
-      url: https://pokeapi.co/api/v2/pokemon/{{ pokemon_name }}
+      url: https://inshorts.deta.dev/news?category={{category}}
 
       variables:
-        pokemon: name
-        height: height
-        weight: weight
-        base_experience: base_experience
+        news: data
 
       cases:
         - id: 200
           o_connection: m4
-        - id: 404
+        - id: default
           o_connection: m5
+
 
     - id: 'm4'
       type: 'message'
-      text: "I found that {{pokemon_name}} has a height of {{height}} a weight of {{weight}} and its experience base is {{base_experience}}"
+      text: "
+              {% for new in news %}
+
+                {% if loop.index0 < 3 %}
+                  {% set _new = news|random %}
+                  ---<br>
+                  **Title**: {{_new['title']}}<br>
+                  **Author**: {{_new['author']}}<br>
+                  **Date**: {{_new['date']}}<br>
+                  **Image**: {{_new['imageUrl']}}<br>
+                  {{_new['content']}}<br><br>
+                {% endif%}
+              {% endfor %}
+            "
       o_connection: 'm1'
 
     - id: 'm5'
       type: 'message'
-      text: "I did not find {{pokemon_name}} :("
+      text: "I did not find noting :("
       o_connection: 'm2'

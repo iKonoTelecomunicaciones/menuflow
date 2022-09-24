@@ -49,33 +49,31 @@ class HTTPRequest(Input):
 
     async def request(self, user: User, session: ClientSession) -> Tuple[str, Dict]:
 
-        self.log.debug(self.variables)
-
         try:
             response = await session.request(
                 self.method,
-                self._url.render(**user.variables_data),
-                headers=self._render(self._headers, user.variables_data),
-                params=self._render(self._query_params, user.variables_data),
-                data=self._render(self._data, user.variables_data),
+                self._url.render(**user._variables),
+                headers=self._render(self._headers, user._variables),
+                params=self._render(self._query_params, user._variables),
+                data=self._render(self._data, user._variables),
             )
         except Exception as e:
             self.log.exception(e)
             return
 
-        # Tulir and its magic since time immemorial
         variables = {}
         o_connection = None
 
         try:
+            # Tulir and its magic since time immemorial
             response_data = RecursiveDict(CommentedMap(**await response.json()))
             for variable in self.variables.__dict__:
-                variables[variable] = str(response_data[self.variables[variable]])
+                variables[variable] = response_data[self.variables[variable]]
         except Exception as e:
             self.log.exception(e)
 
         if self.cases:
-            o_connection = self.get_case_by_id(id=response.status)
+            o_connection = await self.get_case_by_id(id=str(response.status))
 
         if o_connection:
             await user.update_menu(context=o_connection)

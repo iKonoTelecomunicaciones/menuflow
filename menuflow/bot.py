@@ -11,7 +11,6 @@ from mautrix.util.config import BaseProxyConfig
 from .config import Config
 from .db.migrations import upgrade_table
 from .db.user import User as DBUser
-from .db.variable import Variable as DBVariable
 from .jinja.jinja_template import FILTERS
 from .menu import Menu
 from .nodes import HTTPRequest, Input, Message
@@ -28,7 +27,7 @@ class MenuFlow(Plugin):
         self.menu = Menu.deserialize(self.config["menu"])
 
     async def initialize_tables(self):
-        for table in [DBUser, DBVariable]:
+        for table in [DBUser]:
             table.db = self.database
 
     @classmethod
@@ -90,14 +89,14 @@ class MenuFlow(Plugin):
             if user.node.o_connection:
                 await user.update_menu(context=user.node.o_connection)
             else:
-                o_connection = await user.node.run(variables=user.variables_data)
+                o_connection = await user.node.run(user=user)
                 await user.update_menu(context=o_connection)
 
         # This is the case where the user is not in the input state and the node is an input node.
         # In this case, the message is shown and the menu is updated to the node's id and the state is set to input.
         if user.node.type == "input" and user.state != "input":
             await user.node.show_message(
-                variables=user.variables_data, room_id=evt.room_id, client=evt.client
+                variables=user._variables, room_id=evt.room_id, client=evt.client
             )
             self.log.debug(f"Input {user.node}")
             await user.update_menu(context=user.node.id, state="input")
@@ -106,7 +105,7 @@ class MenuFlow(Plugin):
         # Showing the message and updating the menu to the output connection.
         if user.node.type == "message":
             await user.node.show_message(
-                variables=user.variables_data, room_id=evt.room_id, client=evt.client
+                variables=user._variables, room_id=evt.room_id, client=evt.client
             )
             self.log.debug(f"Message {user.node}")
 
