@@ -32,9 +32,9 @@ These texts were obtained using the `http_request` node:
         news: data
 
       cases:
-        - identification: 200
+        - id: 200
           o_connection: m4
-        - identification: default
+        - id: default
           o_connection: m5
 ```
 
