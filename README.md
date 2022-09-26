@@ -1,3 +1,6 @@
+# Room to participate in the project
+[#menuflow:bramen.com.co](https://matrix.to/#/#menuflow:bramen.com.co)
+
 # Proposals
 
 ## Variables:
