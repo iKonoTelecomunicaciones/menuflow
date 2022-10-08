@@ -1,21 +1,16 @@
 # Calm down! it's still in development
 
-## Room to participate in the project
+It works in the Matrix ecosystem.
+
+If you want to create conversion flows and validate multiple options, print custom messages and access external APIs, Menuflow is a good choice for you.
+
+MenuFlow allows you to create different Matrix client instances and each one customises a conversation flow.
+
+This project was based on [maubot](https://github.com/maubot/maubot), built entirely with the [mautrix-python](https://github.com/mautrix/python) framework.
+
+# Room to participate in the project
 [#menuflow:bramen.com.co](https://matrix.to/#/#menuflow:bramen.com.co)
 
-# Proposals
-
-## Variables:
-
-## Nodes:
-
-##### Messages:
-- `TODO` Knowing when a message should wait and when to continue the flow
-- `TODO` Ability to create custom jinja filters
-- `TODO` The texts that will be displayed, can be generated with jinja templates
-
-##### Request:
-- `TODO` Support http request nodes
 
 ---
 ---
@@ -67,4 +62,3 @@ And formatted with jinja in a `message` node:
 
 
 ![image](https://user-images.githubusercontent.com/50601186/192087256-9aff9f3c-ee0b-4d27-92c1-57bba7b0fe2b.png)
-

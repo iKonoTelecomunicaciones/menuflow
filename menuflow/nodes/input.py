@@ -8,7 +8,6 @@ from jinja2 import Template
 from mautrix.types import SerializableAttrs
 
 from ..user import User
-from ..utils.primitive import OConnection
 from .message import Message
 
 
@@ -40,7 +39,7 @@ class Input(Message):
 
         return cases_dict
 
-    async def run(self, user: User) -> OConnection:
+    async def run(self, user: User) -> str:
         """It takes a dictionary of variables, runs the rule,
         and returns the connection that matches the case
 
@@ -51,7 +50,7 @@ class Input(Message):
 
         Returns
         -------
-            The OConnection object
+            The str object
 
         """
 

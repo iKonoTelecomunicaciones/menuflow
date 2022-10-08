@@ -4,4 +4,4 @@ from mautrix.util.logging import TraceLogger
 
 
 class BaseLogger:
-    log: TraceLogger = getLogger("maubot.menu")
+    log: TraceLogger = getLogger("menuflow.node")

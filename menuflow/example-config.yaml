@@ -1,6 +1,61 @@
-users_ignore:
-- '@whatsappbot:localhost'
+# Homeserver details
+homeserver:
+    # The address that this menuflow can use to connect to the homeserver.
+    address: https://example.com
 
+menuflow:
+  mxid: "@menuflow:example.com"
+  access_token: "example_token"
+
+  database: postgresql://username:password@hostname/dbname
+  database_opts:
+      min_size: 1
+      max_size: 10
+
+  # User to be ignored
+  users_ignore:
+  - '@whatsappbot:example.com'
+
+server:
+    # The IP and port to listen to.
+    hostname: 0.0.0.0
+    port: 29400
+    # Public base URL where the server is visible.
+    public_url: https://example.com
+    # The base management API path.
+    base_path: /_matrix/menuflow/v1
+
+    # The shared secret to sign API access tokens.
+    # Set to "generate" to generate and save a new token at startup.
+    unshared_secret: generate
+
+logging:
+    version: 1
+    formatters:
+        normal:
+            format: "[%(asctime)s] [%(levelname)s@%(name)s] %(message)s"
+    handlers:
+        file:
+            class: logging.handlers.RotatingFileHandler
+            formatter: normal
+            filename: ./menuflow.log
+            maxBytes: 10485760
+            backupCount: 10
+        console:
+            class: logging.StreamHandler
+    loggers:
+        menuflow:
+            level: DEBUG
+        mau:
+            level: DEBUG
+        aiohttp:
+            level: INFO
+    root:
+        level: DEBUG
+        handlers: [file, console]
+
+
+# TODO This section will be converted into db tables.
 menu:
     id: Menu id
 

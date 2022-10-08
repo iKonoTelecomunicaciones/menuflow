@@ -38,14 +38,14 @@ class User:
         q = 'UPDATE "user" SET variables = $2, context = $3, state = $4 WHERE user_id = $1'
         await self.db.execute(q, *self.values)
 
-    @classmethod
-    @property
-    def query(cls) -> str:
-        return 'SELECT id, user_id, variables, context, state FROM "user" WHERE'
+    # @classmethod
+    # @property
+    # def query(cls) -> str:
+    #     return 'SELECT id, user_id, variables, context, state FROM "user" WHERE'
 
     @classmethod
     async def get_by_user_id(cls, user_id: UserID) -> User | None:
-        q = f"{cls.query} user_id=$1"
+        q = f'SELECT id, user_id, variables, context, state FROM "user" WHERE user_id=$1'
         row = await cls.db.fetchrow(q, user_id)
 
         if not row:

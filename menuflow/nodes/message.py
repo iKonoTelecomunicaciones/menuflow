@@ -9,7 +9,6 @@ from markdown import markdown
 from maubot.client import MaubotMatrixClient
 from mautrix.types import Format, MessageType, RoomID, TextMessageEventContent
 
-from ..utils.primitive import OConnection
 from .node import Node
 
 
@@ -17,7 +16,7 @@ from .node import Node
 class Message(Node):
 
     text: str = ib(default=None, metadata={"json": "text"})
-    o_connection: OConnection = ib(default=None, metadata={"json": "o_connection"})
+    o_connection: str = ib(default=None, metadata={"json": "o_connection"})
     variable: str = ib(default=None, metadata={"json": "variable"})
 
     @property

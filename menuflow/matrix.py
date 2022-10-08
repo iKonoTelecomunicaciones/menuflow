@@ -1,53 +1,29 @@
-from __future__ import annotations
+from mautrix.client import Client as MatrixClient
+from mautrix.types import Membership, MessageEvent, StrippedStateEvent
 
-from typing import Type
-
-from maubot import MessageEvent, Plugin
-from maubot.handlers import event
-from mautrix.types import EventType
-from mautrix.util.async_db import UpgradeTable
-from mautrix.util.config import BaseProxyConfig
-
-from .config import Config
-from .db.migrations import upgrade_table
-from .db.user import User as DBUser
-from .jinja.jinja_template import FILTERS
-from .menu import Menu
-from .nodes import HTTPRequest, Input, Message
+from .flow import Flow
 from .user import User
 
 
-class MenuFlow(Plugin):
-    menu: Menu
+class MenuFlowMatrixClient(MatrixClient):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 
-    async def start(self):
-        await super().start()
-        self.on_external_config_update()
-        await self.initialize_tables()
-        self.menu = Menu.deserialize(self.config["menu"])
+    async def handle_invite(self, evt: StrippedStateEvent) -> None:
+        # if evt.state_key == self.id and evt.content.membership == Membership.INVITE:
+        #     await self.client.join_room(evt.room_id)
+        pass
 
-    async def initialize_tables(self):
-        for table in [DBUser]:
-            table.db = self.database
-
-    @classmethod
-    def get_db_upgrade_table(cls) -> UpgradeTable:
-        return upgrade_table
-
-    @classmethod
-    def get_config_class(cls) -> Type[BaseProxyConfig]:
-        return Config
-
-    @event.on(EventType.ROOM_MESSAGE)
-    async def event_handler(self, evt: MessageEvent) -> None:
-
+    async def handle_message(self, evt: StrippedStateEvent) -> None:
+        self.log.debug(f"incoming message {evt.content}")
         # Ignore bot messages
-        if evt.sender in self.config["users_ignore"] or evt.sender == evt.client.mxid:
+
+        if evt.sender in self.config["menuflow.users_ignore"] or evt.sender == self.client.mxid:
             return
 
         try:
             user = await User.get_by_user_id(user_id=evt.sender)
-            user.menu = self.menu
+            user.flow = self.menuflow
         except Exception as e:
             self.log.exception(e)
             return

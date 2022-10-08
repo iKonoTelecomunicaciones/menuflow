@@ -1,1 +1,10 @@
-*.mbp
+/.venv
+/env/
+/.env/
+/config.yaml
+__pycache__
+*.log*
+/docker-compose.yaml
+*schemas*
+*synapse*
+*.db

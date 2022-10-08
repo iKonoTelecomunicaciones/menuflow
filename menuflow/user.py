@@ -5,15 +5,17 @@ import json
 
 from mautrix.types import UserID
 
-from . import menu as m, nodes as n
 from .db.user import User as DBUser
+
+# from .flow import Flow
+# from .nodes import Node
 
 
 class User(DBUser):
 
     by_user_id: Dict[UserID, "User"] = {}
 
-    menu: m.Menu
+    flow: Any
 
     def __init__(
         self,
@@ -39,8 +41,8 @@ class User(DBUser):
     #         return user_match.group("number")
 
     @property
-    def node(self) -> n.Node | None:
-        return self.menu.node(context=self.context)
+    def node(self) -> Any | None:
+        return self.flow.node(context=self.context)
 
     @classmethod
     async def get_by_user_id(cls, user_id: UserID, create: bool = True) -> "User" | None:
