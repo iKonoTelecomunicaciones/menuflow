@@ -32,6 +32,9 @@ class Flow(SerializableAttrs):
 
         node = self.get_node_by_id(node_id=context)
 
+        if not node:
+            return
+
         if node.type == "message":
             node = self.build_node(node.serialize(), Message)
         elif node.type == "input":

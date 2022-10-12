@@ -30,6 +30,7 @@ class MatrixHandler(MatrixClient):
             user = await User.get_by_user_id(user_id=evt.sender)
             user.flow = self.flow
             user.config = self.config
+
             if user.phone:
                 await user.set_variable(variable_id="user_phone", value=user.phone)
         except Exception as e:
@@ -67,6 +68,10 @@ class MatrixHandler(MatrixClient):
         # In this case, the variable is set to the user's input, and if the node has an output connection,
         # then the menu is updated to the output connection.
         # Otherwise, the node is run and the menu is updated to the output connection.
+
+        if user.node is None:
+            return
+
         if user.state == "input":
             await user.set_variable(user.node.variable, evt.content.body)
 
@@ -78,14 +83,14 @@ class MatrixHandler(MatrixClient):
 
         # This is the case where the user is not in the input state and the node is an input node.
         # In this case, the message is shown and the menu is updated to the node's id and the state is set to input.
-        if user.node.type == "input" and user.state != "input":
+        if user.node and user.node.type == "input" and user.state != "input":
             await user.node.show_message(user=user, room_id=evt.room_id, client=self)
             self.log.debug(f"Input {user.node}")
             await user.update_menu(context=user.node.id, state="input")
             return
 
         # Showing the message and updating the menu to the output connection.
-        if user.node.type == "message":
+        if user.node and user.node.type == "message":
             await user.node.show_message(user=user, room_id=evt.room_id, client=self)
             self.log.debug(f"Message {user.node}")
 
@@ -94,7 +99,7 @@ class MatrixHandler(MatrixClient):
 
             await user.update_menu(context=user.node.o_connection)
 
-        if user.node.type == "http_request":
+        if user.node and user.node.type == "http_request":
             self.log.debug(f"HTTPRequest {user.node}")
             try:
                 await user.node.request(user=user, session=self.api.session)

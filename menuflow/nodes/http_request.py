@@ -5,9 +5,8 @@ from typing import Dict, Tuple
 from aiohttp import BasicAuth, ClientSession
 from attr import dataclass, ib
 from jinja2 import Template
-from ruamel.yaml.comments import CommentedMap
-
 from mautrix.util.config import RecursiveDict
+from ruamel.yaml.comments import CommentedMap
 
 from ..user import User
 from .input import Input
@@ -73,7 +72,7 @@ class HTTPRequest(Input):
             request_body["auth"] = self._render(self._headers, user._variables)
 
         if self.data:
-            request_body["json"] = (self._render(self._data, user._variables),)
+            request_body["json"] = self._render(self._data, user._variables)
 
         response = await session.request(
             self.method, self._url.render(**user._variables), **request_body
