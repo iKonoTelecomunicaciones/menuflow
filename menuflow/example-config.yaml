@@ -21,6 +21,9 @@ server:
     # Set to "generate" to generate and save a new token at startup.
     unshared_secret: generate
 
+utils:
+  user_phone_regex: "^@(?P<user_prefix>.+)_(?P<number>[0-9]{8,}):.+$"
+
 logging:
     version: 1
     formatters:
@@ -159,7 +162,6 @@ menu:
       type: 'message'
       text: "
               {% for new in news %}
-
                 {% if loop.index0 < 3 %}
                   {% set _new = news|random %}
                   ---<br>

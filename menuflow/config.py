@@ -27,3 +27,4 @@ class Config(BaseFileConfig):
             base["server.unshared_secret"] = shared_secret
 
         copy_dict("menu")
+        copy_dict("utils")

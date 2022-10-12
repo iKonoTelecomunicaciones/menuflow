@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+from re import match
 from typing import Any, Dict, cast
 
 from mautrix.types import UserID
 
 from . import flow as f
+from . import nodes as n
+from .config import Config
 from .db.user import User as DBUser
 
 # from .nodes import Node
@@ -16,6 +19,7 @@ class User(DBUser):
     by_user_id: Dict[UserID, "User"] = {}
 
     flow: f.Flow
+    config: Config
 
     def __init__(
         self,
@@ -34,11 +38,11 @@ class User(DBUser):
         if self.user_id:
             self.by_user_id[self.user_id] = self
 
-    # @property
-    # def phone(self) -> str | None:
-    #     user_match = match("^@(?P<user_prefix>.+)_(?P<number>[0-9]{8,}):.+$", self.user_id)
-    #     if user_match:
-    #         return user_match.group("number")
+    @property
+    def phone(self) -> str | None:
+        user_match = match(self.config["utils.user_phone_regex"], self.user_id)
+        if user_match:
+            return user_match.group("number")
 
     @property
     def node(self) -> Any | None:
