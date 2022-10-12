@@ -98,6 +98,6 @@ class MatrixHandler(MatrixClient):
         if user.node.type == "http_request":
             self.log.debug(f"HTTPRequest {user.node}")
 
-            await user.node.request(user=user, session=self)
+            await user.node.request(user=user, session=self.api.session)
 
         await self.algorithm(user=user, evt=evt)
