@@ -1,0 +1,11 @@
+.editorconfig
+logs
+.venv
+config.yaml
+*.db
+*.log
+synapse
+*.json
+.vscode
+.git
+*data*

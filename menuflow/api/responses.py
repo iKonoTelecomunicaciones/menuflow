@@ -3,9 +3,6 @@ from __future__ import annotations
 from http import HTTPStatus
 
 from aiohttp import web
-from asyncpg import PostgresError
-from sqlalchemy.exc import IntegrityError, OperationalError
-import aiosqlite
 
 
 class _Response:
@@ -119,44 +116,6 @@ class _Response:
             {
                 "error": "Query missing",
                 "errcode": "query_missing",
-            },
-            status=HTTPStatus.BAD_REQUEST,
-        )
-
-    @staticmethod
-    def sql_error(error: PostgresError | aiosqlite.Error, query: str) -> web.Response:
-        return web.json_response(
-            {
-                "ok": False,
-                "query": query,
-                "error": str(error),
-                "errcode": "sql_error",
-            },
-            status=HTTPStatus.BAD_REQUEST,
-        )
-
-    @staticmethod
-    def sql_operational_error(error: OperationalError, query: str) -> web.Response:
-        return web.json_response(
-            {
-                "ok": False,
-                "query": query,
-                "error": str(error.orig),
-                "full_error": str(error),
-                "errcode": "sql_operational_error",
-            },
-            status=HTTPStatus.BAD_REQUEST,
-        )
-
-    @staticmethod
-    def sql_integrity_error(error: IntegrityError, query: str) -> web.Response:
-        return web.json_response(
-            {
-                "ok": False,
-                "query": query,
-                "error": str(error.orig),
-                "full_error": str(error),
-                "errcode": "sql_integrity_error",
             },
             status=HTTPStatus.BAD_REQUEST,
         )

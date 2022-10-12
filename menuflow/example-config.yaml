@@ -1,12 +1,4 @@
-# Homeserver details
-homeserver:
-    # The address that this menuflow can use to connect to the homeserver.
-    address: https://example.com
-
 menuflow:
-  mxid: "@menuflow:example.com"
-  access_token: "example_token"
-
   database: postgresql://username:password@hostname/dbname
   database_opts:
       min_size: 1
