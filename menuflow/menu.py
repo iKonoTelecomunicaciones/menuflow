@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from distutils.command.config import config
+from collections import defaultdict
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Awaitable, Callable, cast
 
 from aiohttp import ClientSession
@@ -36,13 +36,13 @@ if TYPE_CHECKING:
 class MenuClient(DBClient):
     menuflow: "MenuFlow" = None
     cache: dict[UserID, Client] = {}
+    _async_get_locks: dict[Any, asyncio.Lock] = defaultdict(lambda: asyncio.Lock())
     log: TraceLogger = logging.getLogger("menuflow.client")
 
     http_client: ClientSession = None
 
     matrix_handler: MatrixHandler
     started: bool
-    sync_ok: bool
 
     def __init__(
         self,
@@ -52,7 +52,6 @@ class MenuClient(DBClient):
         device_id: DeviceID,
         next_batch: SyncToken = "",
         filter_id: FilterID = "",
-        sync: bool = True,
         autojoin: bool = True,
     ) -> None:
         super().__init__(
@@ -62,7 +61,6 @@ class MenuClient(DBClient):
             device_id=device_id,
             next_batch=next_batch,
             filter_id=filter_id,
-            sync=bool(sync),
             autojoin=bool(autojoin),
         )
         self._postinited = False
@@ -122,7 +120,7 @@ class MenuClient(DBClient):
 
     def _set_sync_ok(self, ok: bool) -> Callable[[dict[str, Any]], Awaitable[None]]:
         async def handler(data: dict[str, Any]) -> None:
-            self.sync_ok = ok
+            pass
 
         return handler
 
@@ -195,8 +193,7 @@ class MenuClient(DBClient):
         self.matrix_handler.config = self.menuflow.config
 
     def start_sync(self) -> None:
-        if self.sync:
-            self.matrix_handler.start(self.filter_id)
+        self.matrix_handler.start(self.filter_id)
 
     def stop_sync(self) -> None:
         self.matrix_handler.stop()
@@ -222,8 +219,6 @@ class MenuClient(DBClient):
             # "fingerprint": (
             #     self.crypto.account.fingerprint if self.crypto and self.crypto.account else None
             # ),
-            "sync": self.sync,
-            "sync_ok": self.sync_ok,
             "autojoin": self.autojoin,
         }
 

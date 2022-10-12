@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, ClassVar
 
 from asyncpg import Record
 from attr import dataclass
-
 from mautrix.client import SyncStore
 from mautrix.types import DeviceID, FilterID, SyncToken, UserID
 from mautrix.util.async_db import Database
@@ -24,7 +23,6 @@ class Client(SyncStore):
     next_batch: SyncToken
     filter_id: FilterID
 
-    sync: bool
     autojoin: bool
 
     @classmethod
@@ -33,7 +31,7 @@ class Client(SyncStore):
             return None
         return cls(**row)
 
-    _columns = "id, homeserver, access_token, device_id, next_batch, filter_id, " "sync, autojoin"
+    _columns = "id, homeserver, access_token, device_id, next_batch, filter_id, autojoin"
 
     @property
     def _values(self):
@@ -44,7 +42,6 @@ class Client(SyncStore):
             self.device_id,
             self.next_batch,
             self.filter_id,
-            self.sync,
             self.autojoin,
         )
 
@@ -61,7 +58,7 @@ class Client(SyncStore):
     async def insert(self) -> None:
         q = (
             "INSERT INTO client (id, homeserver, access_token, device_id, next_batch, filter_id, "
-            "sync, autojoin) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+            "autojoin) VALUES ($1, $2, $3, $4, $5, $6, $7)"
         )
         await self.db.execute(q, *self._values)
 
@@ -75,7 +72,7 @@ class Client(SyncStore):
     async def update(self) -> None:
         q = (
             "UPDATE client SET homeserver=$2, access_token=$3, device_id=$4, next_batch=$5, "
-            "filter_id=$6, sync=$7, autojoin=$8 WHERE id=$1"
+            "filter_id=$6, autojoin=$7 WHERE id=$1"
         )
         await self.db.execute(q, *self._values)
 
