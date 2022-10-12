@@ -4,9 +4,11 @@ import sys
 from mautrix.util.async_db import Database, DatabaseException
 from mautrix.util.program import Program
 
-from .api import client, init as init_api
+from .api import client
+from .api import init as init_api
 from .config import Config
-from .db import init as init_db, upgrade_table
+from .db import init as init_db
+from .db import upgrade_table
 from .menu import MenuClient
 from .server import MenuFlowServer
 
@@ -63,7 +65,7 @@ class MenuFlow(Program):
 
     async def start(self) -> None:
         await self.start_db()
-        await asyncio.gather(*[menu.start(config=self.config) async for menu in MenuClient.all()])
+        await asyncio.gather(*[menu.start() async for menu in MenuClient.all()])
         await super().start()
         await self.server.start()
 

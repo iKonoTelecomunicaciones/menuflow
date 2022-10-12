@@ -3,7 +3,6 @@ from __future__ import annotations
 from json import JSONDecodeError
 
 from aiohttp import web
-
 from mautrix.client import Client as MatrixClient
 from mautrix.errors import MatrixConnectionError, MatrixInvalidToken, MatrixRequestError
 from mautrix.types import UserID
@@ -59,7 +58,7 @@ async def _create_client(user_id: UserID | None, data: dict) -> web.Response:
     client.enabled = data.get("enabled", True)
     client.autojoin = data.get("autojoin", True)
     await client.update()
-    await client.start(config=get_config())
+    await client.start()
     return resp.created(client.to_dict())
 
 

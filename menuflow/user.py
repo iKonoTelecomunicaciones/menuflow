@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Dict, cast
 import json
+from typing import Any, Dict, cast
 
 from mautrix.types import UserID
 
+from . import flow as f
 from .db.user import User as DBUser
 
-# from .flow import Flow
 # from .nodes import Node
 
 
@@ -15,7 +15,7 @@ class User(DBUser):
 
     by_user_id: Dict[UserID, "User"] = {}
 
-    flow: Any
+    flow: f.Flow
 
     def __init__(
         self,

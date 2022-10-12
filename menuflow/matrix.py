@@ -1,29 +1,34 @@
 from mautrix.client import Client as MatrixClient
 from mautrix.types import Membership, MessageEvent, StrippedStateEvent
 
+from .config import Config
 from .flow import Flow
 from .user import User
 
 
-class MenuFlowMatrixClient(MatrixClient):
-    def __init__(self, *args, **kwargs) -> None:
+class MatrixHandler(MatrixClient):
+    def __init__(self, config: Config, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.config = config
+        self.flow = Flow.deserialize(self.config["menu"])
 
     async def handle_invite(self, evt: StrippedStateEvent) -> None:
         # if evt.state_key == self.id and evt.content.membership == Membership.INVITE:
         #     await self.client.join_room(evt.room_id)
         pass
 
-    async def handle_message(self, evt: StrippedStateEvent) -> None:
-        self.log.debug(f"incoming message {evt.content}")
+    async def handle_message(self, evt: MessageEvent) -> None:
+
+        self.log.debug(f"incoming message {evt}")
+
         # Ignore bot messages
 
-        if evt.sender in self.config["menuflow.users_ignore"] or evt.sender == self.client.mxid:
+        if evt.sender in self.config["menuflow.users_ignore"] or evt.sender == self.mxid:
             return
 
         try:
             user = await User.get_by_user_id(user_id=evt.sender)
-            user.flow = self.menuflow
+            user.flow = self.flow
         except Exception as e:
             self.log.exception(e)
             return
@@ -72,7 +77,7 @@ class MenuFlowMatrixClient(MatrixClient):
         # In this case, the message is shown and the menu is updated to the node's id and the state is set to input.
         if user.node.type == "input" and user.state != "input":
             await user.node.show_message(
-                variables=user._variables, room_id=evt.room_id, client=evt.client
+                variables=user._variables, room_id=evt.room_id, client=self
             )
             self.log.debug(f"Input {user.node}")
             await user.update_menu(context=user.node.id, state="input")
@@ -81,7 +86,7 @@ class MenuFlowMatrixClient(MatrixClient):
         # Showing the message and updating the menu to the output connection.
         if user.node.type == "message":
             await user.node.show_message(
-                variables=user._variables, room_id=evt.room_id, client=evt.client
+                variables=user._variables, room_id=evt.room_id, client=self
             )
             self.log.debug(f"Message {user.node}")
 
@@ -93,6 +98,6 @@ class MenuFlowMatrixClient(MatrixClient):
         if user.node.type == "http_request":
             self.log.debug(f"HTTPRequest {user.node}")
 
-            await user.node.request(user=user, session=evt.client.api.session)
+            await user.node.request(user=user, session=self)
 
         await self.algorithm(user=user, evt=evt)

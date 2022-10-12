@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from distutils.command.config import config
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Awaitable, Callable, cast
 
 from aiohttp import ClientSession
@@ -22,10 +23,11 @@ from mautrix.types import (
 from mautrix.util.async_getter_lock import async_getter_lock
 from mautrix.util.logging import TraceLogger
 
-from .config import Config
+import menuflow
+
 from .db import Client as DBClient
 from .jinja.jinja_template import FILTERS
-from .matrix import MenuFlowMatrixClient
+from .matrix import MatrixHandler
 
 if TYPE_CHECKING:
     from .__main__ import MenuFlow
@@ -38,8 +40,7 @@ class MenuClient(DBClient):
 
     http_client: ClientSession = None
 
-    client: MenuFlowMatrixClient
-    config: Config
+    matrix_handler: MatrixHandler
     started: bool
     sync_ok: bool
 
@@ -72,8 +73,9 @@ class MenuClient(DBClient):
 
     def _make_client(
         self, homeserver: str | None = None, token: str | None = None, device_id: str | None = None
-    ) -> MenuFlowMatrixClient:
-        return MenuFlowMatrixClient(
+    ) -> MatrixHandler:
+        return MatrixHandler(
+            config=self.menuflow.config,
             mxid=self.id,
             base_url=homeserver or self.homeserver,
             token=token or self.access_token,
@@ -95,20 +97,28 @@ class MenuClient(DBClient):
         self.http_client = ClientSession(loop=self.menuflow.loop)
         self.started = False
         self.sync_ok = True
-        self.client = self._make_client()
+        self.matrix_handler = self._make_client()
         # if self.enable_crypto:
         #     self._prepare_crypto()
         # else:
         #     self.crypto_store = None
         #     self.crypto = None
-        self.client.ignore_initial_sync = True
-        self.client.ignore_first_sync = True
+        self.matrix_handler.ignore_initial_sync = True
+        self.matrix_handler.ignore_first_sync = True
         if self.autojoin:
-            self.client.add_event_handler(EventType.ROOM_MEMBER, self.client.handle_invite)
+            self.matrix_handler.add_event_handler(
+                EventType.ROOM_MEMBER, self.matrix_handler.handle_invite
+            )
 
-        self.client.add_event_handler(EventType.ROOM_MESSAGE, self.client.handle_message)
-        self.client.add_event_handler(InternalEventType.SYNC_ERRORED, self._set_sync_ok(False))
-        self.client.add_event_handler(InternalEventType.SYNC_SUCCESSFUL, self._set_sync_ok(True))
+        self.matrix_handler.add_event_handler(
+            EventType.ROOM_MESSAGE, self.matrix_handler.handle_message
+        )
+        self.matrix_handler.add_event_handler(
+            InternalEventType.SYNC_ERRORED, self._set_sync_ok(False)
+        )
+        self.matrix_handler.add_event_handler(
+            InternalEventType.SYNC_SUCCESSFUL, self._set_sync_ok(True)
+        )
 
     def _set_sync_ok(self, ok: bool) -> Callable[[dict[str, Any]], Awaitable[None]]:
         async def handler(data: dict[str, Any]) -> None:
@@ -116,11 +126,10 @@ class MenuClient(DBClient):
 
         return handler
 
-    async def start(self, config: Config, try_n: int | None = 0) -> None:
+    async def start(self, try_n: int | None = 0) -> None:
         try:
             if try_n > 0:
                 await asyncio.sleep(try_n * 10)
-            self.config = config
             await self._start(try_n)
         except Exception:
             self.log.exception("Failed to start")
@@ -130,8 +139,8 @@ class MenuClient(DBClient):
             self.log.warning("Ignoring start() call to started client")
             return
         try:
-            await self.client.versions()
-            whoami = await self.client.whoami()
+            await self.matrix_handler.versions()
+            whoami = await self.matrix_handler.whoami()
         except MatrixInvalidToken as e:
             self.log.error(f"Invalid token: {e}. Disabling client")
             self.enabled = False
@@ -146,7 +155,7 @@ class MenuClient(DBClient):
                 self.log.warning(
                     f"Failed to get /account/whoami, retrying in {(try_n + 1) * 10}s: {e}"
                 )
-                _ = asyncio.create_task(self.start(self.config, try_n + 1))
+                _ = asyncio.create_task(self.start(try_n + 1))
             return
         if whoami.user_id != self.id:
             self.log.error(f"User ID mismatch: expected {self.id}, but got {whoami.user_id}")
@@ -161,7 +170,7 @@ class MenuClient(DBClient):
             await self.update()
             return
         if not self.filter_id:
-            self.filter_id = await self.client.create_filter(
+            self.filter_id = await self.matrix_handler.create_filter(
                 Filter(
                     room=RoomFilter(
                         timeline=RoomEventFilter(
@@ -183,13 +192,14 @@ class MenuClient(DBClient):
         self.start_sync()
         self.started = True
         self.log.info("Client started")
+        self.matrix_handler.config = self.menuflow.config
 
     def start_sync(self) -> None:
         if self.sync:
-            self.client.start(self.filter_id)
+            self.matrix_handler.start(self.filter_id)
 
     def stop_sync(self) -> None:
-        self.client.stop()
+        self.matrix_handler.stop()
 
     async def stop(self) -> None:
         if self.started:
