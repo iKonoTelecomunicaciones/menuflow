@@ -1,9 +1,3 @@
-# Calm down! it's still in development
-This version still doesn't work as expected, it has too many bugs, it's even completely broken. From now on I'm going to debug the code left from the copy-paste I made from maubot, but it's a solid enough base to implement a good chats flows management.
-
----
----
-
 It works in the Matrix ecosystem.
 
 If you want to create conversion flows and validate multiple options, print custom messages and access external APIs, Menuflow is a good choice for you.
