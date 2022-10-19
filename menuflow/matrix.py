@@ -73,7 +73,10 @@ class MatrixHandler(MatrixClient):
             return
 
         if user.state == "input":
-            await user.set_variable(user.node.variable, evt.content.body)
+            await user.set_variable(
+                user.node.variable,
+                int(evt.content.body) if evt.content.body.isdigit() else evt.content.body,
+            )
 
             if user.node.o_connection:
                 await user.update_menu(context=user.node.o_connection)

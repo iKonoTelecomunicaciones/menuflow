@@ -16,21 +16,6 @@ class Case(SerializableAttrs):
     variables: Dict = ib(metadata={"json": "variables"}, factory=dict)
     o_connection: str = ib(default=None, metadata={"json": "o_connection"})
 
-    @property
-    def _variables(self) -> Dict[str, Template] | None:
-        """It returns a dictionary of the variables in the template.
-
-        Returns
-        -------
-            A dictionary of the variables in the class.
-
-        """
-        variable_template = {}
-        for varible in self.variables.__dict__:
-            variable_template[varible] = Template(self.variables[varible])
-
-        return variable_template
-
 
 @dataclass
 class Input(Message):
@@ -60,10 +45,11 @@ class Input(Message):
         for case in self.cases:
             cases_dict[str(case.id)] = case.o_connection
             if case.variables and user:
-                for varible in case._variables:
+                for varible in case.variables.__dict__:
+                    template_variable = Template(case.variables[varible])
                     await user.set_variable(
                         variable_id=varible,
-                        value=case._variables[varible].render(**user.variables),
+                        value=template_variable.render(**user._variables),
                     )
 
         return cases_dict
