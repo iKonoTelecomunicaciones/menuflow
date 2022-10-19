@@ -4,7 +4,6 @@ from typing import Dict, List
 
 from attr import dataclass, ib
 from jinja2 import Template
-
 from mautrix.types import SerializableAttrs
 
 from ..user import User
@@ -17,6 +16,21 @@ class Case(SerializableAttrs):
     variables: Dict = ib(metadata={"json": "variables"}, factory=dict)
     o_connection: str = ib(default=None, metadata={"json": "o_connection"})
 
+    @property
+    def _variables(self) -> Dict[str, Template] | None:
+        """It returns a dictionary of the variables in the template.
+
+        Returns
+        -------
+            A dictionary of the variables in the class.
+
+        """
+        variable_template = {}
+        for varible in self.variables.__dict__:
+            variable_template[varible] = Template(self.variables[varible])
+
+        return variable_template
+
 
 @dataclass
 class Input(Message):
@@ -28,14 +42,29 @@ class Input(Message):
         return Template(self.validation)
 
     async def load_cases(self, user: User = None):
+        """It loads the cases into a dictionary.
+
+        Parameters
+        ----------
+        user : User
+            User = None
+
+        Returns
+        -------
+            A dictionary of cases.
+
+        """
 
         cases_dict = {}
 
         for case in self.cases:
             cases_dict[str(case.id)] = case.o_connection
             if case.variables and user:
-                for varible in case.variables.__dict__:
-                    await user.set_variable(variable_id=varible, value=case.variables[varible])
+                for varible in case._variables:
+                    await user.set_variable(
+                        variable_id=varible,
+                        value=case._variables[varible].render(**user.variables),
+                    )
 
         return cases_dict
 
