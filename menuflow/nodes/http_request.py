@@ -55,7 +55,7 @@ class HTTPRequest(Input):
         except Exception as e:
             self.log.exception(e)
 
-    async def request(self, user: User, session: ClientSession) -> Tuple[str, Dict]:
+    async def request(self, user: User, session: ClientSession) -> Tuple(int, str):
 
         request_body = {}
 
@@ -95,7 +95,8 @@ class HTTPRequest(Input):
                     except TypeError:
                         pass
         except Exception as e:
-            self.log.exception(e)
+            self.log.exception(f"url: {self.url} error: {e}")
+            return response.status, await response.text()
 
         if self.cases:
             o_connection = await self.get_case_by_id(id=str(response.status))
@@ -105,3 +106,5 @@ class HTTPRequest(Input):
 
         if variables:
             await user.set_variables(variables=variables)
+
+        return response.status, await response.text()

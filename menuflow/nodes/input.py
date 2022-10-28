@@ -75,24 +75,26 @@ class Input(Message):
 
         try:
             res = self.rule.render(**user._variables)
-            if res == "True":
-                res = True
+            # if res == "True":
+            #     res = True
 
-            if res == "False":
-                res = False
+            # if res == "False":
+            #     res = False
 
         except Exception as e:
             self.log.warning(f"An exception has occurred in the pipeline {self.id} :: {e}")
             res = "except"
-
-        self.log.debug(res)
 
         return await self.get_case_by_id(res, user=user)
 
     async def get_case_by_id(self, id: str, user: User = None) -> str:
         try:
             cases = await self.load_cases(user=user)
-            return cases[id]
+            case_result = cases[id]
+            self.log.debug(
+                f"The case {id} :: type {type(id)} found is {case_result} :: type {type(case_result)}"
+            )
+            return case_result
         except KeyError:
             self.log.debug(f"Case not found {id}")
             return cases["default"]
