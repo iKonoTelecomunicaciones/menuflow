@@ -76,7 +76,7 @@ class User(DBUser):
             return user
 
         if create:
-            user = cls(user_id=user_id, context="m1")
+            user = cls(user_id=user_id, context="start")
 
             await user.insert()
             user = cast(cls, await super().get_by_user_id(user_id))
