@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import Dict, Tuple
 
+import aiohttp
 from aiohttp import BasicAuth, ClientSession
+from aiohttp.client_exceptions import ContentTypeError
 from attr import dataclass, ib
 from jinja2 import Template
 from mautrix.util.config import RecursiveDict
@@ -85,18 +87,18 @@ class HTTPRequest(Input):
             for cookie in self.cookies.__dict__:
                 variables[cookie] = response.cookies.output(cookie)
 
+        # Tulir and its magic since time immemorial
         try:
-            # Tulir and its magic since time immemorial
             response_data = RecursiveDict(CommentedMap(**await response.json()))
-            if self.variables:
-                for variable in self.variables.__dict__:
-                    try:
-                        variables[variable] = response_data[self.variables[variable]]
-                    except TypeError:
-                        pass
-        except Exception as e:
-            self.log.exception(f"url: {self.url} error: {e}")
-            return response.status, await response.text()
+        except ContentTypeError:
+            response_data = {}
+
+        if self.variables:
+            for variable in self.variables.__dict__:
+                try:
+                    variables[variable] = response_data[self.variables[variable]]
+                except KeyError:
+                    pass
 
         if self.cases:
             o_connection = await self.get_case_by_id(id=str(response.status))

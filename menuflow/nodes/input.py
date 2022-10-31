@@ -47,10 +47,14 @@ class Input(Message):
             if case.variables and user:
                 for varible in case.variables.__dict__:
                     template_variable = Template(case.variables[varible])
-                    await user.set_variable(
-                        variable_id=varible,
-                        value=template_variable.render(**user._variables),
-                    )
+                    try:
+                        await user.set_variable(
+                            variable_id=varible,
+                            value=template_variable.render(**user._variables),
+                        )
+                    except Exception as e:
+                        self.log.warning(e)
+                        continue
 
         return cases_dict
 

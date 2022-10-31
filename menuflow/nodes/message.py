@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from asyncio import sleep
+
 from attr import dataclass, ib
 from jinja2 import Template
 from markdown import markdown
+from mautrix.errors.request import MLimitExceeded
 from mautrix.types import Format, MessageType, RoomID, TextMessageEventContent
 
 from ..matrix import MatrixClient
@@ -42,4 +45,11 @@ class Message(Node):
             format=Format.HTML,
             formatted_body=markdown(self.template.render(**user._variables)),
         )
-        await client.send_message(room_id=room_id, content=msg_content)
+
+        # A way to handle the error that is thrown when the bot sends too many messages too quickly.
+        try:
+            await client.send_message(room_id=room_id, content=msg_content)
+        except MLimitExceeded as e:
+            self.log.warn(e)
+            await sleep(5)
+            await client.send_message(room_id=room_id, content=msg_content)
