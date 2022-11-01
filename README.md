@@ -1,4 +1,4 @@
-![](https://komarev.com/ghpvc/?username=menuflow&label=PROFILE+VIEWS&style=for-the-badge&color=green)
+![](https://komarev.com/ghpvc/?username=menuflow&label=VIEWS&style=for-the-badge&color=green)
 
 It works in the Matrix ecosystem.
 
