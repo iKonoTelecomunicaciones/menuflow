@@ -73,12 +73,13 @@ class Input(Message):
 
         """
 
-        self.log.debug(f"Running pipeline {self.id}")
+        self.log.debug(f"Executing validation of input {self.id} for user {user.user_id}")
 
         res = None
 
         try:
             res = self.rule.render(**user._variables)
+            # TODO What would be the best way to handle this, taking jinja into account?
             # if res == "True":
             #     res = True
 
@@ -95,10 +96,8 @@ class Input(Message):
         try:
             cases = await self.load_cases(user=user)
             case_result = cases[id]
-            self.log.debug(
-                f"The case {id} :: type {type(id)} found is {case_result} :: type {type(case_result)}"
-            )
+            self.log.debug(f"The case {case_result} has been obtained in the input node {self.id}")
             return case_result
         except KeyError:
-            self.log.debug(f"Case not found {id}")
+            self.log.debug(f"Case not found {id} the default case will be sought")
             return cases["default"]

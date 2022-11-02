@@ -19,11 +19,13 @@ class MatrixHandler(MatrixClient):
 
     async def handle_message(self, evt: MessageEvent) -> None:
 
-        self.log.debug(f"incoming message {evt}")
+        self.log.debug(f"User {evt.sender} has written {evt.content.body} in room {evt.room_id}")
 
         # Ignore bot messages
-
         if evt.sender in self.config["menuflow.users_ignore"] or evt.sender == self.mxid:
+            self.log.debug(
+                f"This incoming message from {evt.room_id} will be ignored :: {evt.content.body}"
+            )
             return
 
         try:
@@ -33,6 +35,7 @@ class MatrixHandler(MatrixClient):
 
             if user.phone:
                 await user.set_variable(variable_id="user_phone", value=user.phone)
+
         except Exception as e:
             self.log.exception(e)
             return
@@ -70,14 +73,24 @@ class MatrixHandler(MatrixClient):
         # Otherwise, the node is run and the menu is updated to the output connection.
 
         if user.node is None:
+            self.log.debug(f"User {user.user_id} does not have a node")
             return
 
+        self.log.debug(
+            f"The user {user.user_id} is in node {user.node.id} and the status {user.state}"
+        )
+
         if user.state == "input":
+            self.log.debug(
+                f"The input {evt.content.body} is to be registered in {user.node.variable}"
+            )
             await user.set_variable(
                 user.node.variable,
                 int(evt.content.body) if evt.content.body.isdigit() else evt.content.body,
             )
 
+            # If the node has an output connection, then update the menu to the output connection.
+            # Otherwise, run the node and update the menu to the output connection.
             if user.node.o_connection:
                 await user.update_menu(context=user.node.o_connection)
             else:
@@ -87,15 +100,15 @@ class MatrixHandler(MatrixClient):
         # This is the case where the user is not in the input state and the node is an input node.
         # In this case, the message is shown and the menu is updated to the node's id and the state is set to input.
         if user.node and user.node.type == "input" and user.state != "input":
+            self.log.debug(f"User {user.user_id} enters input node {user.node.id}")
             await user.node.show_message(user=user, room_id=evt.room_id, client=self)
-            self.log.debug(f"Input {user.node}")
             await user.update_menu(context=user.node.id, state="input")
             return
 
         # Showing the message and updating the menu to the output connection.
         if user.node and user.node.type == "message":
+            self.log.debug(f"User {user.user_id} enters message node {user.node.id}")
             await user.node.show_message(user=user, room_id=evt.room_id, client=self)
-            self.log.debug(f"Message {user.node}")
 
             if user.node.o_connection is None:
                 return
@@ -103,7 +116,7 @@ class MatrixHandler(MatrixClient):
             await user.update_menu(context=user.node.o_connection)
 
         if user.node and user.node.type == "http_request":
-            self.log.debug(f"HTTPRequest {user.node}")
+            self.log.debug(f"User {user.user_id} enters http_request node {user.node.id}")
             try:
                 status, response = await user.node.request(user=user, session=self.api.session)
                 self.log.info(f"http_request node {user.node.id} had a status of {status}")

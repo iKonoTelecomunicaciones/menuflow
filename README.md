@@ -60,3 +60,9 @@ And formatted with jinja in a `message` node:
 
 
 ![image](https://user-images.githubusercontent.com/50601186/192087256-9aff9f3c-ee0b-4d27-92c1-57bba7b0fe2b.png)
+
+
+## Keep that in mind:
+- If you receive a  `too many request` response from your homeserver,
+then you will have to increase the rate limits,
+otherwise menuflow could be affected in its performance.

@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import json
+from logging import getLogger
 from re import match
 from typing import Any, Dict, cast
 
 from mautrix.types import UserID
+from mautrix.util.logging import TraceLogger
 
 from . import flow as f
-from . import nodes as n
 from .config import Config
 from .db.user import User as DBUser
-
-# from .nodes import Node
 
 
 class User(DBUser):
@@ -20,6 +19,7 @@ class User(DBUser):
 
     flow: f.Flow
     config: Config
+    log: TraceLogger = getLogger("menuflow.user")
 
     def __init__(
         self,
@@ -33,6 +33,7 @@ class User(DBUser):
         super().__init__(
             id=id, user_id=user_id, context=context, state=state, variables=f"{variables}"
         )
+        self.log = self.log.getChild(user_id)
 
     def _add_to_cache(self) -> None:
         if self.user_id:
@@ -101,6 +102,7 @@ class User(DBUser):
     async def set_variable(self, variable_id: str, value: Any):
         self._variables[variable_id] = value
         self.variables = json.dumps(self._variables)
+        self.log.debug(f"Saving variable {variable_id} to user {self.user_id} :: content {value}")
         await self.update()
 
     async def set_variables(self, variables: Dict):
@@ -126,6 +128,10 @@ class User(DBUser):
             The state of the menu. This is used to determine which menu to display.
 
         """
+        self.log.debug(
+            f"The user {self.user_id} will update his node {self.node.id} to {context} "
+            f"and his state from {self.state} to {state}"
+        )
         self.context = context
         self.state = state
         await self.update()

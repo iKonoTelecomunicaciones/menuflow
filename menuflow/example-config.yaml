@@ -24,9 +24,16 @@ server:
 utils:
   user_phone_regex: "^@(?P<user_prefix>.+)_(?P<number>[0-9]{8,}):.+$"
 
+# Python logging configuration.
+#
+# See section 16.7.2 of the Python documentation for more info:
+# https://docs.python.org/3.6/library/logging.config.html#configuration-dictionary-schema
 logging:
     version: 1
     formatters:
+        colored:
+            (): menuflow.utils.color_log.ColorFormatter
+            format: "[%(asctime)s] [%(levelname)s@%(name)s] %(message)s"
         normal:
             format: "[%(asctime)s] [%(levelname)s@%(name)s] %(message)s"
     handlers:
@@ -38,6 +45,7 @@ logging:
             backupCount: 10
         console:
             class: logging.StreamHandler
+            formatter: colored
     loggers:
         menuflow:
             level: DEBUG
