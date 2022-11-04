@@ -162,7 +162,7 @@ class MenuClient(DBClient):
             return
         elif whoami.device_id and self.device_id and whoami.device_id != self.device_id:
             self.log.error(
-                f"Device ID mismatch: expected {self.device_id}, but got {whoami.device_id}"
+                f"Device ID mismatch: expected {whoami.device_id}, but got {self.device_id}"
             )
             self.enabled = False
             await self.update()

@@ -74,10 +74,11 @@ class MatrixHandler(MatrixClient):
 
         if user.node is None:
             self.log.debug(f"User {user.user_id} does not have a node")
+            await user.update_menu(context="start")
             return
 
         self.log.debug(
-            f"The user {user.user_id} is in node {user.node.id} and the status {user.state}"
+            f"The user {user.user_id} is in node {user.node.id} and the state {user.state}"
         )
 
         if user.state == "input":
@@ -91,11 +92,10 @@ class MatrixHandler(MatrixClient):
 
             # If the node has an output connection, then update the menu to the output connection.
             # Otherwise, run the node and update the menu to the output connection.
-            if user.node.o_connection:
-                await user.update_menu(context=user.node.o_connection)
-            else:
-                o_connection = await user.node.run(user=user)
-                await user.update_menu(context=o_connection)
+
+            await user.update_menu(
+                context=user.node.o_connection or await user.node.run(user=user)
+            )
 
         # This is the case where the user is not in the input state and the node is an input node.
         # In this case, the message is shown and the menu is updated to the node's id and the state is set to input.
@@ -110,10 +110,9 @@ class MatrixHandler(MatrixClient):
             self.log.debug(f"User {user.user_id} enters message node {user.node.id}")
             await user.node.show_message(user=user, room_id=evt.room_id, client=self)
 
-            if user.node.o_connection is None:
-                return
-
-            await user.update_menu(context=user.node.o_connection)
+            await user.update_menu(
+                context=user.node.o_connection, state="end" if not user.node.o_connection else None
+            )
 
         if user.node and user.node.type == "http_request":
             self.log.debug(f"User {user.user_id} enters http_request node {user.node.id}")
@@ -125,5 +124,10 @@ class MatrixHandler(MatrixClient):
             except Exception as e:
                 self.log.exception(e)
                 return
+
+        if user.state == "end":
+            self.log.debug(f"The user {user.user_id} has terminated the flow")
+            await user.update_menu(context="start")
+            return
 
         await self.algorithm(user=user, evt=evt)

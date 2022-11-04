@@ -129,7 +129,7 @@ class User(DBUser):
 
         """
         self.log.debug(
-            f"The user {self.user_id} will update his node {self.node.id} to {context} "
+            f"The user {self.user_id} will update his node {self.node.id if self.node else None} to {context} "
             f"and his state from {self.state} to {state}"
         )
         self.context = context

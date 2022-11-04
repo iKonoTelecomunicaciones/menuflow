@@ -104,7 +104,7 @@ class HTTPRequest(Input):
             o_connection = await self.get_case_by_id(id=str(response.status))
 
         if o_connection:
-            await user.update_menu(context=o_connection)
+            await user.update_menu(context=o_connection, state="end" if not self.cases else None)
 
         if variables:
             await user.set_variables(variables=variables)
