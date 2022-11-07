@@ -97,6 +97,9 @@ class MatrixHandler(MatrixClient):
                 context=user.node.o_connection or await user.node.run(user=user)
             )
 
+        if user.node.type == "switch":
+            await user.update_menu(await user.node.run(user=user))
+
         # This is the case where the user is not in the input state and the node is an input node.
         # In this case, the message is shown and the menu is updated to the node's id and the state is set to input.
         if user.node and user.node.type == "input" and user.state != "input":

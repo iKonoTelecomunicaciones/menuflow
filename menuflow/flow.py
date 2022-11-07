@@ -7,7 +7,7 @@ from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
-from .nodes import HTTPRequest, Input, Message
+from .nodes import HTTPRequest, Input, Message, Switch
 
 
 @dataclass
@@ -41,6 +41,8 @@ class Flow(SerializableAttrs):
             node = self.build_node(node.serialize(), Input)
         elif node.type == "http_request":
             node = self.build_node(node.serialize(), HTTPRequest)
+        elif node.type == "switch":
+            node = self.build_node(node.serialize(), Switch)
         else:
             return
 

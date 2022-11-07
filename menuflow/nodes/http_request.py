@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Dict, Tuple
 
-import aiohttp
 from aiohttp import BasicAuth, ClientSession
 from aiohttp.client_exceptions import ContentTypeError
 from attr import dataclass, ib
@@ -11,11 +10,11 @@ from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
 from ..user import User
-from .input import Input
+from .switch import Switch
 
 
 @dataclass
-class HTTPRequest(Input):
+class HTTPRequest(Switch):
     method: str = ib(default=None, metadata={"json": "method"})
     url: str = ib(default=None, metadata={"json": "url"})
     variables: Dict = ib(metadata={"json": "variables"}, factory=dict)

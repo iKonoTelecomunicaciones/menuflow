@@ -15,10 +15,24 @@ from .node import Node
 
 @dataclass
 class Message(Node):
+    """
+    ## Message
+
+    A message node allows a message to be sent,
+    these messages can be formatted using jinja variables.
+
+    content:
+
+    ```
+    - id: m1
+      type: message
+      text: "Hello World!"
+      o_connection: m2
+    ```
+    """
 
     text: str = ib(default=None, metadata={"json": "text"})
     o_connection: str = ib(default=None, metadata={"json": "o_connection"})
-    variable: str = ib(default=None, metadata={"json": "variable"})
 
     @property
     def template(self) -> Template:
@@ -38,6 +52,8 @@ class Message(Node):
             The MatrixClient instance that is running the plugin.
 
         """
+        if not self.text:
+            return
 
         msg_content = TextMessageEventContent(
             msgtype=MessageType.TEXT,
