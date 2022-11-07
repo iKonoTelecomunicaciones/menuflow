@@ -23,8 +23,6 @@ from mautrix.types import (
 from mautrix.util.async_getter_lock import async_getter_lock
 from mautrix.util.logging import TraceLogger
 
-import menuflow
-
 from .db import Client as DBClient
 from .jinja.jinja_template import FILTERS
 from .matrix import MatrixHandler
@@ -95,7 +93,7 @@ class MenuClient(DBClient):
         self.http_client = ClientSession(loop=self.menuflow.loop)
         self.started = False
         self.sync_ok = True
-        self.matrix_handler = self._make_client()
+        self.matrix_handler: MatrixHandler = self._make_client()
         # if self.enable_crypto:
         #     self._prepare_crypto()
         # else:

@@ -13,9 +13,11 @@ class MatrixHandler(MatrixClient):
         self.flow = Flow.deserialize(self.config["menu"])
 
     async def handle_invite(self, evt: StrippedStateEvent) -> None:
-        # if evt.state_key == self.id and evt.content.membership == Membership.INVITE:
-        #     await self.client.join_room(evt.room_id)
-        pass
+        if evt.sender in self.config["menuflow.users_ignore"] or evt.sender == self.mxid:
+            self.log.debug(f"This incoming invite event from {evt.room_id} will be ignored")
+            return
+        if evt.state_key == self.mxid and evt.content.membership == Membership.INVITE:
+            await self.join_room(evt.room_id)
 
     async def handle_message(self, evt: MessageEvent) -> None:
 
