@@ -19,19 +19,25 @@ class MatrixHandler(MatrixClient):
         if evt.state_key == self.mxid and evt.content.membership == Membership.INVITE:
             await self.join_room(evt.room_id)
 
-    async def handle_message(self, evt: MessageEvent) -> None:
+    async def handle_message(self, message: MessageEvent) -> None:
 
-        self.log.debug(f"User {evt.sender} has written {evt.content.body} in room {evt.room_id}")
+        self.log.debug(
+            f"User {message.sender} has written {message.content.body} in room {message.room_id}"
+        )
+
+        # Discard reply messages
+        if message.content._relates_to:
+            return
 
         # Ignore bot messages
-        if evt.sender in self.config["menuflow.users_ignore"] or evt.sender == self.mxid:
+        if message.sender in self.config["menuflow.users_ignore"] or message.sender == self.mxid:
             self.log.debug(
-                f"This incoming message from {evt.room_id} will be ignored :: {evt.content.body}"
+                f"This incoming message from {message.room_id} will be ignored :: {message.content.body}"
             )
             return
 
         try:
-            user = await User.get_by_user_id(user_id=evt.sender)
+            user = await User.get_by_user_id(user_id=message.sender)
             user.flow = self.flow
             user.config = self.config
 
@@ -45,7 +51,7 @@ class MatrixHandler(MatrixClient):
         if not user:
             return
 
-        await self.algorithm(user=user, evt=evt)
+        await self.algorithm(user=user, evt=message)
 
     async def algorithm(self, user: User, evt: MessageEvent) -> None:
         """If the user is in the input state, then set the variable to the user's input,
