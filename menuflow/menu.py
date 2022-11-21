@@ -24,7 +24,6 @@ from mautrix.util.async_getter_lock import async_getter_lock
 from mautrix.util.logging import TraceLogger
 
 from .db import Client as DBClient
-from .jinja.jinja_template import FILTERS
 from .matrix import MatrixHandler
 
 if TYPE_CHECKING:

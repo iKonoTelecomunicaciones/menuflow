@@ -1,13 +1,7 @@
-import re
+from datetime import datetime
 
-from jinja2.filters import FILTERS
+from jinja2 import Environment
 
+jinja_env = Environment(autoescape=True)
 
-def validate_regex(value: str, arg: str) -> bool:
-    if re.compile(value, arg):
-        return True
-    else:
-        return False
-
-
-FILTERS["validate_regex"] = validate_regex
+jinja_env.globals.update(date_isoformat=lambda: datetime.utcnow().isoformat())

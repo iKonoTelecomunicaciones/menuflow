@@ -4,6 +4,7 @@ from attr import dataclass, ib
 from jinja2 import Template
 from mautrix.types import SerializableAttrs
 
+from ..jinja.jinja_template import jinja_env
 from ..user import User
 from .node import Node
 
@@ -44,7 +45,7 @@ class Switch(Node):
 
     @property
     def rule(self) -> Template:
-        return Template(self.validation)
+        return jinja_env.from_string(self.validation)
 
     async def load_cases(self, user: User = None):
         """It loads the cases into a dictionary.

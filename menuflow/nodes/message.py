@@ -8,6 +8,7 @@ from markdown import markdown
 from mautrix.errors.request import MLimitExceeded
 from mautrix.types import Format, MessageType, RoomID, TextMessageEventContent
 
+from ..jinja.jinja_template import jinja_env
 from ..matrix import MatrixClient
 from ..user import User
 from .node import Node
@@ -36,7 +37,7 @@ class Message(Node):
 
     @property
     def template(self) -> Template:
-        return Template(self.text)
+        return jinja_env.from_string(self.text)
 
     async def show_message(self, user: User, room_id: RoomID, client: MatrixClient):
         """It takes a dictionary of variables, a room ID, and a client,

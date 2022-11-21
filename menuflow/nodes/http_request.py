@@ -9,6 +9,7 @@ from jinja2 import Template
 from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
+from ..jinja.jinja_template import jinja_env
 from ..user import User
 from .switch import Switch
 
@@ -26,27 +27,43 @@ class HTTPRequest(Switch):
 
     @property
     def _headers(self) -> Dict[str, Template]:
-        return {header: Template(self.headers[header]) for header in self.headers}
+        return {header: jinja_env.from_string(self.headers[header]) for header in self.headers}
 
     @property
     def _auth(self) -> Dict[str, Template]:
-        return {item: Template(self.basic_auth[item]) for item in self.basic_auth.__dict__}
+        return {
+            item: jinja_env.from_string(self.basic_auth[item]) for item in self.basic_auth.__dict__
+        }
 
     @property
     def _query_params(self) -> Dict:
         return {
-            query_param: Template(self.query_params[query_param])
+            query_param: jinja_env.from_string(self.query_params[query_param])
             for query_param in self.query_params
         }
 
     @property
     def _data(self) -> Dict:
+
         if self.data:
-            return {value: Template(self.data[value]) for value in self.data.__dict__}
+            if not isinstance(self.data, list):
+                return {
+                    value: jinja_env.from_string(self.data[value]) for value in self.data.__dict__
+                }
+
+            for item in self.data:
+                new_dict = {}
+                for value in item.__dict__:
+                    if not item[value]:
+                        continue
+
+                    new_dict[value] = jinja_env.from_string(item[value])
+
+            return new_dict
 
     @property
     def _url(self) -> Template:
-        return Template(self.url)
+        return jinja_env.from_string(self.url)
 
     def _render(self, templates: Dict[str, Template], variables: Dict) -> Dict:
         if not templates:
@@ -85,6 +102,10 @@ class HTTPRequest(Switch):
         if self.cookies:
             for cookie in self.cookies.__dict__:
                 variables[cookie] = response.cookies.output(cookie)
+
+        self.log.debug(
+            f"node: {self.id} method: {self.method} url: {self.url} status: {response.status}"
+        )
 
         # Tulir and its magic since time immemorial
         try:
