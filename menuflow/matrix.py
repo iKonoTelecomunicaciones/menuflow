@@ -25,8 +25,8 @@ class MatrixHandler(MatrixClient):
             f"User {message.sender} has written {message.content.body} in room {message.room_id}"
         )
 
-        # Discard reply messages
-        if message.content._relates_to:
+        # Message edits are ignored
+        if message.content._relates_to and message.content._relates_to.rel_type:
             return
 
         # Ignore bot messages
