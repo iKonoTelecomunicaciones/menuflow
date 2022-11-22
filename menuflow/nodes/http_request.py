@@ -10,7 +10,6 @@ from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
 from ..jinja.jinja_template import jinja_env
-from ..user import User
 from .switch import Switch
 
 
@@ -73,27 +72,27 @@ class HTTPRequest(Switch):
         except Exception as e:
             self.log.exception(e)
 
-    async def request(self, user: User, session: ClientSession) -> Tuple(int, str):
+    async def request(self, session: ClientSession) -> Tuple(int, str):
 
         request_body = {}
 
         if self.query_params:
-            request_body["params"] = self._render(self._query_params, user._variables)
+            request_body["params"] = self._render(self._query_params, self.user._variables)
 
         if self.basic_auth:
             request_body["auth"] = BasicAuth(
-                self._render(self._auth, user._variables)["login"],
-                self._render(self._auth, user._variables)["password"],
+                self._render(self._auth, self.user._variables)["login"],
+                self._render(self._auth, self.user._variables)["password"],
             )
 
         if self.headers:
-            request_body["auth"] = self._render(self._headers, user._variables)
+            request_body["auth"] = self._render(self._headers, self.user._variables)
 
         if self.data:
-            request_body["json"] = self._render(self._data, user._variables)
+            request_body["json"] = self._render(self._data, self.user._variables)
 
         response = await session.request(
-            self.method, self._url.render(**user._variables), **request_body
+            self.method, self._url.render(**self.user._variables), **request_body
         )
 
         variables = {}
@@ -124,9 +123,11 @@ class HTTPRequest(Switch):
             o_connection = await self.get_case_by_id(id=str(response.status))
 
         if o_connection:
-            await user.update_menu(context=o_connection, state="end" if not self.cases else None)
+            await self.user.update_menu(
+                node_id=o_connection, state="end" if not self.cases else None
+            )
 
         if variables:
-            await user.set_variables(variables=variables)
+            await self.user.set_variables(variables=variables)
 
         return response.status, await response.text()

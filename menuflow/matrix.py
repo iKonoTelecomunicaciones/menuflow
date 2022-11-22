@@ -22,7 +22,7 @@ class MatrixHandler(MatrixClient):
     async def handle_message(self, message: MessageEvent) -> None:
 
         self.log.debug(
-            f"User {message.sender} has written {message.content.body} in room {message.room_id}"
+            f"Incoming message [user: {message.sender}] [message: {message.content.body}] [room_id: {message.room_id}]"
         )
 
         # Message edits are ignored
@@ -37,8 +37,7 @@ class MatrixHandler(MatrixClient):
             return
 
         try:
-            user = await User.get_by_user_id(user_id=message.sender)
-            user.flow = self.flow
+            user = await User.get_by_mxid(mxid=message.sender)
             user.config = self.config
 
             if user.phone:
@@ -80,65 +79,71 @@ class MatrixHandler(MatrixClient):
         # then the menu is updated to the output connection.
         # Otherwise, the node is run and the menu is updated to the output connection.
 
-        if user.node is None:
-            self.log.debug(f"User {user.user_id} does not have a node")
-            await user.update_menu(context="start")
+        node = self.flow.node(user=user)
+
+        if node is None:
+            self.log.debug(f"User {user.mxid} does not have a node")
+            await user.update_menu(node_id="start")
             return
 
-        self.log.debug(
-            f"The user {user.user_id} is in node {user.node.id} and the state {user.state}"
-        )
+        self.log.debug(f"The [user: {user.mxid}] [node: {node.id}] [state: {user.state}]")
 
         if user.state == "input":
-            self.log.debug(
-                f"The input {evt.content.body} is to be registered in {user.node.variable}"
-            )
+            self.log.debug(f"Creating [variable: {node.variable}] [content: {evt.content.body}]")
             await user.set_variable(
-                user.node.variable,
+                node.variable,
                 int(evt.content.body) if evt.content.body.isdigit() else evt.content.body,
             )
 
             # If the node has an output connection, then update the menu to the output connection.
             # Otherwise, run the node and update the menu to the output connection.
 
-            await user.update_menu(
-                context=user.node.o_connection or await user.node.run(user=user)
-            )
+            await user.update_menu(node_id=node.o_connection or await node.run())
 
-        if user.node.type == "switch":
-            await user.update_menu(await user.node.run(user=user))
+        node = self.flow.node(user=user)
+
+        if node.type == "switch":
+            await user.update_menu(await node.run())
+
+        node = self.flow.node(user=user)
 
         # This is the case where the user is not in the input state and the node is an input node.
         # In this case, the message is shown and the menu is updated to the node's id and the state is set to input.
-        if user.node and user.node.type == "input" and user.state != "input":
-            self.log.debug(f"User {user.user_id} enters input node {user.node.id}")
-            await user.node.show_message(user=user, room_id=evt.room_id, client=self)
-            await user.update_menu(context=user.node.id, state="input")
+        if node and node.type == "input" and user.state != "input":
+            self.log.debug(f"User {user.mxid} enters input node {node.id}")
+            await node.show_message(room_id=evt.room_id, client=self)
+            await user.update_menu(node_id=node.id, state="input")
             return
 
         # Showing the message and updating the menu to the output connection.
-        if user.node and user.node.type == "message":
-            self.log.debug(f"User {user.user_id} enters message node {user.node.id}")
-            await user.node.show_message(user=user, room_id=evt.room_id, client=self)
+        if node and node.type == "message":
+            self.log.debug(f"User {user.mxid} enters message node {node.id}")
+            await node.show_message(room_id=evt.room_id, client=self)
 
             await user.update_menu(
-                context=user.node.o_connection, state="end" if not user.node.o_connection else None
+                node_id=node.o_connection, state="end" if not node.o_connection else None
             )
 
-        if user.node and user.node.type == "http_request":
-            self.log.debug(f"User {user.user_id} enters http_request node {user.node.id}")
+        node = self.flow.node(user=user)
+
+        if node and node.type == "http_request":
+            self.log.debug(f"User {user.mxid} enters http_request node {node.id}")
             try:
-                status, response = await user.node.request(user=user, session=self.api.session)
-                self.log.info(f"http_request node {user.node.id} had a status of {status}")
+                self.log.debug(f"node {type(node)}")
+                self.log.debug(f"user {type(user)}")
+                status, response = await node.request(session=self.api.session)
+                self.log.info(f"http_request node {node.id} had a status of {status}")
                 if not status in [200, 201]:
                     self.log.error(response)
             except Exception as e:
                 self.log.exception(e)
                 return
 
+        node = self.flow.node(user=user)
+
         if user.state == "end":
-            self.log.debug(f"The user {user.user_id} has terminated the flow")
-            await user.update_menu(context="start")
+            self.log.debug(f"The user {user.mxid} has terminated the flow")
+            await user.update_menu(node_id="start")
             return
 
         await self.algorithm(user=user, evt=evt)

@@ -9,9 +9,9 @@ async def upgrade_v1(conn: Connection) -> None:
     await conn.execute(
         """CREATE TABLE "user" (
             id          SERIAL PRIMARY KEY,
-            user_id     TEXT,
+            mxid     TEXT,
             variables   JSON,
-            context     TEXT,
+            node_id     TEXT,
             state       TEXT
         )"""
     )

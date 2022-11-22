@@ -5,7 +5,6 @@ from jinja2 import Template
 from mautrix.types import SerializableAttrs
 
 from ..jinja.jinja_template import jinja_env
-from ..user import User
 from .node import Node
 
 
@@ -47,7 +46,7 @@ class Switch(Node):
     def rule(self) -> Template:
         return jinja_env.from_string(self.validation)
 
-    async def load_cases(self, user: User = None):
+    async def load_cases(self):
         """It loads the cases into a dictionary.
 
         Parameters
@@ -66,13 +65,13 @@ class Switch(Node):
         for case in self.cases:
 
             cases_dict[str(case.id)] = case.o_connection
-            if case.variables and user:
+            if case.variables and self.user:
                 for varible in case.variables.__dict__:
                     template_variable = Template(case.variables[varible])
                     try:
-                        await user.set_variable(
+                        await self.user.set_variable(
                             variable_id=varible,
-                            value=template_variable.render(**user._variables),
+                            value=template_variable.render(**self.user._variables),
                         )
                     except Exception as e:
                         self.log.warning(e)
@@ -80,7 +79,7 @@ class Switch(Node):
 
         return cases_dict
 
-    async def run(self, user: User) -> str:
+    async def run(self) -> str:
         """It takes a dictionary of variables, runs the rule,
         and returns the connection that matches the case
 
@@ -95,12 +94,12 @@ class Switch(Node):
 
         """
 
-        self.log.debug(f"Executing validation of input {self.id} for user {user.user_id}")
+        self.log.debug(f"Executing validation of input {self.id} for user {self.user.mxid}")
 
         res = None
 
         try:
-            res = self.rule.render(**user._variables)
+            res = self.rule.render(**self.user._variables)
             # TODO What would be the best way to handle this, taking jinja into account?
             # if res == "True":
             #     res = True
@@ -112,11 +111,11 @@ class Switch(Node):
             self.log.warning(f"An exception has occurred in the pipeline {self.id} :: {e}")
             res = "except"
 
-        return await self.get_case_by_id(res, user=user)
+        return await self.get_case_by_id(res)
 
-    async def get_case_by_id(self, id: str, user: User = None) -> str:
+    async def get_case_by_id(self, id: str) -> str:
         try:
-            cases = await self.load_cases(user=user)
+            cases = await self.load_cases()
             case_result = cases[id]
             self.log.debug(f"The case {case_result} has been obtained in the input node {self.id}")
             return case_result
