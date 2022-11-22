@@ -47,7 +47,7 @@ class User(DBUser):
 
     @property
     def node(self) -> Any | None:
-        return self.flow.node(context=self.context)
+        return self.flow.node(context=self.context, variables=self._variables)
 
     @classmethod
     async def get_by_user_id(cls, user_id: UserID, create: bool = True) -> "User" | None:

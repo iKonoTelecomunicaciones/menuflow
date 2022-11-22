@@ -28,12 +28,14 @@ class Flow(SerializableAttrs):
     ) -> Message | Input | HTTPRequest | None:
         return type_class.deserialize(data)
 
-    def node(self, context: str) -> Message | Input | HTTPRequest | None:
+    def node(self, context: str, variables: Dict) -> Message | Input | HTTPRequest | None:
 
         node = self.get_node_by_id(node_id=context)
 
         if not node:
             return
+
+        node.user_variables = variables
 
         if node.type == "message":
             node = self.build_node(node.serialize(), Message)

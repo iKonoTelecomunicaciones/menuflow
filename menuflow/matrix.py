@@ -112,14 +112,14 @@ class MatrixHandler(MatrixClient):
         # In this case, the message is shown and the menu is updated to the node's id and the state is set to input.
         if user.node and user.node.type == "input" and user.state != "input":
             self.log.debug(f"User {user.user_id} enters input node {user.node.id}")
-            await user.node.show_message(user=user, room_id=evt.room_id, client=self)
+            await user.node.show_message(room_id=evt.room_id, client=self)
             await user.update_menu(context=user.node.id, state="input")
             return
 
         # Showing the message and updating the menu to the output connection.
         if user.node and user.node.type == "message":
             self.log.debug(f"User {user.user_id} enters message node {user.node.id}")
-            await user.node.show_message(user=user, room_id=evt.room_id, client=self)
+            await user.node.show_message(room_id=evt.room_id, client=self)
 
             await user.update_menu(
                 context=user.node.o_connection, state="end" if not user.node.o_connection else None
