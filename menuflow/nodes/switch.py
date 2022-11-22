@@ -58,6 +58,9 @@ class Switch(Node):
         cases_dict = {}
 
         for case in self.cases:
+
+            case: Case = Case.deserialize(case)
+
             cases_dict[str(case.id)] = case.o_connection
             if case.variables and user:
                 for varible in case.variables:
