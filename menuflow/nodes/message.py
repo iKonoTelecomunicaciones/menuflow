@@ -8,7 +8,9 @@ from markdown import markdown
 from mautrix.errors.request import MLimitExceeded
 from mautrix.types import Format, MessageType, RoomID, TextMessageEventContent
 
+from ..jinja.jinja_template import jinja_env
 from ..matrix import MatrixClient
+from ..user import User
 from .node import Node
 
 
@@ -30,10 +32,14 @@ class Message(Node):
     ```
     """
 
-    text: Template = ib(default=None, metadata={"json": "text"})
+    text: str = ib(default=None, metadata={"json": "text"})
     o_connection: str = ib(default=None, metadata={"json": "o_connection"})
 
-    async def show_message(self, room_id: RoomID, client: MatrixClient):
+    @property
+    def template(self) -> Template:
+        return jinja_env.from_string(self.text)
+
+    async def show_message(self, user: User, room_id: RoomID, client: MatrixClient):
         """It takes a dictionary of variables, a room ID, and a client,
         and sends a message to the room with the template rendered with the variables
 
@@ -54,7 +60,7 @@ class Message(Node):
             msgtype=MessageType.TEXT,
             body=self.text,
             format=Format.HTML,
-            formatted_body=markdown(self.text),
+            formatted_body=markdown(self.template.render(**user._variables)),
         )
 
         # A way to handle the error that is thrown when the bot sends too many messages too quickly.

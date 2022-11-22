@@ -1,8 +1,10 @@
 from typing import Dict, List
 
 from attr import dataclass, ib
+from jinja2 import Template
 from mautrix.types import SerializableAttrs
 
+from ..jinja.jinja_template import jinja_env
 from ..user import User
 from .node import Node
 
@@ -41,6 +43,10 @@ class Switch(Node):
     validation: str = ib(default=None, metadata={"json": "validation"})
     cases: List[Case] = ib(metadata={"json": "cases"}, factory=list)
 
+    @property
+    def rule(self) -> Template:
+        return jinja_env.from_string(self.validation)
+
     async def load_cases(self, user: User = None):
         """It loads the cases into a dictionary.
 
@@ -63,11 +69,12 @@ class Switch(Node):
 
             cases_dict[str(case.id)] = case.o_connection
             if case.variables and user:
-                for varible in case.variables:
+                for varible in case.variables.__dict__:
+                    template_variable = Template(case.variables[varible])
                     try:
                         await user.set_variable(
                             variable_id=varible,
-                            value=case.variables[varible],
+                            value=template_variable.render(**user._variables),
                         )
                     except Exception as e:
                         self.log.warning(e)
@@ -95,7 +102,7 @@ class Switch(Node):
         res = None
 
         try:
-            res = self.validation
+            res = self.rule.render(**user._variables)
             # TODO What would be the best way to handle this, taking jinja into account?
             # if res == "True":
             #     res = True
