@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from json import dumps
 from typing import Dict, Tuple
 
 from aiohttp import BasicAuth, ClientSession
@@ -25,81 +26,59 @@ class HTTPRequest(Switch):
     data: Dict = ib(metadata={"json": "data"}, factory=dict)
 
     @property
+    def _url(self) -> Template:
+        return self.render_data(self.url)
+
+    @property
+    def _variables(self) -> Template:
+        return self.render_data(self.serialize()["variables"])
+
+    @property
+    def _cookies(self) -> Template:
+        return self.render_data(self.serialize()["cookies"])
+
+    @property
     def _headers(self) -> Dict[str, Template]:
-        return {header: jinja_env.from_string(self.headers[header]) for header in self.headers}
+        return self.render_data(self.serialize()["headers"])
 
     @property
     def _auth(self) -> Dict[str, Template]:
-        return {
-            item: jinja_env.from_string(self.basic_auth[item]) for item in self.basic_auth.__dict__
-        }
+        return self.render_data(self.serialize()["basic_auth"])
 
     @property
     def _query_params(self) -> Dict:
-        return {
-            query_param: jinja_env.from_string(self.query_params[query_param])
-            for query_param in self.query_params
-        }
+        return self.render_data(self.serialize()["query_params"])
 
     @property
     def _data(self) -> Dict:
-
-        if self.data:
-            if not isinstance(self.data, list):
-                return {
-                    value: jinja_env.from_string(self.data[value]) for value in self.data.__dict__
-                }
-
-            for item in self.data:
-                new_dict = {}
-                for value in item.__dict__:
-                    if not item[value]:
-                        continue
-
-                    new_dict[value] = jinja_env.from_string(item[value])
-
-            return new_dict
-
-    @property
-    def _url(self) -> Template:
-        return jinja_env.from_string(self.url)
-
-    def _render(self, templates: Dict[str, Template], variables: Dict) -> Dict:
-        if not templates:
-            return
-        try:
-            return {item: templates[item].render(**variables) for item in templates}
-        except Exception as e:
-            self.log.exception(e)
+        return self.render_data(self.serialize()["data"])
 
     async def request(self, session: ClientSession) -> Tuple(int, str):
 
         request_body = {}
 
         if self.query_params:
-            request_body["params"] = self._render(self._query_params, self.user._variables)
+            request_body["params"] = self._query_params
 
-        if self.basic_auth:
-            request_body["auth"] = BasicAuth(
-                self._render(self._auth, self.user._variables)["login"],
-                self._render(self._auth, self.user._variables)["password"],
-            )
+        # if self.basic_auth:
+        #     request_body["auth"] = BasicAuth(
+        #         self._render(self._auth, self.user._variables)["login"],
+        #         self._render(self._auth, self.user._variables)["password"],
+        #     )
 
         if self.headers:
-            request_body["auth"] = self._render(self._headers, self.user._variables)
+            request_body["auth"] = self._headers
 
         if self.data:
-            request_body["json"] = self._render(self._data, self.user._variables)
+            request_body["json"] = self._data
 
-        response = await session.request(
-            self.method, self._url.render(**self.user._variables), **request_body
-        )
+        response = await session.request(self.method, self._url, **request_body)
 
         variables = {}
         o_connection = None
 
-        if self.cookies:
-            for cookie in self.cookies.__dict__:
+        if self._cookies:
+            for cookie in self._cookies:
                 variables[cookie] = response.cookies.output(cookie)
 
         self.log.debug(
@@ -112,8 +91,13 @@ class HTTPRequest(Switch):
         except ContentTypeError:
             response_data = {}
 
-        if self.variables:
-            for variable in self.variables.__dict__:
+        if self._variables:
+            self.log.debug(self._variables)
+            for variable in self._variables:
+                # self.log.debug(variable)
+                # self.log.debug(self._variables[variable])
+                # self.log.debug(response_data.__dict__)
+                # self.log.debug(response_data["tipomensaje"])
                 try:
                     variables[variable] = response_data[self.variables[variable]]
                 except KeyError:
