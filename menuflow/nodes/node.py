@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from json import dumps, loads
-from typing import Dict
+from json import JSONDecodeError, dumps, loads
+from typing import Any, Dict, List
 
 from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
@@ -37,10 +37,6 @@ class Node(SerializableAttrs, BaseLogger):
 
         if isinstance(data, str):
             data_template = jinja_env.from_string(data)
-            try:
-                return data_template.render(**self.user._variables)
-            except KeyError:
-                return data_template.render()
         else:
             try:
                 data_template = jinja_env.from_string(dumps(data))
@@ -50,5 +46,7 @@ class Node(SerializableAttrs, BaseLogger):
 
         try:
             return loads(data_template.render(**self.user._variables))
+        except JSONDecodeError:
+            return data_template.render(**self.user._variables)
         except KeyError:
-            return loads(s)(data_template.render())
+            return loads(data_template.render())

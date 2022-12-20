@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from json import dumps
 from typing import Dict, Tuple
 
 from aiohttp import BasicAuth, ClientSession
@@ -10,7 +9,6 @@ from jinja2 import Template
 from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
-from ..jinja.jinja_template import jinja_env
 from .switch import Switch
 
 
@@ -60,11 +58,11 @@ class HTTPRequest(Switch):
         if self.query_params:
             request_body["params"] = self._query_params
 
-        # if self.basic_auth:
-        #     request_body["auth"] = BasicAuth(
-        #         self._render(self._auth, self.user._variables)["login"],
-        #         self._render(self._auth, self.user._variables)["password"],
-        #     )
+        if self.basic_auth:
+            request_body["auth"] = BasicAuth(
+                login=self._auth["login"],
+                password=self._auth["password"],
+            )
 
         if self.headers:
             request_body["auth"] = self._headers
@@ -82,7 +80,7 @@ class HTTPRequest(Switch):
                 variables[cookie] = response.cookies.output(cookie)
 
         self.log.debug(
-            f"node: {self.id} method: {self.method} url: {self.url} status: {response.status}"
+            f"node: {self.id} method: {self.method} url: {self._url} status: {response.status}"
         )
 
         # Tulir and its magic since time immemorial
@@ -92,12 +90,7 @@ class HTTPRequest(Switch):
             response_data = {}
 
         if self._variables:
-            self.log.debug(self._variables)
             for variable in self._variables:
-                # self.log.debug(variable)
-                # self.log.debug(self._variables[variable])
-                # self.log.debug(response_data.__dict__)
-                # self.log.debug(response_data["tipomensaje"])
                 try:
                     variables[variable] = response_data[self.variables[variable]]
                 except KeyError:

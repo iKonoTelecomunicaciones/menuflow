@@ -129,8 +129,6 @@ class MatrixHandler(MatrixClient):
         if node and node.type == "http_request":
             self.log.debug(f"User {user.mxid} enters http_request node {node.id}")
             try:
-                self.log.debug(f"node {type(node)}")
-                self.log.debug(f"user {type(user)}")
                 status, response = await node.request(session=self.api.session)
                 self.log.info(f"http_request node {node.id} had a status of {status}")
                 if not status in [200, 201]:
