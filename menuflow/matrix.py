@@ -10,7 +10,7 @@ class MatrixHandler(MatrixClient):
     def __init__(self, config: Config, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.config = config
-        flow = Config(path=f"flows/{self.mxid}.yaml", base_path="")
+        flow = Config(path=f"/data/flows/{self.mxid}.yaml", base_path="")
         flow.load()
         self.flow = Flow.deserialize(flow["menu"])
 
