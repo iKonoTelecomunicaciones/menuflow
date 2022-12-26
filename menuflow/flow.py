@@ -14,7 +14,6 @@ from .user import User
 @dataclass
 class Flow(SerializableAttrs):
 
-    id: str = ib(metadata={"json": "id"})
     nodes: List[Message, Input, HTTPRequest] = ib(metadata={"json": "nodes"}, factory=list)
 
     log: TraceLogger = logging.getLogger("menuflow.flow")
