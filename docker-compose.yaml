@@ -3,7 +3,7 @@ version: '3.9'
 services:
 
   menuflow:
-    image: bramenn/menuflow:stable
+    image: bramenn/menuflow:latest
     restart: unless-stopped
     ports:
       - 29400:29400
@@ -21,7 +21,7 @@ services:
     environment:
       POSTGRES_USER: menuflow
       POSTGRES_PASSWORD: secretfoo
-      POSTGRES_DB: menuflow 
+      POSTGRES_DB: menuflow
       POSTGRES_INITDB_ARGS: --encoding=UTF-8 --lc-collate=C --lc-ctype=C
     volumes:
       - ./volumes/schemas:/var/lib/postgresql/data
