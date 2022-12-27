@@ -26,7 +26,7 @@ jobs:
         pre-commit run -av check-added-large-files
 
   docker:
-    if: "github.ref_name == 'master'"
+    if: "github.ref_name == 'main'"
     runs-on: ubuntu-latest
     needs: lint
     environment: deploy
