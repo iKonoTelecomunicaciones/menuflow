@@ -4,10 +4,10 @@
 /config.yaml
 __pycache__
 *.log*
-/docker-compose.yaml
 *schemas*
 *synapse*
 *whatsapp*
 *.db
 *data*
 whatsapp
+volumes

@@ -1,5 +1,5 @@
 menuflow:
-  database: postgresql://username:password@hostname/dbname
+  database: postgresql://menuflow:secretfoo@postgres/menuflow
   database_opts:
       min_size: 1
       max_size: 10

@@ -9,3 +9,5 @@ synapse
 .vscode
 .git
 *data*
+volumes
+docker-compose.yaml
