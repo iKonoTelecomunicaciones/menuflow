@@ -100,11 +100,11 @@ class HTTPRequest(Switch):
             o_connection = await self.get_case_by_id(id=str(response.status))
 
         if o_connection:
-            await self.user.update_menu(
+            await self.room.update_menu(
                 node_id=o_connection, state="end" if not self.cases else None
             )
 
         if variables:
-            await self.user.set_variables(variables=variables)
+            await self.room.set_variables(variables=variables)
 
         return response.status, await response.text()

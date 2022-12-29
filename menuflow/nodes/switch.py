@@ -51,8 +51,8 @@ class Switch(Node):
 
         Parameters
         ----------
-        user : User
-            User = None
+        room : Room
+            Room = None
 
         Returns
         -------
@@ -65,13 +65,13 @@ class Switch(Node):
         for case in self.cases:
 
             cases_dict[str(case.id)] = case.o_connection
-            if case.variables and self.user:
+            if case.variables and self.room:
                 for varible in case.variables.__dict__:
                     template_variable = Template(case.variables[varible])
                     try:
-                        await self.user.set_variable(
+                        await self.room.set_variable(
                             variable_id=varible,
-                            value=template_variable.render(**self.user._variables),
+                            value=template_variable.render(**self.room._variables),
                         )
                     except Exception as e:
                         self.log.warning(e)
@@ -94,12 +94,12 @@ class Switch(Node):
 
         """
 
-        self.log.debug(f"Executing validation of input {self.id} for user {self.user.mxid}")
+        self.log.debug(f"Executing validation of input {self.id} for room {self.room.room_id}")
 
         res = None
 
         try:
-            res = self.rule.render(**self.user._variables)
+            res = self.rule.render(**self.room._variables)
             # TODO What would be the best way to handle this, taking jinja into account?
             # if res == "True":
             #     res = True

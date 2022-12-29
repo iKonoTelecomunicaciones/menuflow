@@ -8,7 +8,7 @@ from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
 from .nodes import HTTPRequest, Input, Message, Switch
-from .user import User
+from .room import Room
 
 
 @dataclass
@@ -28,14 +28,14 @@ class Flow(SerializableAttrs):
     ) -> Message | Input | HTTPRequest | None:
         return type_class.deserialize(data)
 
-    def node(self, user: User) -> Message | Input | HTTPRequest | None:
+    def node(self, room: Room) -> Message | Input | HTTPRequest | None:
 
-        node = self.get_node_by_id(node_id=user.node_id)
+        node = self.get_node_by_id(node_id=room.node_id)
 
         if not node:
             return
 
-        node.user = user
+        node.room = room
 
         if node.type == "message":
             node = self.build_node(node.serialize(), Message)

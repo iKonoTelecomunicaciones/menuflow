@@ -59,7 +59,7 @@ class Message(Node):
             msgtype=MessageType.TEXT,
             body=self.text,
             format=Format.HTML,
-            formatted_body=markdown(self.template.render(**self.user._variables)),
+            formatted_body=markdown(self.template.render(**self.room._variables)),
         )
 
         # A way to handle the error that is thrown when the bot sends too many messages too quickly.

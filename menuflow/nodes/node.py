@@ -7,7 +7,7 @@ from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
 
 from ..jinja.jinja_template import jinja_env
-from ..user import User
+from ..room import Room
 from ..utils.base_logger import BaseLogger
 
 
@@ -15,7 +15,7 @@ from ..utils.base_logger import BaseLogger
 class Node(SerializableAttrs, BaseLogger):
     id: str = ib(metadata={"json": "id"})
     type: str = ib(metadata={"json": "type"})
-    user: User
+    room: Room
 
     def build_node(self):
         return self.deserialize(self.__dict__)
@@ -45,8 +45,8 @@ class Node(SerializableAttrs, BaseLogger):
                 return
 
         try:
-            return loads(data_template.render(**self.user._variables))
+            return loads(data_template.render(**self.room._variables))
         except JSONDecodeError:
-            return data_template.render(**self.user._variables)
+            return data_template.render(**self.room._variables)
         except KeyError:
             return loads(data_template.render())
