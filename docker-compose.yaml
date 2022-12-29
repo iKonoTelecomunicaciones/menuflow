@@ -5,11 +5,17 @@ services:
   menuflow:
     image: bramenn/menuflow:latest
     restart: unless-stopped
+    # Only use this if you want to develop in this project
+    # build: .
     ports:
       - 29400:29400
     depends_on:
       - postgres
+    # Only use this if you want to develop in this project
+    # entrypoint: ./run.sh dev
     volumes:
+      # Only use this if you want to develop in this project
+      # - .:/opt/menuflow
       - ./volumes/menuflow:/data
       - ./volumes/menuflow/flows:/data/flows
 

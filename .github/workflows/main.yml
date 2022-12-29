@@ -1,6 +1,6 @@
 name: Python lint and CI/CD
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   lint:
