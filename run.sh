@@ -12,7 +12,7 @@ if [ ! -f /data/config.yaml ]; then
 fi
 
 if [ "$1" = "dev" ]; then
-	pip install -r requirements-dev.txt
+	pip install --ignore-installed -r requirements-dev.txt
     watchmedo auto-restart -R -p="*.py" -d="." /opt/menuflow/run.sh
 fi
 
