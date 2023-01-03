@@ -29,8 +29,10 @@ class Room:
     def values(self) -> tuple:
         return (self.room_id, self.variables, self.node_id, self.state)
 
+    _columns = "room_id, variables, node_id, state"
+
     async def insert(self) -> str:
-        q = "INSERT INTO room (room_id, variables, node_id, state) VALUES ($1, $2, $3, $4)"
+        q = f"INSERT INTO room ({self._columns}) VALUES ($1, $2, $3, $4)"
         await self.db.execute(q, *self.values)
 
     async def update(self) -> None:
@@ -39,7 +41,7 @@ class Room:
 
     @classmethod
     async def get_by_room_id(cls, room_id: RoomID) -> Room | None:
-        q = f"SELECT id, room_id, variables, node_id, state FROM room WHERE room_id=$1"
+        q = f"SELECT id, {cls._columns} FROM room WHERE room_id=$1"
         row = await cls.db.fetchrow(q, room_id)
 
         if not row:
