@@ -31,6 +31,12 @@ class User(DBUser):
         if self.mxid:
             self.by_mxid[self.mxid] = self
 
+    @property
+    def phone(self) -> str | None:
+        user_match = match(self.config["utils.user_phone_regex"], self.mxid)
+        if user_match:
+            return user_match.group("number")
+
     @classmethod
     async def get_by_mxid(cls, mxid: UserID, create: bool = True) -> "User" | None:
         """It gets a user from the database, or creates one if it doesn't exist

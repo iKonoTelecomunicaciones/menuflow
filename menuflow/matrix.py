@@ -41,10 +41,6 @@ class MatrixHandler(MatrixClient):
         try:
             room = await Room.get_by_room_id(room_id=message.room_id)
             room.config = self.config
-
-            # if user.phone:
-            #    await user.set_variable(variable_id="user_phone", value=user.phone)
-
         except Exception as e:
             self.log.exception(e)
             return
