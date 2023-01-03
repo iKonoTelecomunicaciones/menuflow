@@ -7,7 +7,7 @@ upgrade_table = UpgradeTable()
 @upgrade_table.register(description="Initial revision")
 async def upgrade_v1(conn: Connection) -> None:
     await conn.execute(
-        """CREATE TABLE "room" (
+        """CREATE TABLE room (
             id          SERIAL PRIMARY KEY,
             room_id     TEXT NOT NULL,
             variables   JSON,
@@ -34,3 +34,5 @@ async def upgrade_v1(conn: Connection) -> None:
             autojoin BOOLEAN NOT NULL
         )"""
     )
+
+    await conn.execute("ALTER TABLE room ADD CONSTRAINT idx_unique_room_id UNIQUE (room_id)")
