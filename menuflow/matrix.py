@@ -3,7 +3,7 @@ from mautrix.types import Membership, MessageEvent, StrippedStateEvent
 
 from .config import Config
 from .flow import Flow
-from .user import User
+from .room import Room
 
 
 class MatrixHandler(MatrixClient):
@@ -39,34 +39,30 @@ class MatrixHandler(MatrixClient):
             return
 
         try:
-            user = await User.get_by_mxid(mxid=message.sender)
-            user.config = self.config
-
-            if user.phone:
-                await user.set_variable(variable_id="user_phone", value=user.phone)
-
+            room = await Room.get_by_room_id(room_id=message.room_id)
+            room.config = self.config
         except Exception as e:
             self.log.exception(e)
             return
 
-        if not user:
+        if not room:
             return
 
-        await self.algorithm(user=user, evt=message)
+        await self.algorithm(room=room, evt=message)
 
-    async def algorithm(self, user: User, evt: MessageEvent) -> None:
-        """If the user is in the input state, then set the variable to the user's input,
+    async def algorithm(self, room: Room, evt: MessageEvent) -> None:
+        """If the room is in the input state, then set the variable to the room's input,
         and if the node has an output connection, then update the menu to the output connection.
         Otherwise, run the node and update the menu to the output connection.
-        If the node is an input node and the user is not in the input state,
+        If the node is an input node and the room is not in the input state,
         then show the message and update the menu to the node's id and set the state to input.
         If the node is a message node, then show the message and if the node has an output connection,
         then update the menu to the output connection and run the algorithm again
 
         Parameters
         ----------
-        user : User
-            User - the user object
+        room : Room
+            Room - the room object
         evt : MessageEvent
             The event that triggered the algorithm.
 
@@ -76,23 +72,23 @@ class MatrixHandler(MatrixClient):
 
         """
 
-        # This is the case where the user is in the input state.
-        # In this case, the variable is set to the user's input, and if the node has an output connection,
+        # This is the case where the room is in the input state.
+        # In this case, the variable is set to the room's input, and if the node has an output connection,
         # then the menu is updated to the output connection.
         # Otherwise, the node is run and the menu is updated to the output connection.
 
-        node = self.flow.node(user=user)
+        node = self.flow.node(room=room)
 
         if node is None:
-            self.log.debug(f"User {user.mxid} does not have a node")
-            await user.update_menu(node_id="start")
+            self.log.debug(f"Room {room.room_id} does not have a node")
+            await room.update_menu(node_id="start")
             return
 
-        self.log.debug(f"The [user: {user.mxid}] [node: {node.id}] [state: {user.state}]")
+        self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.state}]")
 
-        if user.state == "input":
+        if room.state == "input":
             self.log.debug(f"Creating [variable: {node.variable}] [content: {evt.content.body}]")
-            await user.set_variable(
+            await room.set_variable(
                 node.variable,
                 int(evt.content.body) if evt.content.body.isdigit() else evt.content.body,
             )
@@ -100,36 +96,36 @@ class MatrixHandler(MatrixClient):
             # If the node has an output connection, then update the menu to the output connection.
             # Otherwise, run the node and update the menu to the output connection.
 
-            await user.update_menu(node_id=node.o_connection or await node.run())
+            await room.update_menu(node_id=node.o_connection or await node.run())
 
-        node = self.flow.node(user=user)
+        node = self.flow.node(room=room)
 
         if node.type == "switch":
-            await user.update_menu(await node.run())
+            await room.update_menu(await node.run())
 
-        node = self.flow.node(user=user)
+        node = self.flow.node(room=room)
 
-        # This is the case where the user is not in the input state and the node is an input node.
+        # This is the case where the room is not in the input state and the node is an input node.
         # In this case, the message is shown and the menu is updated to the node's id and the state is set to input.
-        if node and node.type == "input" and user.state != "input":
-            self.log.debug(f"User {user.mxid} enters input node {node.id}")
-            await node.show_message(room_id=evt.room_id, client=self)
-            await user.update_menu(node_id=node.id, state="input")
+        if node and node.type == "input" and room.state != "input":
+            self.log.debug(f"Room {room.room_id} enters input node {node.id}")
+            await node.show_message(room_id=room.room_id, client=self)
+            await room.update_menu(node_id=node.id, state="input")
             return
 
         # Showing the message and updating the menu to the output connection.
         if node and node.type == "message":
-            self.log.debug(f"User {user.mxid} enters message node {node.id}")
-            await node.show_message(room_id=evt.room_id, client=self)
+            self.log.debug(f"Room {room.room_id} enters message node {node.id}")
+            await node.show_message(room_id=room.room_id, client=self)
 
-            await user.update_menu(
+            await room.update_menu(
                 node_id=node.o_connection, state="end" if not node.o_connection else None
             )
 
-        node = self.flow.node(user=user)
+        node = self.flow.node(room=room)
 
         if node and node.type == "http_request":
-            self.log.debug(f"User {user.mxid} enters http_request node {node.id}")
+            self.log.debug(f"Room {room.room_id} enters http_request node {node.id}")
             try:
                 status, response = await node.request(session=self.api.session)
                 self.log.info(f"http_request node {node.id} had a status of {status}")
@@ -139,11 +135,11 @@ class MatrixHandler(MatrixClient):
                 self.log.exception(e)
                 return
 
-        node = self.flow.node(user=user)
+        node = self.flow.node(room=room)
 
-        if user.state == "end":
-            self.log.debug(f"The user {user.mxid} has terminated the flow")
-            await user.update_menu(node_id="start")
+        if room.state == "end":
+            self.log.debug(f"The room {room.room_id} has terminated the flow")
+            await room.update_menu(node_id="start")
             return
 
-        await self.algorithm(user=user, evt=evt)
+        await self.algorithm(room=room, evt=evt)
