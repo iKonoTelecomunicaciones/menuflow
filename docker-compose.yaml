@@ -2,6 +2,18 @@ version: '3.9'
 
 services:
 
+
+  synapse:
+    image: matrixdotorg/synapse:v1.74.0
+    environment:
+      - SYNAPSE_CONFIG_PATH=/data/homeserver.yaml
+    volumes:
+      - ./volumes/synapse:/data/
+    ports:
+      - 8008:8008
+    depends_on:
+      - postgres
+
   menuflow:
     image: bramenn/menuflow:latest
     restart: unless-stopped
