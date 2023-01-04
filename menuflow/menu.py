@@ -3,26 +3,20 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections import defaultdict
-from copy import deepcopy
-from time import time
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Awaitable, Callable, Dict, cast
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Awaitable, Callable, cast
 
 from aiohttp import ClientSession
 from mautrix.client import Client, InternalEventType
 from mautrix.errors import MatrixInvalidToken
 from mautrix.types import (
-    JSON,
     DeviceID,
-    Event,
     EventFilter,
     EventType,
     Filter,
     FilterID,
     RoomEventFilter,
     RoomFilter,
-    StateEvent,
     StateFilter,
-    StrippedStateEvent,
     SyncToken,
     UserID,
 )
@@ -108,73 +102,19 @@ class MenuClient(DBClient):
         self.matrix_handler.ignore_first_sync = True
 
         self.matrix_handler.add_event_handler(
-            InternalEventType.SYNC_SUCCESSFUL, self.dont_process_old_events
-        )
-        self.matrix_handler.add_event_handler(
             InternalEventType.SYNC_ERRORED, self._set_sync_ok(False)
         )
         self.matrix_handler.add_event_handler(
             InternalEventType.SYNC_SUCCESSFUL, self._set_sync_ok(True)
         )
 
-    async def dont_process_old_events(self, data: dict[str, Any]):
+        self.matrix_handler.add_event_handler(
+            EventType.ROOM_MESSAGE, self.matrix_handler.handle_message
+        )
 
-        rooms = data.get("data", {}).get("rooms", {})
-        aux_rooms = deepcopy(rooms)
-
-        for room_id, room_data in aux_rooms.get("join", {}).items():
-            for i in range(len(room_data.get("timeline", {}).get("events", [])) - 1, 0, -1):
-                evt: Dict = room_data.get("timeline", {}).get("events", [])[i]
-                if evt.get("type", "") == "m.room.member" and evt.get("state_key", "") == self.id:
-                    if evt.get("content", {}).get("join"):
-                        if not rooms.get("join", {}).get(room_id):
-                            continue
-
-                    del rooms["join"][room_id]
-
-                    try:
-                        del rooms["invite"][room_id]
-                    except KeyError:
-                        pass
-
-                    break
-
-        for room_id, room_data in rooms.get("join", {}).items():
-            for raw_event in room_data.get("timeline", {}).get("events", []):
-                raw_event["room_id"] = room_id
-                evt = self.matrix_handler._try_deserialize(Event, raw_event)
-
-                if evt.type == EventType.ROOM_MESSAGE:
-                    await self.matrix_handler.handle_message(evt)
-
-        for room_id, room_data in rooms.get("invite", {}).items():
-            events: list[dict[str, JSON]] = room_data.get("invite_state", {}).get("events", [])
-            for raw_event in events:
-                raw_event["room_id"] = room_id
-            raw_invite = next(
-                raw_event
-                for raw_event in events
-                if raw_event.get("type", "") == "m.room.member"
-                and raw_event.get("state_key", "") == self.id
-            )
-            # These aren't required by the spec, so make sure they're set
-            raw_invite.setdefault("event_id", None)
-            raw_invite.setdefault("origin_server_ts", int(time() * 1000))
-
-            invite = self.matrix_handler._try_deserialize(StateEvent, raw_invite)
-            invite.unsigned.invite_room_state = [
-                self.matrix_handler._try_deserialize(StrippedStateEvent, raw_event)
-                for raw_event in events
-                if raw_event != raw_invite
-            ]
-            await self.matrix_handler.handle_invite(invite)
-
-        for room_id, room_data in rooms.get("leave", {}).items():
-            for raw_event in room_data.get("timeline", {}).get("events", []):
-                if "state_key" in raw_event:
-                    raw_event["room_id"] = room_id
-                    evt = self._try_deserialize(StateEvent, raw_event)
-                    # TODO implement the handle_leave
+        self.matrix_handler.add_event_handler(
+            EventType.ROOM_MEMBER, self.matrix_handler.handle_invite
+        )
 
     def _set_sync_ok(self, ok: bool) -> Callable[[dict[str, Any]], Awaitable[None]]:
         async def handler(data: dict[str, Any]) -> None:

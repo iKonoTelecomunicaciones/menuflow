@@ -1,5 +1,10 @@
+from __future__ import annotations
+
+import asyncio
+from ast import Dict
+
 from mautrix.client import Client as MatrixClient
-from mautrix.types import Membership, MessageEvent, StrippedStateEvent
+from mautrix.types import JSON, Membership, MessageEvent, StrippedStateEvent
 
 from .config import Config
 from .flow import Flow
@@ -13,6 +18,7 @@ class MatrixHandler(MatrixClient):
         flow = Config(path=f"/data/flows/{self.mxid}.yaml", base_path="")
         flow.load()
         self.flow = Flow.deserialize(flow["menu"])
+        self.LAST_SEEN_EVENTS: Dict[str, int] = {}
 
     async def handle_invite(self, evt: StrippedStateEvent) -> None:
         if evt.sender in self.config["menuflow.users_ignore"] or evt.sender == self.mxid:
@@ -20,6 +26,21 @@ class MatrixHandler(MatrixClient):
             return
         if evt.state_key == self.mxid and evt.content.membership == Membership.INVITE:
             await self.join_room(evt.room_id)
+
+    def handle_sync(self, data: JSON) -> list[asyncio.Task]:
+
+        for _, room_data in data.get("rooms", {}).get("join", {}).items():
+            for i in range(len(room_data.get("timeline", {}).get("events", [])) - 1, -1, -1):
+                evt = room_data.get("timeline", {}).get("events", [])[i]
+
+                if not evt.get("type") in self.LAST_SEEN_EVENTS and evt.get("origin_server_ts"):
+                    self.LAST_SEEN_EVENTS[evt.get("type")] = evt.get("origin_server_ts")
+
+                if evt.get("origin_server_ts") < self.LAST_SEEN_EVENTS[evt.get("type")]:
+                    del room_data.get("timeline", {}).get("events", [])[i]
+                    continue
+
+        return super().handle_sync(data)
 
     async def handle_message(self, message: MessageEvent) -> None:
 
