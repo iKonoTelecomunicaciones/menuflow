@@ -4,6 +4,7 @@ import asyncio
 import logging
 from collections import defaultdict
 from copy import deepcopy
+from time import time
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -27,11 +28,11 @@ from mautrix.types import (
     EventType,
     Filter,
     FilterID,
-    GenericEvent,
     RoomEventFilter,
     RoomFilter,
-    SerializerError,
+    StateEvent,
     StateFilter,
+    StrippedStateEvent,
     SyncToken,
     UserID,
 )
@@ -158,8 +159,27 @@ class MenuClient(DBClient):
                 if evt.type == EventType.ROOM_MESSAGE:
                     await self.matrix_handler.handle_message(evt)
 
-                elif evt.type == EventType.ROOM_MEMBER:
-                    await self.matrix_handler.handle_invite(evt)
+        for room_id, room_data in rooms.get("invite", {}).items():
+            events: list[dict[str, JSON]] = room_data.get("invite_state", {}).get("events", [])
+            for raw_event in events:
+                raw_event["room_id"] = room_id
+            raw_invite = next(
+                raw_event
+                for raw_event in events
+                if raw_event.get("type", "") == "m.room.member"
+                and raw_event.get("state_key", "") == self.id
+            )
+            # These aren't required by the spec, so make sure they're set
+            raw_invite.setdefault("event_id", None)
+            raw_invite.setdefault("origin_server_ts", int(time() * 1000))
+
+            invite = self.matrix_handler._try_deserialize(StateEvent, raw_invite)
+            invite.unsigned.invite_room_state = [
+                self.matrix_handler._try_deserialize(StrippedStateEvent, raw_event)
+                for raw_event in events
+                if raw_event != raw_invite
+            ]
+            await self.matrix_handler.handle_invite(invite)
 
     def _set_sync_ok(self, ok: bool) -> Callable[[dict[str, Any]], Awaitable[None]]:
         async def handler(data: dict[str, Any]) -> None:
