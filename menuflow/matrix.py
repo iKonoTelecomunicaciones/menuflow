@@ -4,7 +4,7 @@ import asyncio
 from ast import Dict
 
 from mautrix.client import Client as MatrixClient
-from mautrix.types import JSON, Membership, MessageEvent, StrippedStateEvent
+from mautrix.types import JSON, Membership, MessageEvent, RoomID, StrippedStateEvent
 
 from .config import Config
 from .flow import Flow
@@ -12,13 +12,15 @@ from .room import Room
 
 
 class MatrixHandler(MatrixClient):
+
+    LAST_JOIN_EVENTS: Dict[RoomID, int] = {}
+
     def __init__(self, config: Config, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.config = config
         flow = Config(path=f"/data/flows/{self.mxid}.yaml", base_path="")
         flow.load()
         self.flow = Flow.deserialize(flow["menu"])
-        self.LAST_SEEN_EVENTS: Dict[str, int] = {}
 
     async def handle_invite(self, evt: StrippedStateEvent) -> None:
         if evt.sender in self.config["menuflow.users_ignore"] or evt.sender == self.mxid:
@@ -30,14 +32,20 @@ class MatrixHandler(MatrixClient):
     def handle_sync(self, data: JSON) -> list[asyncio.Task]:
 
         # This is a way to remove duplicate events from the sync.
-        for _, room_data in data.get("rooms", {}).get("join", {}).items():
+        for room_id, room_data in data.get("rooms", {}).get("join", {}).items():
             for i in range(len(room_data.get("timeline", {}).get("events", [])) - 1, -1, -1):
                 evt = room_data.get("timeline", {}).get("events", [])[i]
+                if (
+                    evt.get("type", "") == "m.room.member"
+                    and evt.get("state_key", "") == self.mxid
+                ):
+                    if evt.get("content", {}).get("membership") == "join":
+                        self.LAST_JOIN_EVENTS[room_id] = evt.get("origin_server_ts")
 
-                if not evt.get("type") in self.LAST_SEEN_EVENTS and evt.get("origin_server_ts"):
-                    self.LAST_SEEN_EVENTS[evt.get("type")] = evt.get("origin_server_ts")
-
-                if evt.get("origin_server_ts") < self.LAST_SEEN_EVENTS[evt.get("type")]:
+                if (
+                    self.LAST_JOIN_EVENTS.get(room_id)
+                    and evt.get("origin_server_ts") < self.LAST_JOIN_EVENTS[room_id]
+                ):
                     del room_data.get("timeline", {}).get("events", [])[i]
                     continue
 
