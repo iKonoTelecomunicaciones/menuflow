@@ -29,6 +29,7 @@ class MatrixHandler(MatrixClient):
 
     def handle_sync(self, data: JSON) -> list[asyncio.Task]:
 
+        # This is a way to remove duplicate events from the sync.
         for _, room_data in data.get("rooms", {}).get("join", {}).items():
             for i in range(len(room_data.get("timeline", {}).get("events", [])) - 1, -1, -1):
                 evt = room_data.get("timeline", {}).get("events", [])[i]
