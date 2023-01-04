@@ -169,6 +169,13 @@ class MenuClient(DBClient):
             ]
             await self.matrix_handler.handle_invite(invite)
 
+        for room_id, room_data in rooms.get("leave", {}).items():
+            for raw_event in room_data.get("timeline", {}).get("events", []):
+                if "state_key" in raw_event:
+                    raw_event["room_id"] = room_id
+                    evt = self._try_deserialize(StateEvent, raw_event)
+                    # TODO implement the handle_leave
+
     def _set_sync_ok(self, ok: bool) -> Callable[[dict[str, Any]], Awaitable[None]]:
         async def handler(data: dict[str, Any]) -> None:
             self.sync_ok = ok
