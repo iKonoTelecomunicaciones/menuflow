@@ -18,7 +18,7 @@ async def upgrade_v1(conn: Connection) -> None:
     await conn.execute(
         """CREATE TABLE "user" (
             id          SERIAL PRIMARY KEY,
-            mxid        TEXT NOT NULL,
+            mxid        TEXT NOT NULL
         )"""
     )
     await conn.execute(
