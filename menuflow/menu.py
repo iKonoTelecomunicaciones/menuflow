@@ -5,17 +5,7 @@ import logging
 from collections import defaultdict
 from copy import deepcopy
 from time import time
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    AsyncGenerator,
-    Awaitable,
-    Callable,
-    Dict,
-    Type,
-    TypeVar,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Awaitable, Callable, Dict, cast
 
 from aiohttp import ClientSession
 from mautrix.client import Client, InternalEventType
@@ -41,8 +31,6 @@ from mautrix.util.logging import TraceLogger
 
 from .db import Client as DBClient
 from .matrix import MatrixHandler
-
-T = TypeVar("T", bound=Event)
 
 if TYPE_CHECKING:
     from .__main__ import MenuFlow
