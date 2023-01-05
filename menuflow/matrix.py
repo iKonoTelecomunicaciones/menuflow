@@ -23,7 +23,7 @@ from .room import Room
 
 class MatrixHandler(MatrixClient):
 
-    LAST_JOIN_EVENTS: Dict[RoomID, int] = {}
+    LAST_JOIN_EVENT: Dict[RoomID, int] = {}
     LOCKED_ROOMS = set()
 
     def __init__(self, config: Config, *args, **kwargs) -> None:
@@ -40,8 +40,8 @@ class MatrixHandler(MatrixClient):
             for i in range(len(room_data.get("timeline", {}).get("events", [])) - 1, -1, -1):
                 evt = room_data.get("timeline", {}).get("events", [])[i]
                 if (
-                    self.LAST_JOIN_EVENTS.get(room_id)
-                    and evt.get("origin_server_ts") <= self.LAST_JOIN_EVENTS[room_id]
+                    self.LAST_JOIN_EVENT.get(room_id)
+                    and evt.get("origin_server_ts") <= self.LAST_JOIN_EVENT[room_id]
                 ):
                     del data["rooms"]["join"][room_id]["timeline"]["events"][i]
                     continue
@@ -51,7 +51,7 @@ class MatrixHandler(MatrixClient):
                     and evt.get("state_key", "") == self.mxid
                 ):
                     if evt.get("content", {}).get("membership") == "join":
-                        self.LAST_JOIN_EVENTS[room_id] = evt.get("origin_server_ts")
+                        self.LAST_JOIN_EVENT[room_id] = evt.get("origin_server_ts")
 
         return super().handle_sync(data)
 
