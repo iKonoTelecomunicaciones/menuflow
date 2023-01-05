@@ -113,7 +113,7 @@ class MenuClient(DBClient):
         )
 
         self.matrix_handler.add_event_handler(
-            EventType.ROOM_MEMBER, self.matrix_handler.handle_invite
+            EventType.ROOM_MEMBER, self.matrix_handler.handle_member
         )
 
     def _set_sync_ok(self, ok: bool) -> Callable[[dict[str, Any]], Awaitable[None]]:

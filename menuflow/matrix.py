@@ -2,9 +2,19 @@ from __future__ import annotations
 
 import asyncio
 from ast import Dict
+from copy import deepcopy
+from typing import Optional
 
 from mautrix.client import Client as MatrixClient
-from mautrix.types import JSON, Membership, MessageEvent, RoomID, StrippedStateEvent
+from mautrix.types import (
+    JSON,
+    Membership,
+    MemberStateEventContent,
+    MessageEvent,
+    RoomID,
+    StateUnsigned,
+    StrippedStateEvent,
+)
 
 from .config import Config
 from .flow import Flow
@@ -14,6 +24,7 @@ from .room import Room
 class MatrixHandler(MatrixClient):
 
     LAST_JOIN_EVENTS: Dict[RoomID, int] = {}
+    locked_rooms = set()
 
     def __init__(self, config: Config, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -22,19 +33,19 @@ class MatrixHandler(MatrixClient):
         flow.load()
         self.flow = Flow.deserialize(flow["menu"])
 
-    async def handle_invite(self, evt: StrippedStateEvent) -> None:
-        if evt.sender in self.config["menuflow.users_ignore"] or evt.sender == self.mxid:
-            self.log.debug(f"This incoming invite event from {evt.room_id} will be ignored")
-            return
-        if evt.state_key == self.mxid and evt.content.membership == Membership.INVITE:
-            await self.join_room(evt.room_id)
-
     def handle_sync(self, data: JSON) -> list[asyncio.Task]:
-
-        # This is a way to remove duplicate events from the sync.
-        for room_id, room_data in data.get("rooms", {}).get("join", {}).items():
+        # This is a way to remove duplicate events from the sync
+        aux_data = deepcopy(data)
+        for room_id, room_data in aux_data.get("rooms", {}).get("join", {}).items():
             for i in range(len(room_data.get("timeline", {}).get("events", [])) - 1, -1, -1):
                 evt = room_data.get("timeline", {}).get("events", [])[i]
+                if (
+                    self.LAST_JOIN_EVENTS.get(room_id)
+                    and evt.get("origin_server_ts") <= self.LAST_JOIN_EVENTS[room_id]
+                ):
+                    del data["rooms"]["join"][room_id]["timeline"]["events"][i]
+                    continue
+
                 if (
                     evt.get("type", "") == "m.room.member"
                     and evt.get("state_key", "") == self.mxid
@@ -42,14 +53,61 @@ class MatrixHandler(MatrixClient):
                     if evt.get("content", {}).get("membership") == "join":
                         self.LAST_JOIN_EVENTS[room_id] = evt.get("origin_server_ts")
 
-                if (
-                    self.LAST_JOIN_EVENTS.get(room_id)
-                    and evt.get("origin_server_ts") < self.LAST_JOIN_EVENTS[room_id]
-                ):
-                    del room_data.get("timeline", {}).get("events", [])[i]
-                    continue
-
         return super().handle_sync(data)
+
+    async def handle_member(self, evt: StrippedStateEvent) -> None:
+        unsigned = evt.unsigned or StateUnsigned()
+        prev_content = unsigned.prev_content or MemberStateEventContent()
+        prev_membership = prev_content.membership if prev_content else None
+
+        if evt.state_key == self.mxid and evt.content.membership == Membership.INVITE:
+            await self.handle_invite(evt)
+        elif (
+            evt.content.membership == Membership.JOIN
+            and prev_membership != Membership.JOIN
+            and evt.state_key == self.mxid
+        ):
+            await self.handle_join(evt)
+        elif evt.content.membership == Membership.LEAVE:
+            if prev_membership == Membership.JOIN:
+                await self.handle_leave(evt)
+
+    async def handle_invite(self, evt: StrippedStateEvent):
+        if evt.sender in self.config["menuflow.users_ignore"] or evt.sender == self.mxid:
+            self.log.debug(f"This incoming invite event from {evt.room_id} will be ignored")
+            return
+
+        await self.join_room(evt.room_id)
+
+    def unlock_room(self, room_id: RoomID):
+        self.log.debug(f"UNLOCKING ROOM... {room_id}")
+        self.locked_rooms.discard(room_id)
+
+    def lock_room(self, room_id: RoomID):
+        self.locked_rooms.add(room_id)
+        self.log.debug(f"LOCKING ROOM... {room_id}")
+
+    async def handle_join(self, evt: StrippedStateEvent):
+        if evt.room_id in self.locked_rooms:
+            self.log.debug(f"Ignoring menu request in {evt.room_id} Menu locked")
+            return
+
+        self.log.debug(f"{evt.state_key} ACCEPTED -- EVENT JOIN ... {evt.room_id}")
+        self.lock_room(evt.room_id)
+
+        try:
+            room = await Room.get_by_room_id(room_id=evt.room_id)
+            room.config = self.config
+            room.state = None
+            await room.update()
+        except Exception as e:
+            self.log.exception(e)
+            return
+
+        await self.algorithm(room=room)
+
+    async def handle_leave(self, evt: StrippedStateEvent):
+        self.unlock_room(evt.room_id)
 
     async def handle_message(self, message: MessageEvent) -> None:
 
@@ -80,7 +138,7 @@ class MatrixHandler(MatrixClient):
 
         await self.algorithm(room=room, evt=message)
 
-    async def algorithm(self, room: Room, evt: MessageEvent) -> None:
+    async def algorithm(self, room: Room, evt: Optional[MessageEvent] = None) -> None:
         """If the room is in the input state, then set the variable to the room's input,
         and if the node has an output connection, then update the menu to the output connection.
         Otherwise, run the node and update the menu to the output connection.
