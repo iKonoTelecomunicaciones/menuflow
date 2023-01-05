@@ -24,7 +24,7 @@ from .room import Room
 class MatrixHandler(MatrixClient):
 
     LAST_JOIN_EVENTS: Dict[RoomID, int] = {}
-    locked_rooms = set()
+    LOCKED_ROOMS = set()
 
     def __init__(self, config: Config, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -81,14 +81,14 @@ class MatrixHandler(MatrixClient):
 
     def unlock_room(self, room_id: RoomID):
         self.log.debug(f"UNLOCKING ROOM... {room_id}")
-        self.locked_rooms.discard(room_id)
+        self.LOCKED_ROOMS.discard(room_id)
 
     def lock_room(self, room_id: RoomID):
-        self.locked_rooms.add(room_id)
         self.log.debug(f"LOCKING ROOM... {room_id}")
+        self.LOCKED_ROOMS.add(room_id)
 
     async def handle_join(self, evt: StrippedStateEvent):
-        if evt.room_id in self.locked_rooms:
+        if evt.room_id in self.LOCKED_ROOMS:
             self.log.debug(f"Ignoring menu request in {evt.room_id} Menu locked")
             return
 
@@ -102,6 +102,7 @@ class MatrixHandler(MatrixClient):
             await room.update()
         except Exception as e:
             self.log.exception(e)
+            self.unlock_room(evt.room_id)
             return
 
         await self.algorithm(room=room)
