@@ -90,11 +90,11 @@ class HTTPRequest(Switch):
 
         if isinstance(response_data, dict):
             # Tulir and its magic since time immemorial
-            serialize_data = RecursiveDict(CommentedMap(**response_data))
+            serialized_data = RecursiveDict(CommentedMap(**response_data))
             if self._variables:
                 for variable in self._variables:
                     try:
-                        variables[variable] = serialize_data[self.variables[variable]]
+                        variables[variable] = serialized_data[self.variables[variable]]
                     except KeyError:
                         pass
         elif isinstance(response_data, str):
