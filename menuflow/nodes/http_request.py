@@ -83,18 +83,27 @@ class HTTPRequest(Switch):
             f"node: {self.id} method: {self.method} url: {self._url} status: {response.status}"
         )
 
-        # Tulir and its magic since time immemorial
         try:
-            response_data = RecursiveDict(CommentedMap(**await response.json()))
+            serialize_response = await response.json()
         except ContentTypeError:
-            response_data = {}
+            serialize_response = {}
 
-        if self._variables:
-            for variable in self._variables:
-                try:
-                    variables[variable] = response_data[self.variables[variable]]
-                except KeyError:
-                    pass
+        if type(serialize_response) == dict:
+            # Tulir and its magic since time immemorial
+            response_data = RecursiveDict(CommentedMap(**serialize_response))
+            if self._variables:
+                for variable in self._variables:
+                    try:
+                        variables[variable] = response_data[self.variables[variable]]
+                    except KeyError:
+                        pass
+        elif type(serialize_response) == str:
+            if self._variables:
+                for variable in self._variables:
+                    try:
+                        variables[variable] = serialize_response
+                    except KeyError:
+                        pass
 
         if self.cases:
             o_connection = await self.get_case_by_id(id=str(response.status))
