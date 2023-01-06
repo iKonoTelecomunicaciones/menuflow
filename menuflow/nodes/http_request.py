@@ -84,26 +84,28 @@ class HTTPRequest(Switch):
         )
 
         try:
-            serialize_response = await response.json()
+            response_data = await response.json()
         except ContentTypeError:
-            serialize_response = {}
+            response_data = {}
 
-        if type(serialize_response) == dict:
+        if isinstance(response_data, dict):
             # Tulir and its magic since time immemorial
-            response_data = RecursiveDict(CommentedMap(**serialize_response))
+            serialize_data = RecursiveDict(CommentedMap(**response_data))
             if self._variables:
                 for variable in self._variables:
                     try:
-                        variables[variable] = response_data[self.variables[variable]]
+                        variables[variable] = serialize_data[self.variables[variable]]
                     except KeyError:
                         pass
-        elif type(serialize_response) == str:
+        elif isinstance(response_data, str):
             if self._variables:
                 for variable in self._variables:
                     try:
-                        variables[variable] = serialize_response
+                        variables[variable] = response_data
                     except KeyError:
                         pass
+
+                    break
 
         if self.cases:
             o_connection = await self.get_case_by_id(id=str(response.status))
