@@ -35,8 +35,8 @@ class Message(Node):
     o_connection: str = ib(default=None, metadata={"json": "o_connection"})
 
     @property
-    def template(self) -> Template:
-        return jinja_env.from_string(self.text)
+    def _text(self) -> Template:
+        return self.render_data(self.text)
 
     async def show_message(self, room_id: RoomID, client: MatrixClient):
         """It takes a dictionary of variables, a room ID, and a client,
@@ -59,7 +59,7 @@ class Message(Node):
             msgtype=MessageType.TEXT,
             body=self.text,
             format=Format.HTML,
-            formatted_body=markdown(self.template.render(**self.room._variables)),
+            formatted_body=markdown(self._text),
         )
 
         # A way to handle the error that is thrown when the bot sends too many messages too quickly.
