@@ -65,7 +65,7 @@ class HTTPRequest(Switch):
             )
 
         if self.headers:
-            request_body["auth"] = self._headers
+            request_body["headers"] = self._headers
 
         if self.data:
             request_body["json"] = self._data
