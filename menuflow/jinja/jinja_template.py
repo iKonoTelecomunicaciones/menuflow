@@ -2,8 +2,11 @@ from datetime import datetime
 from re import match
 
 from jinja2 import BaseLoader, Environment
+from jinja2_ansible_filters import AnsibleCoreFiltersExtension
 
-jinja_env = Environment(autoescape=True, loader=BaseLoader)
+jinja_env = Environment(
+    autoescape=True, loader=BaseLoader, extensions=[AnsibleCoreFiltersExtension]
+)
 
 jinja_env.globals.update(utcnow_isoformat=lambda: datetime.utcnow().isoformat())
 """
@@ -23,7 +26,7 @@ jinja_env.globals.update(datetime_format=lambda date, format: datetime.strptime(
 """
 Converts a string to a datetime with a specific format
 e.g
-{{ datetime_format(14 09 1999, "%d %m %Y") }}
+{{ datetime_format("14 09 1999", "%d %m %Y") }}
 """
 
 
