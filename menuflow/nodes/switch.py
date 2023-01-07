@@ -1,10 +1,8 @@
 from typing import Dict, List
 
 from attr import dataclass, ib
-from jinja2 import Template
 from mautrix.types import SerializableAttrs
 
-from ..jinja.jinja_template import jinja_env
 from .node import Node
 
 
@@ -42,7 +40,7 @@ class Switch(Node):
     validation: str = ib(default=None, metadata={"json": "validation"})
     cases: List[Case] = ib(metadata={"json": "cases"}, factory=list)
 
-    async def load_cases(self):
+    async def load_cases(self) -> Dict[str, str]:
         """It loads the cases into a dictionary.
 
         Parameters
@@ -58,23 +56,11 @@ class Switch(Node):
 
         cases_dict = {}
 
-        variables_recorded = []
-
         for case in self.cases:
-
-            cases_dict[str(case.id)] = case.o_connection
-            if case.variables and self.room:
-                for varible in case.variables.__dict__:
-
-                    if varible in variables_recorded:
-                        continue
-
-                    await self.room.set_variable(
-                        variable_id=varible,
-                        value=self.render_data(case.variables[varible]),
-                    )
-                    variables_recorded.append(varible)
-
+            cases_dict[str(case.id)] = {
+                "o_connection": case.o_connection,
+                "variables": case.variables,
+            }
         return cases_dict
 
     async def run(self) -> str:
@@ -115,10 +101,26 @@ class Switch(Node):
         try:
             cases = await self.load_cases()
             case_result = cases[id]
+
+            variables_recorded = []
+
+            if case_result.get("variables") and self.room:
+                for varible in case_result.get("variables", {}).__dict__:
+                    if varible in variables_recorded:
+                        continue
+
+                    await self.room.set_variable(
+                        variable_id=varible,
+                        value=self.render_data(case_result["variables"][varible]),
+                    )
+                    variables_recorded.append(varible)
+
+            case_o_connection = case_result.get("o_connection")
+
             self.log.debug(
-                f"The case [{case_result}] has been obtained in the input node [{self.id}]"
+                f"The case [{case_o_connection}] has been obtained in the input node [{self.id}]"
             )
-            return case_result
+            return case_o_connection
         except KeyError:
-            self.log.debug(f"Case not found [{id}] the default case will be sought")
-            return cases["default"]
+            self.log.debug(f"Case not found [{id}] the [default case] will be sought")
+            return cases["default"]["o_connection"]
