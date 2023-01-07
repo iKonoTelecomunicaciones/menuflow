@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 from aiohttp import BasicAuth, ClientSession
 from aiohttp.client_exceptions import ContentTypeError
@@ -9,7 +9,7 @@ from jinja2 import Template
 from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
-from .switch import Switch
+from .switch import Case, Switch
 
 
 @dataclass
@@ -22,6 +22,7 @@ class HTTPRequest(Switch):
     headers: Dict = ib(metadata={"json": "headers"}, factory=dict)
     basic_auth: Dict = ib(metadata={"json": "basic_auth"}, factory=dict)
     data: Dict = ib(metadata={"json": "data"}, factory=dict)
+    cases: List[Case] = ib(metadata={"json": "cases"}, factory=list)
 
     @property
     def _url(self) -> Template:
@@ -94,14 +95,16 @@ class HTTPRequest(Switch):
             if self._variables:
                 for variable in self._variables:
                     try:
-                        variables[variable] = serialized_data[self.variables[variable]]
+                        variables[variable] = self.render_data(
+                            serialized_data[self.variables[variable]]
+                        )
                     except KeyError:
                         pass
         elif isinstance(response_data, str):
             if self._variables:
                 for variable in self._variables:
                     try:
-                        variables[variable] = response_data
+                        variables[variable] = self.render_data(response_data)
                     except KeyError:
                         pass
 
