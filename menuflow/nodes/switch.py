@@ -42,10 +42,6 @@ class Switch(Node):
     validation: str = ib(default=None, metadata={"json": "validation"})
     cases: List[Case] = ib(metadata={"json": "cases"}, factory=list)
 
-    @property
-    def rule(self) -> Template:
-        return jinja_env.from_string(self.validation)
-
     async def load_cases(self):
         """It loads the cases into a dictionary.
 
@@ -62,20 +58,22 @@ class Switch(Node):
 
         cases_dict = {}
 
+        variables_recorded = []
+
         for case in self.cases:
 
             cases_dict[str(case.id)] = case.o_connection
             if case.variables and self.room:
                 for varible in case.variables.__dict__:
-                    template_variable = Template(case.variables[varible])
-                    try:
-                        await self.room.set_variable(
-                            variable_id=varible,
-                            value=template_variable.render(**self.room._variables),
-                        )
-                    except Exception as e:
-                        self.log.warning(e)
+
+                    if varible in variables_recorded:
                         continue
+
+                    await self.room.set_variable(
+                        variable_id=varible,
+                        value=self.render_data(case.variables[varible]),
+                    )
+                    variables_recorded.append(varible)
 
         return cases_dict
 
@@ -94,12 +92,12 @@ class Switch(Node):
 
         """
 
-        self.log.debug(f"Executing validation of input {self.id} for room {self.room.room_id}")
+        self.log.debug(f"Executing validation of input [{self.id}] for room [{self.room.room_id}]")
 
-        res = None
+        result = None
 
         try:
-            res = self.rule.render(**self.room._variables)
+            result = self.render_data(self.validation)
             # TODO What would be the best way to handle this, taking jinja into account?
             # if res == "True":
             #     res = True
@@ -108,17 +106,19 @@ class Switch(Node):
             #     res = False
 
         except Exception as e:
-            self.log.warning(f"An exception has occurred in the pipeline {self.id} :: {e}")
-            res = "except"
+            self.log.warning(f"An exception has occurred in the pipeline [{self.id} ]:: {e}")
+            result = "except"
 
-        return await self.get_case_by_id(res)
+        return await self.get_case_by_id(str(result))
 
     async def get_case_by_id(self, id: str) -> str:
         try:
             cases = await self.load_cases()
             case_result = cases[id]
-            self.log.debug(f"The case {case_result} has been obtained in the input node {self.id}")
+            self.log.debug(
+                f"The case [{case_result}] has been obtained in the input node [{self.id}]"
+            )
             return case_result
         except KeyError:
-            self.log.debug(f"Case not found {id} the default case will be sought")
+            self.log.debug(f"Case not found [{id}] the default case will be sought")
             return cases["default"]
