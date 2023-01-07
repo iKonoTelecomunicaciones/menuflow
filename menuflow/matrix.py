@@ -177,10 +177,13 @@ class MatrixHandler(MatrixClient):
 
         if room.state == "input":
             self.log.debug(f"Creating [variable: {node.variable}] [content: {evt.content.body}]")
-            await room.set_variable(
-                node.variable,
-                int(evt.content.body) if evt.content.body.isdigit() else evt.content.body,
-            )
+            try:
+                await room.set_variable(
+                    node.variable,
+                    int(evt.content.body) if evt.content.body.isdigit() else evt.content.body,
+                )
+            except ValueError as e:
+                self.log.warning(e)
 
             # If the node has an output connection, then update the menu to the output connection.
             # Otherwise, run the node and update the menu to the output connection.
