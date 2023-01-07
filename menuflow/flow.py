@@ -24,8 +24,8 @@ class Flow(SerializableAttrs):
                 return node
 
     def build_node(
-        self, data: Dict, type_class: Message | Input | HTTPRequest | None
-    ) -> Message | Input | HTTPRequest | None:
+        self, data: Dict, type_class: Message | Input | HTTPRequest | Switch | None
+    ) -> Message | Input | HTTPRequest | Switch | None:
         return type_class.deserialize(data)
 
     def node(self, room: Room) -> Message | Input | HTTPRequest | None:

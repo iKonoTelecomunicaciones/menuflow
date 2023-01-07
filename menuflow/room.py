@@ -88,7 +88,9 @@ class Room(DBRoom):
     async def set_variable(self, variable_id: str, value: Any):
         self._variables[variable_id] = value
         self.variables = json.dumps(self._variables)
-        self.log.debug(f"Saving variable {variable_id} to room {self.room_id} :: content {value}")
+        self.log.debug(
+            f"Saving variable [{variable_id}] to room [{self.room_id}] :: content [{value}]"
+        )
         await self.update()
 
     async def set_variables(self, variables: Dict):
