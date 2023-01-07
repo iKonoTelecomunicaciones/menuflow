@@ -44,9 +44,31 @@ class Node(SerializableAttrs, BaseLogger):
                 self.log.exception(e)
                 return
 
+        def convert_to_bool(item):
+            if isinstance(item, dict):
+                for k, v in item.items():
+                    item[k] = convert_to_bool(v)
+                return item
+            elif isinstance(item, list):
+                return [convert_to_bool(i) for i in item]
+            elif isinstance(item, str):
+                if item in ["True", "true"]:
+                    return True
+                elif item in ["False", "false"]:
+                    return False
+                else:
+                    return item
+            else:
+                return item
+
         try:
-            return loads(data_template.render(**self.room._variables))
+            data = loads(data_template.render(**self.room._variables))
+            data = convert_to_bool(data)
+            return data
         except JSONDecodeError:
-            return data_template.render(**self.room._variables)
+            data = data_template.render(**self.room._variables)
+            return convert_to_bool(data)
         except KeyError:
-            return loads(data_template.render())
+            data = loads(data_template.render())
+            data = convert_to_bool(data)
+            return data
