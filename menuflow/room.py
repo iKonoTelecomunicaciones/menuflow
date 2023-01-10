@@ -35,6 +35,14 @@ class Room(DBRoom):
         if self.room_id:
             self.by_room_id[self.room_id] = self
 
+    async def clean_up(self):
+        del self.by_room_id[self.room_id]
+        self.variables = "{}"
+        self._variables = "{}"
+        self.node_id = "start"
+        self.state = None
+        await self.update()
+
     @classmethod
     async def get_by_room_id(cls, room_id: RoomID, create: bool = True) -> "Room" | None:
         """It gets a room from the database, or creates one if it doesn't exist
