@@ -14,6 +14,31 @@ from .switch import Case, Switch
 
 @dataclass
 class HTTPRequest(Switch):
+    """
+    ## HTTPRequest
+
+    HTTPRequest is a subclass of Switch which allows sending a message formatted with jinja
+    variables and capturing the response to transit to another node according to the validation
+
+    content:
+
+    ```
+    - id: 'r1'
+      type: 'http_request'
+      method: 'GET'
+      url: 'https://inshorts.deta.dev/news?category={{category}}'
+
+      variables:
+        news: data
+
+      cases:
+        - id: 200
+          o_connection: m1
+        - id: default
+          o_connection: m2
+    ```
+    """
+
     method: str = ib(default=None, metadata={"json": "method"})
     url: str = ib(default=None, metadata={"json": "url"})
     variables: Dict = ib(metadata={"json": "variables"}, factory=dict)
