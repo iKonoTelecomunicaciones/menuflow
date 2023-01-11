@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import json
 from logging import getLogger
 from re import match
-from typing import Any, Dict, cast
+from typing import Dict, cast
 
 from mautrix.types import UserID
 from mautrix.util.logging import TraceLogger

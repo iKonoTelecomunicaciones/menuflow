@@ -13,7 +13,8 @@ class Config(BaseFileConfig):
         base = helper.base
         copy = helper.copy
         copy_dict = helper.copy_dict
-        copy("menuflow.users_ignore")
+        copy("menuflow.ignore_user_messages")
+        copy("menuflow.ignore_invitations_from")
         copy("menuflow.database")
         copy("menuflow.database_opts")
         copy("server.hostname")

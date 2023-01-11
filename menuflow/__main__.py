@@ -4,7 +4,6 @@ import sys
 from mautrix.util.async_db import Database, DatabaseException
 from mautrix.util.program import Program
 
-from .api import client
 from .api import init as init_api
 from .config import Config
 from .db import init as init_db
