@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from enum import Enum
 from logging import getLogger
 from typing import Any, Dict, cast
 
@@ -9,6 +10,12 @@ from mautrix.util.logging import TraceLogger
 
 from .config import Config
 from .db.room import Room as DBRoom
+
+
+class RoomState(Enum):
+    START = "start"
+    END = "end"
+    INPUT = "input"
 
 
 class Room(DBRoom):
@@ -21,7 +28,7 @@ class Room(DBRoom):
         self,
         room_id: RoomID,
         node_id: str,
-        state: str = None,
+        state: RoomState = None,
         id: int = None,
         variables: str = "{}",
     ) -> None:
@@ -39,7 +46,7 @@ class Room(DBRoom):
         del self.by_room_id[self.room_id]
         self.variables = "{}"
         self._variables = "{}"
-        self.node_id = "start"
+        self.node_id = RoomState.START.value
         self.state = None
         await self.update()
 
@@ -71,7 +78,7 @@ class Room(DBRoom):
             return room
 
         if create:
-            room = cls(room_id=room_id, node_id="start")
+            room = cls(room_id=room_id, node_id=RoomState.START.value)
 
             await room.insert()
             room = cast(cls, await super().get_by_room_id(room_id))
@@ -113,7 +120,7 @@ class Room(DBRoom):
         for variable in variables:
             await self.set_variable(variable_id=variable, value=variables[variable])
 
-    async def update_menu(self, node_id: str, state: str = None):
+    async def update_menu(self, node_id: str | RoomState, state: RoomState = None):
         """Updates the menu's node_id and state, and then updates the menu's content
 
         Parameters
@@ -128,7 +135,7 @@ class Room(DBRoom):
             f"The [room: {self.room_id}] will update his [node: {self.node_id}] to [{node_id}] "
             f"and his [state: {self.state}] to [{state}]"
         )
-        self.node_id = node_id
-        self.state = state
+        self.node_id = node_id.value if isinstance(node_id, RoomState) else node_id
+        self.state = state.value
         await self.update()
         self._add_to_cache()

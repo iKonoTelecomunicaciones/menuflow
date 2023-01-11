@@ -9,6 +9,7 @@ from jinja2 import Template
 from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
+from ..room import RoomState
 from .switch import Case, Switch
 
 
@@ -140,7 +141,7 @@ class HTTPRequest(Switch):
 
         if o_connection:
             await self.room.update_menu(
-                node_id=o_connection, state="end" if not self.cases else None
+                node_id=o_connection, state=RoomState.END if not self.cases else None
             )
 
         if variables:

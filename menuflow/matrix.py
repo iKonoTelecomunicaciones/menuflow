@@ -18,7 +18,7 @@ from mautrix.types import (
 
 from .config import Config
 from .flow import Flow
-from .room import Room
+from .room import Room, RoomState
 from .user import User
 
 
@@ -178,12 +178,12 @@ class MatrixHandler(MatrixClient):
 
         if node is None:
             self.log.debug(f"Room {room.room_id} does not have a node")
-            await room.update_menu(node_id="start")
+            await room.update_menu(node_id=RoomState.START)
             return
 
         self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.state}]")
 
-        if room.state == "input":
+        if room.state == RoomState.INPUT:
             self.log.debug(f"Creating [variable: {node.variable}] [content: {evt.content.body}]")
             try:
                 await room.set_variable(
@@ -207,10 +207,10 @@ class MatrixHandler(MatrixClient):
 
         # This is the case where the room is not in the input state and the node is an input node.
         # In this case, the message is shown and the menu is updated to the node's id and the state is set to input.
-        if node and node.type == "input" and room.state != "input":
+        if node and node.type == RoomState.INPUT and room.state != RoomState.INPUT:
             self.log.debug(f"Room {room.room_id} enters input node {node.id}")
             await node.show_message(room_id=room.room_id, client=self)
-            await room.update_menu(node_id=node.id, state="input")
+            await room.update_menu(node_id=node.id, state=RoomState.INPUT)
             return
 
         # Showing the message and updating the menu to the output connection.
@@ -219,7 +219,7 @@ class MatrixHandler(MatrixClient):
             await node.show_message(room_id=room.room_id, client=self)
 
             await room.update_menu(
-                node_id=node.o_connection, state="end" if not node.o_connection else None
+                node_id=node.o_connection, state=RoomState.END if not node.o_connection else None
             )
 
         node = self.flow.node(room=room)
@@ -237,9 +237,9 @@ class MatrixHandler(MatrixClient):
 
         node = self.flow.node(room=room)
 
-        if room.state == "end":
+        if room.state == RoomState.END:
             self.log.debug(f"The room {room.room_id} has terminated the flow")
-            await room.update_menu(node_id="start")
+            await room.update_menu(node_id=RoomState.START)
             return
 
         await self.algorithm(room=room, evt=evt)
