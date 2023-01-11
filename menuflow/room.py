@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from enum import Enum
 from logging import getLogger
 from typing import Any, Dict, cast
 
@@ -10,12 +9,7 @@ from mautrix.util.logging import TraceLogger
 
 from .config import Config
 from .db.room import Room as DBRoom
-
-
-class RoomState(Enum):
-    START = "start"
-    END = "end"
-    INPUT = "input"
+from .db.room import RoomState
 
 
 class Room(DBRoom):
@@ -78,8 +72,8 @@ class Room(DBRoom):
             return room
 
         if create:
-            room = cls(room_id=room_id, node_id=RoomState.START.value)
 
+            room = cls(room_id=room_id, node_id=RoomState.START.value)
             await room.insert()
             room = cast(cls, await super().get_by_room_id(room_id))
             room._add_to_cache()
@@ -132,10 +126,10 @@ class Room(DBRoom):
 
         """
         self.log.debug(
-            f"The [room: {self.room_id}] will update his [node: {self.node_id}] to [{node_id}] "
+            f"The [room: {self.room_id}] will update his [node: {self.node_id}] to [{node_id.value if isinstance(node_id, RoomState) else node_id}] "
             f"and his [state: {self.state}] to [{state}]"
         )
         self.node_id = node_id.value if isinstance(node_id, RoomState) else node_id
-        self.state = state.value
+        self.state = state.value if isinstance(state, RoomState) else state
         await self.update()
         self._add_to_cache()
