@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Dict
+from typing import TYPE_CHECKING, ClassVar
 
 from asyncpg import Record
 from attr import dataclass
@@ -23,12 +23,12 @@ class User:
         return cls(**row)
 
     @property
-    def values(self) -> tuple:
+    def values(self) -> UserID:
         return self.mxid
 
     async def insert(self) -> str:
         q = 'INSERT INTO "user" (mxid) VALUES ($1)'
-        await self.db.execute(q, *self.values)
+        await self.db.execute(q, self.values)
 
     @classmethod
     async def get_by_mxid(cls, mxid: UserID) -> User | None:

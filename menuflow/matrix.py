@@ -19,6 +19,7 @@ from mautrix.types import (
 from .config import Config
 from .flow import Flow
 from .room import Room
+from .user import User
 
 
 class MatrixHandler(MatrixClient):
@@ -98,8 +99,6 @@ class MatrixHandler(MatrixClient):
         try:
             room = await Room.get_by_room_id(room_id=evt.room_id)
             room.config = self.config
-            room.state = None
-            await room.update()
         except Exception as e:
             self.log.exception(e)
             self.unlock_room(evt.room_id)
@@ -108,6 +107,8 @@ class MatrixHandler(MatrixClient):
         await self.algorithm(room=room)
 
     async def handle_leave(self, evt: StrippedStateEvent):
+        room = await Room.get_by_room_id(room_id=evt.room_id, create=False)
+        await room.clean_up()
         self.unlock_room(evt.room_id)
 
     async def handle_message(self, message: MessageEvent) -> None:
@@ -128,8 +129,15 @@ class MatrixHandler(MatrixClient):
             return
 
         try:
+            user: User = await User.get_by_mxid(mxid=message.sender)
             room = await Room.get_by_room_id(room_id=message.room_id)
-            room.config = self.config
+            room.config = user.config = self.config
+
+            if not await room.get_varibale("customer_phone") and user.phone:
+                await room.set_variable("customer_phone", user.phone)
+
+            if not await room.get_varibale("bot_mxid"):
+                await room.set_variable("bot_mxid", self.mxid)
         except Exception as e:
             self.log.exception(e)
             return
