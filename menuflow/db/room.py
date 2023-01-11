@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, Dict
 
 from asyncpg import Record
@@ -10,6 +11,12 @@ from mautrix.util.async_db import Database
 fake_db = Database.create("") if TYPE_CHECKING else None
 
 
+class RoomState(Enum):
+    START = "start"
+    END = "end"
+    INPUT = "input"
+
+
 @dataclass
 class Room:
 
@@ -18,8 +25,8 @@ class Room:
     id: int | None
     room_id: RoomID
     variables: Dict | None
-    node_id: str
-    state: str | None
+    node_id: str | RoomState
+    state: RoomState | None = None
 
     @classmethod
     def _from_row(cls, row: Record) -> Room | None:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from json import JSONDecodeError, dumps, loads
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
