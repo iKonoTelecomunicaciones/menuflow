@@ -4,14 +4,15 @@ menuflow:
         min_size: 1
         max_size: 10
 
-    # Ignore messages from this users, it is a list of regex
-    ignore_user_messages:
-        - "@whatsappbot:example.com"
-        - "@admin:example.com"
+    # Ignore messages or invitations from this users, it accepts user_ids and regex
+    ignore:
+        messages_from:
+            - "@whatsappbot:example.com"
+            - "@admin:example.com"
 
-    ignore_invitations_from:
-        - "@whatsappbot:example.com"
-        - "@admin:example.com"
+        invitations_from:
+            - "@whatsappbot:example.com"
+            - "@admin:example.com"
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0

@@ -66,9 +66,9 @@ class Util:
         """
 
         user_regex = (
-            "menuflow.ignore_user_messages"
+            "menuflow.ignore.messages_from"
             if origin == "message"
-            else "menuflow.ignore_invitations_from"
+            else "menuflow.ignore.invitations_from"
         )
 
         if self.is_user_id(mxid):
