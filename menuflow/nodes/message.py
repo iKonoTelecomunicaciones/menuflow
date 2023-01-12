@@ -8,7 +8,6 @@ from markdown import markdown
 from mautrix.errors.request import MLimitExceeded
 from mautrix.types import Format, MessageType, RoomID, TextMessageEventContent
 
-from ..jinja.jinja_template import jinja_env
 from ..matrix import MatrixClient
 from .node import Node
 
@@ -53,6 +52,7 @@ class Message(Node):
 
         """
         if not self.text:
+            self.log.warning(f"The message {self.id} hasn't been send because the text is empty")
             return
 
         msg_content = TextMessageEventContent(
