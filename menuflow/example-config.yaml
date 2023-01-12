@@ -1,13 +1,18 @@
 menuflow:
-  database: postgresql://menuflow:secretfoo@postgres/menuflow
-  database_opts:
-      min_size: 1
-      max_size: 10
+    database: postgresql://menuflow:secretfoo@postgres/menuflow
+    database_opts:
+        min_size: 1
+        max_size: 10
 
-  # User to be ignored
-  users_ignore:
-  - '@whatsappbot:example.com'
+    # Ignore messages or invitations from this users, it accepts user_ids and regex
+    ignore:
+        messages_from:
+            - "@whatsappbot:example.com"
+            - "@admin:example.com"
 
+        invitations_from:
+            - "@whatsappbot:example.com"
+            - "@admin:example.com"
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0
@@ -22,7 +27,7 @@ server:
     unshared_secret: generate
 
 utils:
-  user_phone_regex: "^@(?P<user_prefix>.+)_(?P<number>[0-9]{8,}):.+$"
+    user_phone_regex: "^@(?P<user_prefix>.+)_(?P<number>[0-9]{8,}):.+$"
 
 # Python logging configuration.
 #

@@ -21,6 +21,7 @@ from .db.room import RoomState
 from .flow import Flow
 from .room import Room
 from .user import User
+from .utils.util import Util
 
 
 class MatrixHandler(MatrixClient):
@@ -34,6 +35,7 @@ class MatrixHandler(MatrixClient):
         flow = Config(path=f"/data/flows/{self.mxid}.yaml", base_path="")
         flow.load()
         self.flow = Flow.deserialize(flow["menu"])
+        self.util = Util(self.config)
 
     def handle_sync(self, data: JSON) -> list[asyncio.Task]:
         # This is a way to remove duplicate events from the sync
@@ -75,8 +77,9 @@ class MatrixHandler(MatrixClient):
                 await self.handle_leave(evt)
 
     async def handle_invite(self, evt: StrippedStateEvent):
-        if evt.sender in self.config["menuflow.users_ignore"] or evt.sender == self.mxid:
+        if self.util.ignore_user(mxid=evt.sender, origin="invite") or evt.sender == self.mxid:
             self.log.debug(f"This incoming invite event from {evt.room_id} will be ignored")
+            await self.leave_room(evt.room_id)
             return
 
         await self.join_room(evt.room_id)
@@ -127,7 +130,10 @@ class MatrixHandler(MatrixClient):
             return
 
         # Ignore bot messages
-        if message.sender in self.config["menuflow.users_ignore"] or message.sender == self.mxid:
+        if (
+            self.util.ignore_user(mxid=message.sender, origin="message")
+            or message.sender == self.mxid
+        ):
             self.log.debug(
                 f"This incoming message from {message.room_id} will be ignored :: {message.content.body}"
             )
