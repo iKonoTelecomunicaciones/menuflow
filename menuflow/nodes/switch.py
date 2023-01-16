@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
@@ -9,7 +9,7 @@ from .node import Node
 @dataclass
 class Case(SerializableAttrs):
     id: str = ib(metadata={"json": "id"})
-    variables: Dict = ib(metadata={"json": "variables"}, factory=dict)
+    variables: Dict[str, Any] = ib(metadata={"json": "variables"}, factory=dict)
     o_connection: str = ib(default=None, metadata={"json": "o_connection"})
 
 
@@ -59,7 +59,9 @@ class Switch(Node):
         for case in self.cases:
             cases_dict[str(case.id)] = {
                 "o_connection": case.o_connection,
-                "variables": case.variables,
+                "variables": case.variables
+                if isinstance(case.variables, dict)
+                else case.variables.__dict__,
             }
         return cases_dict
 
@@ -105,15 +107,16 @@ class Switch(Node):
             variables_recorded = []
 
             if case_result.get("variables") and self.room:
-                for varible in case_result.get("variables", {}).__dict__:
-                    if varible in variables_recorded:
+
+                for variable in case_result.get("variables", {}):
+                    if variable in variables_recorded:
                         continue
 
                     await self.room.set_variable(
-                        variable_id=varible,
-                        value=self.render_data(case_result["variables"][varible]),
+                        variable_id=variable,
+                        value=self.render_data(case_result["variables"][variable]),
                     )
-                    variables_recorded.append(varible)
+                    variables_recorded.append(variable)
 
             case_o_connection = case_result.get("o_connection")
 
