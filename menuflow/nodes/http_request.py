@@ -78,6 +78,15 @@ class HTTPRequest(Switch):
     def _data(self) -> Dict:
         return self.render_data(self.serialize()["data"])
 
+    @property
+    def _context_params(self) -> Dict[str, Template]:
+        return self.render_data(
+            {
+                "bot_mxid": "{{bot_mxid}}",
+                "customer_room_id": "{{customer_room_id}}",
+            }
+        )
+
     async def request(self, session: ClientSession) -> Tuple(int, str):
 
         request_body = {}
@@ -97,7 +106,12 @@ class HTTPRequest(Switch):
         if self.data:
             request_body["json"] = self._data
 
-        response = await session.request(self.method, self._url, **request_body)
+        response = await session.request(
+            self.method, self._url, **request_body, trace_request_ctx=self._context_params
+        )
+
+        if response.status == 401:
+            return response.status, await response.text()
 
         variables = {}
         o_connection = None

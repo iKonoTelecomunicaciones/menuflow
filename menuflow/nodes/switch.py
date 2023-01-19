@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
 
-from .node import Node
+from .flow_object import FlowObject
 
 
 @dataclass
@@ -14,7 +14,7 @@ class Case(SerializableAttrs):
 
 
 @dataclass
-class Switch(Node):
+class Switch(FlowObject):
     """
     ## Switch
 
