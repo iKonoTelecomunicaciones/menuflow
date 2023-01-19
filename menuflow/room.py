@@ -79,7 +79,7 @@ class Room(DBRoom):
             room._add_to_cache()
             return room
 
-    async def get_varibale(self, variable_id: str) -> Any | None:
+    async def get_variable(self, variable_id: str) -> Any | None:
         """This function returns the value of a variable with the given ID
 
         Parameters

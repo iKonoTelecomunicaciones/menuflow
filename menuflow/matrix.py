@@ -103,7 +103,7 @@ class MatrixHandler(MatrixClient):
         try:
             room = await Room.get_by_room_id(room_id=evt.room_id)
             room.config = self.config
-            if not await room.get_varibale("bot_mxid"):
+            if not await room.get_variable("bot_mxid"):
                 await room.set_variable("bot_mxid", self.mxid)
                 await room.set_variable("customer_room_id", evt.room_id)
         except Exception as e:
@@ -147,7 +147,7 @@ class MatrixHandler(MatrixClient):
             room = await Room.get_by_room_id(room_id=message.room_id)
             room.config = user.config = self.config
 
-            if not await room.get_varibale("customer_phone") and user.phone:
+            if not await room.get_variable("customer_phone") and user.phone:
                 await room.set_variable("customer_phone", user.phone)
 
         except Exception as e:

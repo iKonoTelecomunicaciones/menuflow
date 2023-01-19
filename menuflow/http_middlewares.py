@@ -51,11 +51,11 @@ async def start_auth_middleware(session, trace_config_ctx, params):
         params.headers.update(middleware._general_headers)
 
         if middleware.type == "jwt":
-            if not await room.get_varibale("token"):
+            if not await room.get_variable("token"):
                 await middleware.auth_request(session=session)
 
             params.headers.update(
-                {"Authorization": f"{middleware._token_type} {await room.get_varibale('token')}"}
+                {"Authorization": f"{middleware._token_type} {await room.get_variable('token')}"}
             )
             break
         elif middleware.type == "basic":
