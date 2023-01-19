@@ -110,6 +110,10 @@ class HTTPRequest(Switch):
             self.method, self._url, **request_body, trace_request_ctx=self._context_params
         )
 
+        self.log.debug(
+            f"node: {self.id} method: {self.method} url: {self._url} status: {response.status}"
+        )
+
         if response.status == 401:
             return response.status, await response.text()
 
@@ -119,10 +123,6 @@ class HTTPRequest(Switch):
         if self._cookies:
             for cookie in self._cookies:
                 variables[cookie] = response.cookies.output(cookie)
-
-        self.log.debug(
-            f"node: {self.id} method: {self.method} url: {self._url} status: {response.status}"
-        )
 
         try:
             response_data = await response.json()

@@ -32,6 +32,48 @@ class General(SerializableAttrs):
 
 @dataclass
 class HTTPMiddleware(FlowObject):
+    """
+    ## HTTPMiddleware
+
+    An HTTPMiddleware define what to do before HTTP request will send.
+    You can have more than one middleware on your flow, each one is specific by URL,
+    it only applies for the requests that start by the URL define in the middleware.
+
+    content:
+
+    ```
+    middlewares:
+
+        - id: api_jwt
+            type: jwt
+            url: "https://webapinet.userfoo.com/api"
+            token_type: 'Bearer'
+            auth:
+                method: POST
+                token_path: /login/authenticate
+                headers:
+                    content-type: application/json
+                data:
+                    username: "foo"
+                    password: "secretfoo"
+                variables:
+                    token: token
+            general:
+                headers:
+                    custom: custom_header
+
+        - id: api_basic
+            url: "https://dev.foo.com.co/customers_list"
+            type: basic
+            auth:
+            basic_auth:
+                login: admin
+                password: secretfoo
+            general:
+                headers:
+                    custom: custom_header
+    ```
+    """
 
     url: str = ib(default=None, metadata={"json": "url"})
     token_type: str = ib(default=None, metadata={"json": "token_type"})
@@ -80,6 +122,18 @@ class HTTPMiddleware(FlowObject):
         return self.render_data(self.serialize()["general"]["headers"])
 
     async def auth_request(self, session: ClientSession) -> Tuple[int, str]:
+        """Make the auth request to refresh api token
+
+        Parameters
+        ----------
+        session : ClientSession
+            ClientSession
+
+        Returns
+        -------
+            The status code and the response text.
+
+        """
 
         request_body = {}
 

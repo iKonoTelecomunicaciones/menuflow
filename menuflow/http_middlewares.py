@@ -4,7 +4,6 @@ import base64
 from logging import getLogger
 from typing import Dict, List
 
-from aiohttp import BasicAuth
 from mautrix.types import RoomID, UserID
 from mautrix.util.logging import TraceLogger
 
@@ -18,10 +17,36 @@ flow_middlewares_cache: Dict[UserID, List[HTTPMiddleware]] = {}
 
 
 def add_to_cache(*, user_id: UserID, middlewares: List[HTTPMiddleware]):
+    """It adds a list of HTTP middlewares to a cache
+
+    Parameters
+    ----------
+    user_id : UserID
+        The user ID of the bot.
+    middlewares : List[HTTPMiddleware]
+        A list of middlewares to be added to the cache.
+
+    """
     flow_middlewares_cache[user_id] = middlewares
 
 
-async def get_middlewares(user_id: UserID, customer_room_id: RoomID) -> Flow:
+async def get_middlewares(user_id: UserID, customer_room_id: RoomID) -> List[HTTPMiddleware]:
+    """It loads the flow file for the user, deserializes it,
+    gets the middlewares for the flow, and adds it to the cache
+
+    Parameters
+    ----------
+    user_id : UserID
+        The user id of the bot
+    customer_room_id : RoomID
+        The room ID of the customer.
+
+    Returns
+    -------
+        A list of middlewares
+
+    """
+
     if not flow_middlewares_cache.get(user_id):
         flow_file = Config(path=f"/data/flows/{user_id}.yaml", base_path="")
         flow_file.load()
@@ -34,8 +59,21 @@ async def get_middlewares(user_id: UserID, customer_room_id: RoomID) -> Flow:
 
 
 async def start_auth_middleware(session, trace_config_ctx, params):
-    trace_request_ctx = trace_config_ctx.__dict__
-    if not trace_request_ctx["trace_request_ctx"]:
+    """It checks if the request is going to a URL that has a middleware,
+    and if so, it adds the appropriate headers to the request
+
+    Parameters
+    ----------
+    session
+        The session object that is used to make the request.
+    trace_config_ctx
+        This is the context of the request.
+    params
+        Dict - the parameters of the request
+
+    """
+    trace_request_ctx: Dict = trace_config_ctx.__dict__
+    if not trace_request_ctx.get("trace_request_ctx"):
         return
 
     context_params: Dict = trace_request_ctx["trace_request_ctx"]
@@ -70,8 +108,25 @@ async def start_auth_middleware(session, trace_config_ctx, params):
 
 
 async def end_auth_middleware(session, trace_config_ctx, params):
-    trace_request_ctx = trace_config_ctx.__dict__
-    if not trace_request_ctx["trace_request_ctx"]:
+    """If the response status is 401, refresh the token and retry the request
+
+    Parameters
+    ----------
+    session
+        The session object that is used to make the request.
+    trace_config_ctx
+        This is the context of the request. It contains the request parameters.
+    params
+        The parameters of the request.
+
+    Returns
+    -------
+        The response from the request.
+
+    """
+
+    trace_request_ctx: Dict = trace_config_ctx.__dict__
+    if not trace_request_ctx.get("trace_request_ctx"):
         return
 
     if params.response.status == 401:
