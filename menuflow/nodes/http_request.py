@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 from aiohttp import BasicAuth, ClientSession
 from aiohttp.client_exceptions import ContentTypeError
@@ -42,12 +42,12 @@ class HTTPRequest(Switch):
 
     method: str = ib(default=None, metadata={"json": "method"})
     url: str = ib(default=None, metadata={"json": "url"})
-    variables: Dict = ib(metadata={"json": "variables"}, factory=dict)
-    cookies: Dict = ib(metadata={"json": "cookies"}, factory=dict)
-    query_params: Dict = ib(metadata={"json": "query_params"}, factory=dict)
-    headers: Dict = ib(metadata={"json": "headers"}, factory=dict)
-    basic_auth: Dict = ib(metadata={"json": "basic_auth"}, factory=dict)
-    data: Dict = ib(metadata={"json": "data"}, factory=dict)
+    variables: Dict[str, Any] = ib(metadata={"json": "variables"}, factory=dict)
+    cookies: Dict[str, Any] = ib(metadata={"json": "cookies"}, factory=dict)
+    query_params: Dict[str, Any] = ib(metadata={"json": "query_params"}, factory=dict)
+    headers: Dict[str, Any] = ib(metadata={"json": "headers"}, factory=dict)
+    basic_auth: Dict[str, Any] = ib(metadata={"json": "basic_auth"}, factory=dict)
+    data: Dict[str, Any] = ib(metadata={"json": "data"}, factory=dict)
     cases: List[Case] = ib(metadata={"json": "cases"}, factory=list)
 
     @property
