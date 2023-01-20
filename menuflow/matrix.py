@@ -238,9 +238,12 @@ class MatrixHandler(MatrixClient):
         node = self.flow.node(room=room)
 
         if node and node.type == "http_request":
+            middleware = self.flow.middleware(room=room, middleware_id=node.middleware)
             self.log.debug(f"Room {room.room_id} enters http_request node {node.id}")
             try:
-                status, response = await node.request(session=self.api.session)
+                status, response = await node.request(
+                    session=self.api.session, middleware=middleware
+                )
                 self.log.info(f"http_request node {node.id} had a status of {status}")
                 if not status in [200, 201]:
                     self.log.error(response)

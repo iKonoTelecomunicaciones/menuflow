@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 from aiohttp import BasicAuth, ClientSession
 from aiohttp.client_exceptions import ContentTypeError
@@ -11,6 +11,9 @@ from ruamel.yaml.comments import CommentedMap
 
 from ..db.room import RoomState
 from .switch import Case, Switch
+
+if TYPE_CHECKING:
+    from middlewares.http import HTTPMiddleware
 
 
 @dataclass
@@ -42,6 +45,7 @@ class HTTPRequest(Switch):
 
     method: str = ib(default=None, metadata={"json": "method"})
     url: str = ib(default=None, metadata={"json": "url"})
+    middleware: str = ib(default=None, metadata={"json": "middleware"})
     variables: Dict[str, Any] = ib(metadata={"json": "variables"}, factory=dict)
     cookies: Dict[str, Any] = ib(metadata={"json": "cookies"}, factory=dict)
     query_params: Dict[str, Any] = ib(metadata={"json": "query_params"}, factory=dict)
@@ -87,7 +91,7 @@ class HTTPRequest(Switch):
             }
         )
 
-    async def request(self, session: ClientSession) -> Tuple(int, str):
+    async def request(self, session: ClientSession, middleware: HTTPMiddleware) -> Tuple(int, str):
 
         request_body = {}
 
@@ -106,8 +110,11 @@ class HTTPRequest(Switch):
         if self.data:
             request_body["json"] = self._data
 
+        request_params_ctx = self._context_params
+        request_params_ctx.update({"middleware": middleware})
+
         response = await session.request(
-            self.method, self._url, **request_body, trace_request_ctx=self._context_params
+            self.method, self._url, **request_body, trace_request_ctx=request_params_ctx
         )
 
         self.log.debug(

@@ -60,7 +60,7 @@ class HTTPMiddleware(FlowObject):
                     token: token
             general:
                 headers:
-                    custom: custom_header
+                    content-type: application/json
 
         - id: api_basic
             url: "https://dev.foo.com.co/customers_list"
@@ -71,7 +71,7 @@ class HTTPMiddleware(FlowObject):
                 password: secretfoo
             general:
                 headers:
-                    custom: custom_header
+                    application/x-www-form-urlencoded
     ```
     """
 
@@ -158,7 +158,7 @@ class HTTPMiddleware(FlowObject):
                 variables[cookie] = response.cookies.output(cookie)
 
         self.log.debug(
-            f"middleware: {self.id} method: {self.auth.method} url: {self._token_url} status: {response.status}"
+            f"middleware: {self.id}  type: {self.type} method: {self.auth.method} url: {self._token_url} status: {response.status}"
         )
 
         try:

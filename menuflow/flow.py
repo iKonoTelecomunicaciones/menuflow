@@ -25,6 +25,14 @@ class Flow(SerializableAttrs):
             if node_id == node.id:
                 return node
 
+    def get_middleware_by_id(self, middleware_id: str) -> HTTPMiddleware | None:
+        if not self.middlewares:
+            return
+
+        for middleware in self.middlewares:
+            if middleware_id == middleware.id:
+                return middleware
+
     def build_object(
         self,
         data: Dict,
@@ -68,7 +76,7 @@ class Flow(SerializableAttrs):
 
         return node
 
-    def _middlewares(self, room: Room) -> List[HTTPMiddleware] | None:
+    def middleware(self, room: Room, middleware_id: str) -> HTTPMiddleware | None:
         """A function that returns a list of middlewares.
 
         Parameters
@@ -82,9 +90,12 @@ class Flow(SerializableAttrs):
 
         """
 
-        middlewares: List[HTTPMiddleware] = []
-        for middleware in self.middlewares:
-            middleware.room = room
-            middleware = self.build_object(middleware.serialize(), HTTPMiddleware)
-            middlewares.append(middleware)
-        return middlewares
+        middleware: HTTPMiddleware = self.get_middleware_by_id(middleware_id=middleware_id)
+
+        if not middleware:
+            return
+
+        middleware.room = room
+        middleware = self.build_object(middleware.serialize(), HTTPMiddleware)
+
+        return middleware
