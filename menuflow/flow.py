@@ -77,16 +77,18 @@ class Flow(SerializableAttrs):
         return node
 
     def middleware(self, room: Room, middleware_id: str) -> HTTPMiddleware | None:
-        """A function that returns a list of middlewares.
+        """It returns the middleware object.
 
         Parameters
         ----------
         room : Room
-            Room
+            The room that the middleware is being called from.
+        middleware_id : str
+            The ID of the middleware you want to get.
 
         Returns
         -------
-            A list of middlewares
+            A middleware object
 
         """
 
