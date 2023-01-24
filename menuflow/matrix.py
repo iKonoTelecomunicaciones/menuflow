@@ -11,6 +11,7 @@ from mautrix.types import (
     Membership,
     MemberStateEventContent,
     MessageEvent,
+    MessageType,
     RoomID,
     StateUnsigned,
     StrippedStateEvent,
@@ -136,6 +137,7 @@ class MatrixHandler(MatrixClient):
         if (
             self.util.ignore_user(mxid=message.sender, origin="message")
             or message.sender == self.mxid
+            or message.content.msgtype == MessageType.NOTICE
         ):
             self.log.debug(
                 f"This incoming message from {message.room_id} will be ignored :: {message.content.body}"
