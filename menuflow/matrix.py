@@ -28,6 +28,8 @@ class MatrixHandler(MatrixClient):
 
     LAST_JOIN_EVENT: Dict[RoomID, int] = {}
     LOCKED_ROOMS = set()
+    LAST_HTTP_NODE: str | None = None
+    ATTEMPS_COUNT: int = 0
 
     def __init__(self, config: Config, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -245,11 +247,26 @@ class MatrixHandler(MatrixClient):
                     session=self.api.session, middleware=middleware
                 )
                 self.log.info(f"http_request node {node.id} had a status of {status}")
+
+                if status == 401:
+                    self.LAST_HTTP_NODE = node.id
+                    self.ATTEMPS_COUNT += 1
+                    self.log.debug(f"HTTP auth attemp {self.ATTEMPS_COUNT}, traying again ...")
+
                 if not status in [200, 201]:
                     self.log.error(response)
+                else:
+                    self.LAST_HTTP_NODE = None
+                    self.ATTEMPS_COUNT = 0
             except Exception as e:
                 self.log.exception(e)
                 return
+
+            if self.LAST_HTTP_NODE == node.id and self.ATTEMPS_COUNT >= middleware._attemps:
+                self.log.debug("Attemps limit reached, o_connection set as `default`")
+                self.LAST_HTTP_NODE = None
+                self.ATTEMPS_COUNT = 0
+                await room.update_menu(await node.get_case_by_id("default"), None)
 
         node = self.flow.node(room=room)
 

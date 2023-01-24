@@ -16,6 +16,7 @@ from ..nodes.flow_object import FlowObject
 class Auth(SerializableAttrs):
     method: str = ib(default=None, metadata={"json": "method"})
     token_path: str = ib(default=None, metadata={"json": "token_path"})
+    attemps: int = ib(default=None, metadata={"json": "attemps"})
     headers: Dict[str, Any] = ib(default=None, metadata={"json": "headers"})
     cookies: Dict[str, Any] = ib(metadata={"json": "cookies"}, factory=dict)
     data: Dict[str, Any] = ib(default=None, metadata={"json": "data"})
@@ -66,12 +67,12 @@ class HTTPMiddleware(FlowObject):
             url: "https://dev.foo.com.co/customers_list"
             type: basic
             auth:
-            basic_auth:
-                login: admin
-                password: secretfoo
+                basic_auth:
+                    login: admin
+                    password: secretfoo
             general:
                 headers:
-                    application/x-www-form-urlencoded
+                    content-type: application/x-www-form-urlencoded
     ```
     """
 
@@ -92,6 +93,10 @@ class HTTPMiddleware(FlowObject):
     @property
     def _token_type(self) -> Template:
         return self.render_data(self.token_type)
+
+    @property
+    def _attemps(self) -> int:
+        return int(self.auth.attemps) if self.auth.attemps else 2
 
     @property
     def _variables(self) -> Template:
