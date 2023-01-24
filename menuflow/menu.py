@@ -5,7 +5,7 @@ import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any, AsyncGenerator, Awaitable, Callable, cast
 
-from aiohttp import ClientSession
+from aiohttp import ClientSession, TraceConfig
 from mautrix.client import Client, InternalEventType
 from mautrix.errors import MatrixInvalidToken
 from mautrix.types import (
@@ -24,6 +24,7 @@ from mautrix.util.async_getter_lock import async_getter_lock
 from mautrix.util.logging import TraceLogger
 
 from .db import Client as DBClient
+from .http_middlewares import end_auth_middleware, start_auth_middleware
 from .matrix import MatrixHandler
 
 if TYPE_CHECKING:
@@ -89,7 +90,10 @@ class MenuClient(DBClient):
         self._postinited = True
         self.cache[self.id] = self
         self.log = self.log.getChild(self.id)
-        self.http_client = ClientSession(loop=self.menuflow.loop)
+        trace_config = TraceConfig()
+        trace_config.on_request_start.append(start_auth_middleware)
+        trace_config.on_request_end.append(end_auth_middleware)
+        self.http_client = ClientSession(loop=self.menuflow.loop, trace_configs=[trace_config])
         self.started = False
         self.sync_ok = True
         self.matrix_handler: MatrixHandler = self._make_client()

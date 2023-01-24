@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 from aiohttp import BasicAuth, ClientSession
 from aiohttp.client_exceptions import ContentTypeError
@@ -11,6 +11,9 @@ from ruamel.yaml.comments import CommentedMap
 
 from ..db.room import RoomState
 from .switch import Case, Switch
+
+if TYPE_CHECKING:
+    from middlewares.http import HTTPMiddleware
 
 
 @dataclass
@@ -42,6 +45,7 @@ class HTTPRequest(Switch):
 
     method: str = ib(default=None, metadata={"json": "method"})
     url: str = ib(default=None, metadata={"json": "url"})
+    middleware: str = ib(default=None, metadata={"json": "middleware"})
     variables: Dict[str, Any] = ib(metadata={"json": "variables"}, factory=dict)
     cookies: Dict[str, Any] = ib(metadata={"json": "cookies"}, factory=dict)
     query_params: Dict[str, Any] = ib(metadata={"json": "query_params"}, factory=dict)
@@ -78,7 +82,16 @@ class HTTPRequest(Switch):
     def _data(self) -> Dict:
         return self.render_data(self.serialize()["data"])
 
-    async def request(self, session: ClientSession) -> Tuple(int, str):
+    @property
+    def _context_params(self) -> Dict[str, Template]:
+        return self.render_data(
+            {
+                "bot_mxid": "{{bot_mxid}}",
+                "customer_room_id": "{{customer_room_id}}",
+            }
+        )
+
+    async def request(self, session: ClientSession, middleware: HTTPMiddleware) -> Tuple(int, str):
 
         request_body = {}
 
@@ -97,7 +110,19 @@ class HTTPRequest(Switch):
         if self.data:
             request_body["json"] = self._data
 
-        response = await session.request(self.method, self._url, **request_body)
+        request_params_ctx = self._context_params
+        request_params_ctx.update({"middleware": middleware})
+
+        response = await session.request(
+            self.method, self._url, **request_body, trace_request_ctx=request_params_ctx
+        )
+
+        self.log.debug(
+            f"node: {self.id} method: {self.method} url: {self._url} status: {response.status}"
+        )
+
+        if response.status == 401:
+            return response.status, await response.text()
 
         variables = {}
         o_connection = None
@@ -105,10 +130,6 @@ class HTTPRequest(Switch):
         if self._cookies:
             for cookie in self._cookies:
                 variables[cookie] = response.cookies.output(cookie)
-
-        self.log.debug(
-            f"node: {self.id} method: {self.method} url: {self._url} status: {response.status}"
-        )
 
         try:
             response_data = await response.json()

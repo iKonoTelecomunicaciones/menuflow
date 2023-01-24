@@ -7,6 +7,7 @@ from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
+from .middlewares.http import HTTPMiddleware
 from .nodes import HTTPRequest, Input, Message, Switch
 from .room import Room
 
@@ -15,6 +16,7 @@ from .room import Room
 class Flow(SerializableAttrs):
 
     nodes: List[Message, Input, HTTPRequest] = ib(metadata={"json": "nodes"}, factory=list)
+    middlewares: List[HTTPMiddleware] = ib(default=None, metadata={"json": "middlewares"})
 
     log: TraceLogger = logging.getLogger("menuflow.flow")
 
@@ -23,9 +25,33 @@ class Flow(SerializableAttrs):
             if node_id == node.id:
                 return node
 
-    def build_node(
-        self, data: Dict, type_class: Message | Input | HTTPRequest | Switch | None
-    ) -> Message | Input | HTTPRequest | Switch | None:
+    def get_middleware_by_id(self, middleware_id: str) -> HTTPMiddleware | None:
+        if not self.middlewares:
+            return
+
+        for middleware in self.middlewares:
+            if middleware_id == middleware.id:
+                return middleware
+
+    def build_object(
+        self,
+        data: Dict,
+        type_class: Message | Input | HTTPRequest | Switch | HTTPMiddleware | None,
+    ) -> Message | Input | HTTPRequest | Switch | HTTPMiddleware | None:
+        """It takes a dictionary of data and a class, and returns an instance of that class
+
+        Parameters
+        ----------
+        data : Dict
+            The data to deserialize.
+        type_class : Message | Input | HTTPRequest | Switch | HTTPMiddleware | None
+            The class of the middleware to be built.
+
+        Returns
+        -------
+            A deserialized instance of the type_class.
+
+        """
         return type_class.deserialize(data)
 
     def node(self, room: Room) -> Message | Input | HTTPRequest | None:
@@ -38,14 +64,40 @@ class Flow(SerializableAttrs):
         node.room = room
 
         if node.type == "message":
-            node = self.build_node(node.serialize(), Message)
+            node = self.build_object(node.serialize(), Message)
         elif node.type == "input":
-            node = self.build_node(node.serialize(), Input)
+            node = self.build_object(node.serialize(), Input)
         elif node.type == "http_request":
-            node = self.build_node(node.serialize(), HTTPRequest)
+            node = self.build_object(node.serialize(), HTTPRequest)
         elif node.type == "switch":
-            node = self.build_node(node.serialize(), Switch)
+            node = self.build_object(node.serialize(), Switch)
         else:
             return
 
         return node
+
+    def middleware(self, room: Room, middleware_id: str) -> HTTPMiddleware | None:
+        """It returns the middleware object.
+
+        Parameters
+        ----------
+        room : Room
+            The room that the middleware is being called from.
+        middleware_id : str
+            The ID of the middleware you want to get.
+
+        Returns
+        -------
+            A middleware object
+
+        """
+
+        middleware: HTTPMiddleware = self.get_middleware_by_id(middleware_id=middleware_id)
+
+        if not middleware:
+            return
+
+        middleware.room = room
+        middleware = self.build_object(middleware.serialize(), HTTPMiddleware)
+
+        return middleware

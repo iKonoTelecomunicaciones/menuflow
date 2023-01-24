@@ -103,6 +103,9 @@ class MatrixHandler(MatrixClient):
         try:
             room = await Room.get_by_room_id(room_id=evt.room_id)
             room.config = self.config
+            if not await room.get_variable("bot_mxid"):
+                await room.set_variable("bot_mxid", self.mxid)
+                await room.set_variable("customer_room_id", evt.room_id)
         except Exception as e:
             self.log.exception(e)
             self.unlock_room(evt.room_id)
@@ -144,12 +147,9 @@ class MatrixHandler(MatrixClient):
             room = await Room.get_by_room_id(room_id=message.room_id)
             room.config = user.config = self.config
 
-            if not await room.get_varibale("customer_phone") and user.phone:
+            if not await room.get_variable("customer_phone") and user.phone:
                 await room.set_variable("customer_phone", user.phone)
 
-            if not await room.get_varibale("bot_mxid"):
-                await room.set_variable("bot_mxid", self.mxid)
-                await room.set_variable("customer_room_id", message.room_id)
         except Exception as e:
             self.log.exception(e)
             return
@@ -238,9 +238,12 @@ class MatrixHandler(MatrixClient):
         node = self.flow.node(room=room)
 
         if node and node.type == "http_request":
+            middleware = self.flow.middleware(room=room, middleware_id=node.middleware)
             self.log.debug(f"Room {room.room_id} enters http_request node {node.id}")
             try:
-                status, response = await node.request(session=self.api.session)
+                status, response = await node.request(
+                    session=self.api.session, middleware=middleware
+                )
                 self.log.info(f"http_request node {node.id} had a status of {status}")
                 if not status in [200, 201]:
                     self.log.error(response)

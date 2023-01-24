@@ -9,11 +9,11 @@ from mautrix.errors.request import MLimitExceeded
 from mautrix.types import Format, MessageType, RoomID, TextMessageEventContent
 
 from ..matrix import MatrixClient
-from .node import Node
+from .flow_object import FlowObject
 
 
 @dataclass
-class Message(Node):
+class Message(FlowObject):
     """
     ## Message
 

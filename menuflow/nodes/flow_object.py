@@ -12,7 +12,7 @@ from ..utils.base_logger import BaseLogger
 
 
 @dataclass
-class Node(SerializableAttrs, BaseLogger):
+class FlowObject(SerializableAttrs, BaseLogger):
     id: str = ib(metadata={"json": "id"})
     type: str = ib(metadata={"json": "type"})
     room: Room
