@@ -261,7 +261,7 @@ class MatrixHandler(MatrixClient):
                         }
                     )
                     self.log.debug(
-                        "HTTP auth attemp"
+                        "HTTP auth attempt"
                         f"{self.HTTP_ATTEMPTS[room.room_id]['attempts_count']}, traying again ..."
                     )
 
@@ -280,7 +280,7 @@ class MatrixHandler(MatrixClient):
                 and self.HTTP_ATTEMPTS[room.room_id]["last_http_node"] == node.id
                 and self.HTTP_ATTEMPTS[room.room_id]["attempts_count"] >= middleware._attempts
             ):
-                self.log.debug("Attemps limit reached, o_connection set as `default`")
+                self.log.debug("Attempts limit reached, o_connection set as `default`")
                 self.HTTP_ATTEMPTS.update(
                     {room.room_id: {"last_http_node": None, "attempts_count": 0}}
                 )
