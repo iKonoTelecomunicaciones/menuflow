@@ -38,11 +38,11 @@ async def start_auth_middleware(
     middleware = context_params.get("middleware")
 
     if not middleware:
-        log.debug(f"There's no define middleware for this request: {params.url}")
+        log.info(f"There's no define middleware for this request: {params.url}")
         return
 
     if not str(params.url).startswith(middleware.url):
-        log.debug(f"The request url do not match with the meddleware url")
+        log.info(f"The request url do not match with the meddleware url")
         return
 
     params.headers.update(middleware._general_headers)
@@ -59,7 +59,7 @@ async def start_auth_middleware(
             {"Authorization": f"{middleware._token_type} {await room.get_variable(token_key)}"}
         )
     elif middleware.type == "basic":
-        log.debug(f"middleware: {middleware.id} type: {middleware.type} executing ...")
+        log.info(f"middleware: {middleware.id} type: {middleware.type} executing ...")
         auth_str = (
             f"{middleware._basic_auth['login']}:{middleware._basic_auth['password']}".encode(
                 "utf-8"
@@ -96,14 +96,14 @@ async def end_auth_middleware(
     middleware = context_params.get("middleware")
 
     if not middleware:
-        log.debug(f"There's no define middleware for this request: {params.url}")
+        log.info(f"There's no define middleware for this request: {params.url}")
         return
 
     if params.response.status == 401:
-        log.debug("Token expired, refreshing token ...")
         if not str(params.url).startswith(middleware.url):
-            log.debug(f"The request url do not match with the meddleware url")
+            log.info(f"The request url do not match with the meddleware url")
             return
 
         if middleware.type == "jwt":
+            log.info("Token expired, refreshing token ...")
             await middleware.auth_request(session=session)
