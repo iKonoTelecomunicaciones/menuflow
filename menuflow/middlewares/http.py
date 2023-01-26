@@ -16,7 +16,7 @@ from ..nodes.flow_object import FlowObject
 class Auth(SerializableAttrs):
     method: str = ib(default=None, metadata={"json": "method"})
     token_path: str = ib(default=None, metadata={"json": "token_path"})
-    attemps: int = ib(default=None, metadata={"json": "attemps"})
+    attempts: int = ib(default=None, metadata={"json": "attempts"})
     headers: Dict[str, Any] = ib(default=None, metadata={"json": "headers"})
     cookies: Dict[str, Any] = ib(metadata={"json": "cookies"}, factory=dict)
     data: Dict[str, Any] = ib(default=None, metadata={"json": "data"})
@@ -95,8 +95,8 @@ class HTTPMiddleware(FlowObject):
         return self.render_data(self.token_type)
 
     @property
-    def _attemps(self) -> int:
-        return int(self.auth.attemps) if self.auth.attemps else 2
+    def _attempts(self) -> int:
+        return int(self.auth.attempts) if self.auth.attempts else 2
 
     @property
     def _variables(self) -> Template:
