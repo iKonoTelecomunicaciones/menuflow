@@ -36,7 +36,10 @@ class FlowObject(SerializableAttrs, BaseLogger):
 
         """
 
-        variables: Dict[str, Any] = {**self.room._variables, **self.flow_variables.__dict__}
+        variables: Dict[str, Any] = {}
+        variables.update(self.room._variables)
+        if self.flow_variables:
+            variables.update(self.flow_variables.__dict__)
 
         if isinstance(data, str):
             data_template = jinja_env.from_string(data)
