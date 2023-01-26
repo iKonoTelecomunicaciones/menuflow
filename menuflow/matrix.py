@@ -262,7 +262,7 @@ class MatrixHandler(MatrixClient):
                     )
                     self.log.debug(
                         "HTTP auth attempt"
-                        f"{self.HTTP_ATTEMPTS[room.room_id]['attempts_count']}, traying again ..."
+                        f"{self.HTTP_ATTEMPTS[room.room_id]['attempts_count']}, trying again ..."
                     )
 
                 if not status in [200, 201]:
