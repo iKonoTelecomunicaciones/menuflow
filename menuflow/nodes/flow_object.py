@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from json import JSONDecodeError, dumps, loads
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
@@ -16,6 +16,7 @@ class FlowObject(SerializableAttrs, BaseLogger):
     id: str = ib(metadata={"json": "id"})
     type: str = ib(metadata={"json": "type"})
     room: Room
+    flow_variables: Dict[str, Any]
 
     def build_node(self):
         return self.deserialize(self.__dict__)
@@ -34,6 +35,11 @@ class FlowObject(SerializableAttrs, BaseLogger):
             A dictionary or list.
 
         """
+
+        variables: Dict[str, Any] = {}
+        variables.update(self.room._variables)
+        if self.flow_variables:
+            variables.update(self.flow_variables.__dict__)
 
         if isinstance(data, str):
             data_template = jinja_env.from_string(data)
@@ -62,11 +68,11 @@ class FlowObject(SerializableAttrs, BaseLogger):
                 return item
 
         try:
-            data = loads(data_template.render(**self.room._variables))
+            data = loads(data_template.render(**variables))
             data = convert_to_bool(data)
             return data
         except JSONDecodeError:
-            data = data_template.render(**self.room._variables)
+            data = data_template.render(**variables)
             return convert_to_bool(data)
         except KeyError:
             data = loads(data_template.render())
