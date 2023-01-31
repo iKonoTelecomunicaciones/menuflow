@@ -17,6 +17,8 @@ class Config(BaseFileConfig):
         copy("menuflow.ignore.invitations_from")
         copy("menuflow.database")
         copy("menuflow.database_opts")
+        copy("menuflow.timeouts.http_requests")
+        copy("menuflow.timeouts.middlewares")
         copy("server.hostname")
         copy("server.port")
         copy("server.public_url")

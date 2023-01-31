@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
-from aiohttp import BasicAuth, ClientSession
+from aiohttp import BasicAuth, ClientSession, ClientTimeout
 from aiohttp.client_exceptions import ContentTypeError
 from attr import dataclass, ib
 from jinja2 import Template
 from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
+from ..config import Config
 from ..db.room import RoomState
 from .switch import Case, Switch
 
@@ -53,6 +54,7 @@ class HTTPRequest(Switch):
     basic_auth: Dict[str, Any] = ib(metadata={"json": "basic_auth"}, factory=dict)
     data: Dict[str, Any] = ib(metadata={"json": "data"}, factory=dict)
     cases: List[Case] = ib(metadata={"json": "cases"}, factory=list)
+    config: Config = None
 
     @property
     def _url(self) -> Template:
@@ -113,9 +115,20 @@ class HTTPRequest(Switch):
         request_params_ctx = self._context_params
         request_params_ctx.update({"middleware": middleware})
 
-        response = await session.request(
-            self.method, self._url, **request_body, trace_request_ctx=request_params_ctx
-        )
+        try:
+            timeout = ClientTimeout(total=self.config["menuflow.timeouts.http_request"])
+            response = await session.request(
+                self.method,
+                self._url,
+                **request_body,
+                trace_request_ctx=request_params_ctx,
+                timeout=timeout,
+            )
+        except Exception as e:
+            self.log.exception(f"Error in http_request node: {e}")
+            o_connection = await self.get_case_by_id(id=str(500))
+            await self.room.update_menu(node_id=o_connection, state=None)
+            return 500, e
 
         self.log.debug(
             f"node: {self.id} method: {self.method} url: {self._url} status: {response.status}"

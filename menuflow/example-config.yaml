@@ -13,6 +13,10 @@ menuflow:
         invitations_from:
             - "@whatsappbot:example.com"
             - "@admin:example.com"
+
+    timeouts:
+        http_request: 10 #seconds
+        middlewares: 5 #seconds
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0

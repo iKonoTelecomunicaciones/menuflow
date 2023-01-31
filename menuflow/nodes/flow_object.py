@@ -15,7 +15,7 @@ from ..utils.base_logger import BaseLogger
 class FlowObject(SerializableAttrs, BaseLogger):
     id: str = ib(metadata={"json": "id"})
     type: str = ib(metadata={"json": "type"})
-    room: Room
+    room: Room = None
 
     def build_node(self):
         return self.deserialize(self.__dict__)
