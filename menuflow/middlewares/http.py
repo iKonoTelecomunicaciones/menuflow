@@ -9,7 +9,6 @@ from mautrix.types import SerializableAttrs
 from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
-from ..config import Config
 from ..nodes.flow_object import FlowObject
 
 
@@ -80,7 +79,6 @@ class HTTPMiddleware(FlowObject):
     token_type: str = ib(default=None, metadata={"json": "token_type"})
     auth: Auth = ib(default=None, metadata={"json": "auth"})
     general: General = ib(default=None, metadata={"json": "general"})
-    config: Config = None
 
     @property
     def _url(self) -> Template:

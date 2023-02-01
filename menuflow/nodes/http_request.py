@@ -9,7 +9,6 @@ from jinja2 import Template
 from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
-from ..config import Config
 from ..db.room import RoomState
 from .switch import Case, Switch
 
@@ -54,7 +53,6 @@ class HTTPRequest(Switch):
     basic_auth: Dict[str, Any] = ib(metadata={"json": "basic_auth"}, factory=dict)
     data: Dict[str, Any] = ib(metadata={"json": "data"}, factory=dict)
     cases: List[Case] = ib(metadata={"json": "cases"}, factory=list)
-    config: Config = None
 
     @property
     def _url(self) -> Template:

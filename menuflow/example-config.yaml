@@ -14,9 +14,13 @@ menuflow:
             - "@whatsappbot:example.com"
             - "@admin:example.com"
 
+    # It defines how much time have to wait an HTTP request or middleware before raise a timeout error,
+    # it's important that middlewares will have a time minor to http_request
+    # because jwt request shouldn't take much time, and it can stop http_request too much time.
     timeouts:
         http_request: 10 #seconds
         middlewares: 5 #seconds
+
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0

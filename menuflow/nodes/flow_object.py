@@ -6,6 +6,7 @@ from typing import Dict, List
 from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
 
+from ..config import Config
 from ..jinja.jinja_template import jinja_env
 from ..room import Room
 from ..utils.base_logger import BaseLogger
@@ -16,6 +17,7 @@ class FlowObject(SerializableAttrs, BaseLogger):
     id: str = ib(metadata={"json": "id"})
     type: str = ib(metadata={"json": "type"})
     room: Room = None
+    config: Config = None
 
     def build_node(self):
         return self.deserialize(self.__dict__)
