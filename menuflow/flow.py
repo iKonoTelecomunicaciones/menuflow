@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
@@ -17,6 +17,7 @@ class Flow(SerializableAttrs):
 
     nodes: List[Message, Input, HTTPRequest] = ib(metadata={"json": "nodes"}, factory=list)
     middlewares: List[HTTPMiddleware] = ib(default=None, metadata={"json": "middlewares"})
+    flow_variables: Dict[str, Any] = ib(default=None, metadata={"json": "flow_variables"})
 
     log: TraceLogger = logging.getLogger("menuflow.flow")
 
@@ -62,6 +63,7 @@ class Flow(SerializableAttrs):
             return
 
         node.room = room
+        node.flow_variables = self.flow_variables
 
         if node.type == "message":
             node = self.build_object(node.serialize(), Message)
@@ -98,6 +100,7 @@ class Flow(SerializableAttrs):
             return
 
         middleware.room = room
+        middleware.flow_variables = self.flow_variables
         middleware = self.build_object(middleware.serialize(), HTTPMiddleware)
 
         return middleware

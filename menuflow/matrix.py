@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from ast import Dict
 from copy import deepcopy
-from typing import Optional
+from typing import Dict, Optional
 
 from mautrix.client import Client as MatrixClient
 from mautrix.types import (
@@ -29,6 +28,7 @@ class MatrixHandler(MatrixClient):
 
     LAST_JOIN_EVENT: Dict[RoomID, int] = {}
     LOCKED_ROOMS = set()
+    HTTP_ATTEMPTS: Dict = {}
 
     def __init__(self, config: Config, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -249,11 +249,46 @@ class MatrixHandler(MatrixClient):
                     session=self.api.session, middleware=middleware
                 )
                 self.log.info(f"http_request node {node.id} had a status of {status}")
+
+                if status == 401:
+                    self.HTTP_ATTEMPTS.update(
+                        {
+                            room.room_id: {
+                                "last_http_node": node.id,
+                                "attempts_count": self.HTTP_ATTEMPTS.get(room.room_id).get(
+                                    "attempts_count"
+                                )
+                                + 1
+                                if self.HTTP_ATTEMPTS.get(room.room_id)
+                                else 1,
+                            }
+                        }
+                    )
+                    self.log.debug(
+                        "HTTP auth attempt"
+                        f"{self.HTTP_ATTEMPTS[room.room_id]['attempts_count']}, trying again ..."
+                    )
+
                 if not status in [200, 201]:
                     self.log.error(response)
+                else:
+                    self.HTTP_ATTEMPTS.update(
+                        {room.room_id: {"last_http_node": None, "attempts_count": 0}}
+                    )
             except Exception as e:
                 self.log.exception(e)
                 return
+
+            if (
+                self.HTTP_ATTEMPTS.get(room.room_id)
+                and self.HTTP_ATTEMPTS[room.room_id]["last_http_node"] == node.id
+                and self.HTTP_ATTEMPTS[room.room_id]["attempts_count"] >= middleware._attempts
+            ):
+                self.log.debug("Attempts limit reached, o_connection set as `default`")
+                self.HTTP_ATTEMPTS.update(
+                    {room.room_id: {"last_http_node": None, "attempts_count": 0}}
+                )
+                await room.update_menu(await node.get_case_by_id("default"), None)
 
         node = self.flow.node(room=room)
 
