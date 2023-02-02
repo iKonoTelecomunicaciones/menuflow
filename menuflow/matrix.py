@@ -240,7 +240,9 @@ class MatrixHandler(MatrixClient):
         node = self.flow.node(room=room)
 
         if node and node.type == "http_request":
+            node.config = self.config
             middleware = self.flow.middleware(room=room, middleware_id=node.middleware)
+            middleware.config = self.config
             self.log.debug(f"Room {room.room_id} enters http_request node {node.id}")
             try:
                 status, response = await node.request(

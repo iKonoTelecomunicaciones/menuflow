@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
-from aiohttp import BasicAuth, ClientSession
+from aiohttp import BasicAuth, ClientSession, ClientTimeout
 from aiohttp.client_exceptions import ContentTypeError
 from attr import dataclass, ib
 from jinja2 import Template
@@ -113,9 +113,20 @@ class HTTPRequest(Switch):
         request_params_ctx = self._context_params
         request_params_ctx.update({"middleware": middleware})
 
-        response = await session.request(
-            self.method, self._url, **request_body, trace_request_ctx=request_params_ctx
-        )
+        try:
+            timeout = ClientTimeout(total=self.config["menuflow.timeouts.http_request"])
+            response = await session.request(
+                self.method,
+                self._url,
+                **request_body,
+                trace_request_ctx=request_params_ctx,
+                timeout=timeout,
+            )
+        except Exception as e:
+            self.log.exception(f"Error in http_request node: {e}")
+            o_connection = await self.get_case_by_id(id=str(500))
+            await self.room.update_menu(node_id=o_connection, state=None)
+            return 500, e
 
         self.log.debug(
             f"node: {self.id} method: {self.method} url: {self._url} status: {response.status}"
