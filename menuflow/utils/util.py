@@ -1,3 +1,4 @@
+import asyncio
 from logging import getLogger
 from re import match
 
@@ -46,6 +47,47 @@ class Util:
 
         """
         return False if not room_id else bool(match(f"^!{cls._main_matrix_regex}+$", room_id))
+
+    @classmethod
+    async def get_tasks_by_name(self, task_name):
+        """It returns a task object from the current event loop, given the task's name
+
+        Parameters
+        ----------
+        task_name
+            The name of the task to find.
+
+        Returns
+        -------
+            An specific task.
+
+        """
+
+        tasks = asyncio.all_tasks()
+        for task in tasks:
+            if task.get_name() == task_name:
+                return task
+        return None
+
+    @classmethod
+    def is_within_range(self, number: int, start: int, end: int) -> bool:
+        """ "Return True if number is within the range of start and end, inclusive."
+
+        Parameters
+        ----------
+        number : int
+            the number to check
+        start : int
+            The start of the range.
+        end : int
+            The end of the range.
+
+        Returns
+        -------
+            A boolean value
+
+        """
+        return start <= number <= end
 
     def ignore_user(self, mxid: UserID, origin: str) -> bool:
         """It checks if the user ID matches any of the regex patterns in the config file

@@ -8,20 +8,19 @@ from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
 from .middlewares.http import HTTPMiddleware
-from .nodes import HTTPRequest, Input, Message, Switch
+from .nodes import CheckTime, HTTPRequest, Input, Message, Switch
 from .room import Room
 
 
 @dataclass
 class Flow(SerializableAttrs):
-
     nodes: List[Message, Input, HTTPRequest] = ib(metadata={"json": "nodes"}, factory=list)
     middlewares: List[HTTPMiddleware] = ib(default=None, metadata={"json": "middlewares"})
     flow_variables: Dict[str, Any] = ib(default=None, metadata={"json": "flow_variables"})
 
     log: TraceLogger = logging.getLogger("menuflow.flow")
 
-    def get_node_by_id(self, node_id: str) -> Message | Input | HTTPRequest | None:
+    def get_node_by_id(self, node_id: str) -> Message | Input | HTTPRequest | CheckTime | None:
         for node in self.nodes:
             if node_id == node.id:
                 return node
@@ -37,8 +36,8 @@ class Flow(SerializableAttrs):
     def build_object(
         self,
         data: Dict,
-        type_class: Message | Input | HTTPRequest | Switch | HTTPMiddleware | None,
-    ) -> Message | Input | HTTPRequest | Switch | HTTPMiddleware | None:
+        type_class: Message | Input | HTTPRequest | Switch | HTTPMiddleware | CheckTime | None,
+    ) -> Message | Input | HTTPRequest | Switch | HTTPMiddleware | CheckTime | None:
         """It takes a dictionary of data and a class, and returns an instance of that class
 
         Parameters
@@ -55,8 +54,7 @@ class Flow(SerializableAttrs):
         """
         return type_class.deserialize(data)
 
-    def node(self, room: Room) -> Message | Input | HTTPRequest | None:
-
+    def node(self, room: Room) -> Message | Input | HTTPRequest | CheckTime | None:
         node = self.get_node_by_id(node_id=room.node_id)
 
         if not node:
@@ -73,6 +71,8 @@ class Flow(SerializableAttrs):
             node = self.build_object(node.serialize(), HTTPRequest)
         elif node.type == "switch":
             node = self.build_object(node.serialize(), Switch)
+        elif node.type == "check_time":
+            node = self.build_object(node.serialize(), CheckTime)
         else:
             return
 
