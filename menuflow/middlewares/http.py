@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Tuple
 
-from aiohttp import ClientSession, ContentTypeError
+from aiohttp import ClientSession, ClientTimeout, ContentTypeError
 from attr import dataclass, ib
 from jinja2 import Template
 from mautrix.types import SerializableAttrs
@@ -152,9 +152,13 @@ class HTTPMiddleware(FlowObject):
             request_body["json"] = self._data
 
         try:
-            response = await session.request(self.auth.method, self._token_url, **request_body)
+            timeout = ClientTimeout(total=self.config["menuflow.timeouts.middlewares"])
+            response = await session.request(
+                self.auth.method, self._token_url, timeout=timeout, **request_body
+            )
         except Exception as e:
-            self.log.exception(f"Error: {e}")
+            self.log.exception(f"Error in middleware: {e}")
+            return
 
         variables = {}
 
