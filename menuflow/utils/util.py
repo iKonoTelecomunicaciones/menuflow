@@ -1,4 +1,5 @@
 import asyncio
+from asyncio import Task
 from logging import getLogger
 from re import match
 
@@ -49,7 +50,7 @@ class Util:
         return False if not room_id else bool(match(f"^!{cls._main_matrix_regex}+$", room_id))
 
     @classmethod
-    async def get_tasks_by_name(self, task_name):
+    async def get_tasks_by_name(self, task_name: str) -> Task:
         """It returns a task object from the current event loop, given the task's name
 
         Parameters
@@ -67,7 +68,6 @@ class Util:
         for task in tasks:
             if task.get_name() == task_name:
                 return task
-        return None
 
     @classmethod
     def is_within_range(self, number: int, start: int, end: int) -> bool:
@@ -87,6 +87,10 @@ class Util:
             A boolean value
 
         """
+
+        if not (number or start or end):
+            return False
+
         return start <= number <= end
 
     def ignore_user(self, mxid: UserID, origin: str) -> bool:

@@ -20,23 +20,23 @@ class CheckTime(Switch):
     If the current time does not match the specified time the output will be set using case `False`.
 
     - id: "check_time_node"
-    type: check_time
-    timezone: "America/Bogota"
-    time_ranges:
-        - "08:00-12:00"
-        - "13:00-18:00"
-    days_of_week:
-        - "mon-fri"
-    days_of_month:
-        - "8-12"
-        - "6-6"
-    months:
-        - "*"
-    cases:
-        - id: "True"
-        o_connection: "message_1"
-        - id: "False"
-        o_connection: "message_2"
+      type: check_time
+      timezone: "America/Bogota"
+      time_ranges:
+          - "08:00-12:00"
+          - "13:00-18:00"
+      days_of_week:
+          - "mon-fri"
+      days_of_month:
+          - "8-12"
+          - "6-6"
+      months:
+          - "*"
+      cases:
+          - id: "True"
+          o_connection: "message_1"
+          - id: "False"
+          o_connection: "message_2"
     """
 
     time_ranges: List[str] = ib(metadata={"json": "time_ranges"}, factory=list)
@@ -51,7 +51,7 @@ class CheckTime(Switch):
         then update the menu to the "True" case. Otherwise, update the menu to the "False" case
 
         """
-        o_connection: str = None
+
         time_zone = pytz.timezone(self.timezone)
         now = datetime.now(time_zone)
         week_day: str = now.strftime("%a").lower()
@@ -69,7 +69,7 @@ class CheckTime(Switch):
 
         await self.room.update_menu(node_id=o_connection, state=None)
 
-    def check_month(self, month):
+    def check_month(self, month: int) -> bool:
         """If the month are set to "*" (all months), then return True.
         Otherwise, check if the current month is within the range of months
 
@@ -83,6 +83,9 @@ class CheckTime(Switch):
             A boolean value.
 
         """
+
+        if self.months[0] == "*":
+            return True
 
         months: Dict[str, int] = {
             "jan": 1,
@@ -99,17 +102,14 @@ class CheckTime(Switch):
             "dec": 12,
         }
 
-        if self.months[0] == "*":
-            return True
-
-        for range_month in self.months:
-            month_start, month_end = range_month.split("-")
+        for range_months in self.months:
+            month_start, month_end = range_months.split("-")
             if Util.is_within_range(month, months.get(month_start), months.get(month_end)):
                 return True
 
         return False
 
-    def check_week_day(self, week_day):
+    def check_week_day(self, week_day: str) -> bool:
         """If the days of week are set to "*" (all days), then return True.
         Otherwise, check if the current day is within the range of the days of week
 
@@ -124,6 +124,9 @@ class CheckTime(Switch):
 
         """
 
+        if self.days_of_week[0] == "*":
+            return True
+
         days: Dict[str, int] = {
             "mon": 1,
             "tue": 2,
@@ -131,11 +134,8 @@ class CheckTime(Switch):
             "thu": 4,
             "fri": 5,
             "sat": 6,
-            "san": 7,
+            "sun": 7,
         }
-
-        if self.days_of_week[0] == "*":
-            return True
 
         for week_days_range in self.days_of_week:
             week_day_start, week_day_end = week_days_range.split("-")
@@ -146,7 +146,7 @@ class CheckTime(Switch):
 
         return False
 
-    def check_month_days(self, day):
+    def check_month_days(self, day: int) -> bool:
         """If the days of the month are set to "*", then the day is valid.
         Otherwise, check if the day is within any of the ranges specified
 
@@ -171,7 +171,7 @@ class CheckTime(Switch):
 
         return False
 
-    def check_hours(self, current_time: Any):
+    def check_hours(self, current_time: Any) -> bool:
         """If the time range is "*", then return True.
         Otherwise, for each time range, split the time range into a start and end time,
         convert the start and end times to datetime objects,
@@ -197,7 +197,7 @@ class CheckTime(Switch):
             start_hour = datetime.strptime(time_start, "%H:%M").time()
             end_hour = datetime.strptime(time_end, "%H:%M").time()
 
-            if current_time > start_hour and current_time < end_hour:
+            if start_hour < current_time < end_hour:
                 return True
 
         return False
