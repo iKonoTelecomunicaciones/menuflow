@@ -198,6 +198,10 @@ class MatrixHandler(MatrixClient):
         self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.state}]")
 
         if room.state == RoomState.INPUT.value:
+            if not evt:
+                self.log.warning("The [evt] is empty")
+                return
+
             self.log.debug(f"Creating [variable: {node.variable}] [content: {evt.content.body}]")
             try:
                 await room.set_variable(
@@ -242,7 +246,10 @@ class MatrixHandler(MatrixClient):
         if node and node.type == "http_request":
             node.config = self.config
             middleware = self.flow.middleware(room=room, middleware_id=node.middleware)
-            middleware.config = self.config
+
+            if middleware:
+                middleware.config = self.config
+
             self.log.debug(f"Room {room.room_id} enters http_request node {node.id}")
             try:
                 status, response = await node.request(
