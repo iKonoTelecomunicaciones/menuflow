@@ -87,24 +87,11 @@ class CheckTime(Switch):
         if self.months[0] == "*":
             return True
 
-        months: Dict[str, int] = {
-            "jan": 1,
-            "feb": 2,
-            "mar": 3,
-            "apr": 4,
-            "may": 5,
-            "jun": 6,
-            "jul": 7,
-            "aug": 8,
-            "sep": 9,
-            "oct": 10,
-            "nov": 11,
-            "dec": 12,
-        }
-
         for range_months in self.months:
             month_start, month_end = range_months.split("-")
-            if Util.is_within_range(month, months.get(month_start), months.get(month_end)):
+            if Util.is_within_range(
+                month, Util.months.get(month_start), Util.months.get(month_end)
+            ):
                 return True
 
         return False
@@ -127,20 +114,12 @@ class CheckTime(Switch):
         if self.days_of_week[0] == "*":
             return True
 
-        days: Dict[str, int] = {
-            "mon": 1,
-            "tue": 2,
-            "wed": 3,
-            "thu": 4,
-            "fri": 5,
-            "sat": 6,
-            "sun": 7,
-        }
-
         for week_days_range in self.days_of_week:
             week_day_start, week_day_end = week_days_range.split("-")
             if Util.is_within_range(
-                days.get(week_day), days.get(week_day_start), days.get(week_day_end)
+                Util.week_days.get(week_day),
+                Util.week_days.get(week_day_start),
+                Util.week_days.get(week_day_end),
             ):
                 return True
 

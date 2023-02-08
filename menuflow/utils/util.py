@@ -2,6 +2,7 @@ import asyncio
 from asyncio import Task
 from logging import getLogger
 from re import match
+from typing import Dict
 
 from mautrix.types import RoomID, UserID
 from mautrix.util.logging import TraceLogger
@@ -16,6 +17,37 @@ class Util:
 
     def __init__(self, config: Config):
         self.config = config
+
+    @classmethod
+    @property
+    def months(self) -> Dict[str, int]:
+        return {
+            "jan": 1,
+            "feb": 2,
+            "mar": 3,
+            "apr": 4,
+            "may": 5,
+            "jun": 6,
+            "jul": 7,
+            "aug": 8,
+            "sep": 9,
+            "oct": 10,
+            "nov": 11,
+            "dec": 12,
+        }
+
+    @classmethod
+    @property
+    def week_days(self) -> Dict[str, int]:
+        return {
+            "mon": 1,
+            "tue": 2,
+            "wed": 3,
+            "thu": 4,
+            "fri": 5,
+            "sat": 6,
+            "sun": 7,
+        }
 
     @classmethod
     def is_user_id(cls, user_id: UserID) -> bool:
@@ -89,6 +121,7 @@ class Util:
         """
 
         if not (number or start or end):
+            self.log.warning("Validation parameters can not be None, range validation failed")
             return False
 
         return start <= number <= end
