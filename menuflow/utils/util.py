@@ -1,5 +1,8 @@
+import asyncio
+from asyncio import Task
 from logging import getLogger
 from re import match
+from typing import Dict
 
 from mautrix.types import RoomID, UserID
 from mautrix.util.logging import TraceLogger
@@ -14,6 +17,37 @@ class Util:
 
     def __init__(self, config: Config):
         self.config = config
+
+    @classmethod
+    @property
+    def months(self) -> Dict[str, int]:
+        return {
+            "jan": 1,
+            "feb": 2,
+            "mar": 3,
+            "apr": 4,
+            "may": 5,
+            "jun": 6,
+            "jul": 7,
+            "aug": 8,
+            "sep": 9,
+            "oct": 10,
+            "nov": 11,
+            "dec": 12,
+        }
+
+    @classmethod
+    @property
+    def week_days(self) -> Dict[str, int]:
+        return {
+            "mon": 1,
+            "tue": 2,
+            "wed": 3,
+            "thu": 4,
+            "fri": 5,
+            "sat": 6,
+            "sun": 7,
+        }
 
     @classmethod
     def is_user_id(cls, user_id: UserID) -> bool:
@@ -46,6 +80,51 @@ class Util:
 
         """
         return False if not room_id else bool(match(f"^!{cls._main_matrix_regex}+$", room_id))
+
+    @classmethod
+    async def get_tasks_by_name(self, task_name: str) -> Task:
+        """It returns a task object from the current event loop, given the task's name
+
+        Parameters
+        ----------
+        task_name
+            The name of the task to find.
+
+        Returns
+        -------
+            An specific task.
+
+        """
+
+        tasks = asyncio.all_tasks()
+        for task in tasks:
+            if task.get_name() == task_name:
+                return task
+
+    @classmethod
+    def is_within_range(self, number: int, start: int, end: int) -> bool:
+        """ "Return True if number is within the range of start and end, inclusive."
+
+        Parameters
+        ----------
+        number : int
+            the number to check
+        start : int
+            The start of the range.
+        end : int
+            The end of the range.
+
+        Returns
+        -------
+            A boolean value
+
+        """
+
+        if not (number and start and end):
+            self.log.warning("Validation parameters can not be None, range validation failed")
+            return False
+
+        return start <= number <= end
 
     def ignore_user(self, mxid: UserID, origin: str) -> bool:
         """It checks if the user ID matches any of the regex patterns in the config file
