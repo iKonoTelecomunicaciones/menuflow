@@ -1,3 +1,5 @@
+[![Python lint and CI/CD](https://github.com/chatbot-smooth/menuflow/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/chatbot-smooth/menuflow/actions/workflows/main.yml)
+
 ![](https://komarev.com/ghpvc/?username=menuflow&label=VIEWS&style=for-the-badge&color=green)
 
 It works in the Matrix ecosystem.

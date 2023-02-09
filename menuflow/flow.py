@@ -9,6 +9,7 @@ from mautrix.util.logging import TraceLogger
 
 from .middlewares.http import HTTPMiddleware
 from .nodes import CheckTime, HTTPRequest, Input, Message, Switch
+from .nodes.flow_object import FlowObject
 from .room import Room
 
 
@@ -18,19 +19,40 @@ class Flow(SerializableAttrs):
     middlewares: List[HTTPMiddleware] = ib(default=None, metadata={"json": "middlewares"})
     flow_variables: Dict[str, Any] = ib(default=None, metadata={"json": "flow_variables"})
 
+    nodes_by_id: Dict[str, FlowObject] = {}
+    middlewares_by_id: Dict[str, HTTPMiddleware] = {}
+
     log: TraceLogger = logging.getLogger("menuflow.flow")
 
+    def _add_to_cache(self, obj: FlowObject | HTTPMiddleware):
+        if isinstance(obj, HTTPMiddleware):
+            self.middlewares_by_id[obj.id] = obj
+        elif isinstance(obj, FlowObject):
+            self.nodes_by_id[obj.id] = obj
+
     def get_node_by_id(self, node_id: str) -> Message | Input | HTTPRequest | CheckTime | None:
+        try:
+            return self.nodes_by_id[node_id]
+        except KeyError:
+            pass
+
         for node in self.nodes:
             if node_id == node.id:
+                self._add_to_cache(node)
                 return node
 
     def get_middleware_by_id(self, middleware_id: str) -> HTTPMiddleware | None:
         if not self.middlewares:
             return
 
+        try:
+            return self.middlewares_by_id[middleware_id]
+        except KeyError:
+            pass
+
         for middleware in self.middlewares:
             if middleware_id == middleware.id:
+                self._add_to_cache(middleware)
                 return middleware
 
     def build_object(
