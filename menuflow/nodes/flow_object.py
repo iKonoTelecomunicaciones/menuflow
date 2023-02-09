@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import abstractmethod
 from json import JSONDecodeError, dumps, loads
 from typing import Any, Dict, List
 
@@ -20,6 +21,10 @@ class FlowObject(SerializableAttrs, BaseLogger):
     room: Room = None
     config: Config = None
     flow_variables: Dict[str, Any] = {}
+
+    @abstractmethod
+    async def run(self):
+        pass
 
     def build_node(self):
         return self.deserialize(self.__dict__)

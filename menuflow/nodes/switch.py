@@ -69,11 +69,6 @@ class Switch(FlowObject):
         """It takes a dictionary of variables, runs the rule,
         and returns the connection that matches the case
 
-        Parameters
-        ----------
-        variables : dict
-            dict
-
         Returns
         -------
             The str object
@@ -107,7 +102,6 @@ class Switch(FlowObject):
             variables_recorded = []
 
             if case_result.get("variables") and self.room:
-
                 for variable in case_result.get("variables", {}):
                     if variable in variables_recorded:
                         continue

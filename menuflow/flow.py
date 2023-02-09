@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from enum import Enum
 from typing import Any, Dict, List
 
 from attr import dataclass, ib
@@ -12,9 +13,15 @@ from .nodes import HTTPRequest, Input, Message, Switch
 from .room import Room
 
 
+class NodeType(Enum):
+    MESSAGE = "message"
+    SWITCH = "switch"
+    INPUT = "input"
+    HTTPREQUEST = "http_request"
+
+
 @dataclass
 class Flow(SerializableAttrs):
-
     nodes: List[Message, Input, HTTPRequest] = ib(metadata={"json": "nodes"}, factory=list)
     middlewares: List[HTTPMiddleware] = ib(default=None, metadata={"json": "middlewares"})
     flow_variables: Dict[str, Any] = ib(default=None, metadata={"json": "flow_variables"})
@@ -56,7 +63,6 @@ class Flow(SerializableAttrs):
         return type_class.deserialize(data)
 
     def node(self, room: Room) -> Message | Input | HTTPRequest | None:
-
         node = self.get_node_by_id(node_id=room.node_id)
 
         if not node:

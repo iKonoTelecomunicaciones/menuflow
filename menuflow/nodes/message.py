@@ -37,6 +37,9 @@ class Message(FlowObject):
     def _text(self) -> Template:
         return self.render_data(self.text)
 
+    async def run(self) -> str:
+        pass
+
     async def show_message(self, room_id: RoomID, client: MatrixClient):
         """It takes a dictionary of variables, a room ID, and a client,
         and sends a message to the room with the template rendered with the variables

@@ -126,6 +126,9 @@ class HTTPMiddleware(FlowObject):
     def _general_headers(self) -> Dict[str, Template]:
         return self.render_data(self.serialize()["general"]["headers"])
 
+    async def run(self) -> str:
+        pass
+
     async def auth_request(self, session: ClientSession) -> Tuple[int, str]:
         """Make the auth request to refresh api token
 
