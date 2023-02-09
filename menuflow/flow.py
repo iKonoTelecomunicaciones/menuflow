@@ -30,7 +30,7 @@ class Flow(SerializableAttrs):
         elif isinstance(obj, FlowObject):
             self.nodes_by_id[obj.id] = obj
 
-    def get_node_by_id(self, node_id: str) -> Message | Input | HTTPRequest | CheckTime | None:
+    def get_node_by_id(self, node_id: str) -> Message | Input | HTTPRequest | Switch | CheckTime | None:
         try:
             return self.nodes_by_id[node_id]
         except KeyError:
@@ -76,7 +76,7 @@ class Flow(SerializableAttrs):
         """
         return type_class.deserialize(data)
 
-    def node(self, room: Room) -> Message | Input | HTTPRequest | CheckTime | None:
+    def node(self, room: Room) -> Message | Input | HTTPRequest | Switch |CheckTime | None:
         node = self.get_node_by_id(node_id=room.node_id)
 
         if not node:
