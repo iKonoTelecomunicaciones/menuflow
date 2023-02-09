@@ -120,7 +120,7 @@ class Util:
 
         """
 
-        if not (number or start or end):
+        if not (number and start and end):
             self.log.warning("Validation parameters can not be None, range validation failed")
             return False
 
