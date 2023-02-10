@@ -22,7 +22,7 @@ class MenuFlow(Program):
 
     module = "menuflow"
     name = "menuflow"
-    version = "0.0.1"
+    version = "0.1.0"
     command = "python -m menuflow"
 
     description = "A manager of bots that have conversation flows."

@@ -195,7 +195,7 @@ class MatrixHandler(MatrixClient):
 
         self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.state}]")
 
-        if node and node.type == NodeType.INPUT.value:
+        if node.type == NodeType.INPUT.value:
             await node.run(client=self, evt=evt)
             if room.state == RoomState.INPUT.value:
                 return
@@ -210,7 +210,7 @@ class MatrixHandler(MatrixClient):
         # Showing the message and updating the menu to the output connection.
         if node and node.type == NodeType.MESSAGE.value:
             self.log.debug(f"Room {room.room_id} enters message node {node.id}")
-            await node.show_message(room_id=room.room_id, client=self)
+            await node.show_message(client=self)
 
             await room.update_menu(
                 node_id=node.o_connection,
@@ -222,7 +222,10 @@ class MatrixHandler(MatrixClient):
         if node and node.type == NodeType.HTTPREQUEST.value:
             node.config = self.config
             middleware = self.flow.middleware(room=room, middleware_id=node.middleware)
-            middleware.config = self.config
+
+            if middleware:
+                middleware.config = self.config
+
             self.log.debug(f"Room {room.room_id} enters http_request node {node.id}")
             try:
                 status, response = await node.request(
