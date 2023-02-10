@@ -1,5 +1,4 @@
-import asyncio
-from asyncio import Task
+from asyncio import Task, all_tasks
 from logging import getLogger
 from re import match
 from typing import Dict
@@ -84,22 +83,28 @@ class Util:
     @classmethod
     async def get_tasks_by_name(self, task_name: str) -> Task:
         """It returns a task object from the current event loop, given the task's name
-
         Parameters
         ----------
         task_name
             The name of the task to find.
-
         Returns
         -------
             An specific task.
-
         """
 
-        tasks = asyncio.all_tasks()
+        tasks = all_tasks()
         for task in tasks:
             if task.get_name() == task_name:
                 return task
+
+    @classmethod
+    async def cancel_task(self, task_name: str):
+        """It cancels the inactivity task that is running in the background"""
+
+        task = await self.get_tasks_by_name(task_name)
+        if task:
+            task.cancel()
+            self.log.debug(f"TASK CANCEL -> {task_name}")
 
     @classmethod
     def is_within_range(self, number: int, start: int, end: int) -> bool:

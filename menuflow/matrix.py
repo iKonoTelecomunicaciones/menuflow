@@ -18,14 +18,13 @@ from mautrix.types import (
 
 from .config import Config
 from .db.room import RoomState
-from .flow import Flow
+from .flow import Flow, NodeType
 from .room import Room
 from .user import User
 from .utils.util import Util
 
 
 class MatrixHandler(MatrixClient):
-
     LAST_JOIN_EVENT: Dict[RoomID, int] = {}
     LOCKED_ROOMS = set()
     HTTP_ATTEMPTS: Dict = {}
@@ -124,7 +123,6 @@ class MatrixHandler(MatrixClient):
         self.unlock_room(evt.room_id)
 
     async def handle_message(self, message: MessageEvent) -> None:
-
         self.log.debug(
             f"Incoming message [user: {message.sender}] [message: {message.content.body}] [room_id: {message.room_id}]"
         )
@@ -197,49 +195,27 @@ class MatrixHandler(MatrixClient):
 
         self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.state}]")
 
-        if node.type == "check_time":
+        if node.type == NodeType.CHECKTIME.value:
             await node.check_time()
 
         node = self.flow.node(room=room)
 
-        if room.state == RoomState.INPUT.value:
-            if not evt:
-                self.log.warning("The [evt] is empty")
+        if node.type == NodeType.INPUT.value:
+            await node.run(client=self, evt=evt)
+            if room.state == RoomState.INPUT.value:
                 return
-
-            self.log.debug(f"Creating [variable: {node.variable}] [content: {evt.content.body}]")
-            try:
-                await room.set_variable(
-                    node.variable,
-                    int(evt.content.body) if evt.content.body.isdigit() else evt.content.body,
-                )
-            except ValueError as e:
-                self.log.warning(e)
-
-            # If the node has an output connection, then update the menu to the output connection.
-            # Otherwise, run the node and update the menu to the output connection.
-
-            await room.update_menu(node_id=node.o_connection or await node.run())
 
         node = self.flow.node(room=room)
 
-        if node.type == "switch":
+        if node.type == NodeType.SWITCH.value:
             await room.update_menu(await node.run())
 
         node = self.flow.node(room=room)
 
-        # This is the case where the room is not in the input state and the node is an input node.
-        # In this case, the message is shown and the menu is updated to the node's id and the state is set to input.
-        if node and node.type == RoomState.INPUT.value and room.state != RoomState.INPUT.value:
-            self.log.debug(f"Room {room.room_id} enters input node {node.id}")
-            await node.show_message(room_id=room.room_id, client=self)
-            await room.update_menu(node_id=node.id, state=RoomState.INPUT.value)
-            return
-
         # Showing the message and updating the menu to the output connection.
-        if node and node.type == "message":
+        if node and node.type == NodeType.MESSAGE.value:
             self.log.debug(f"Room {room.room_id} enters message node {node.id}")
-            await node.show_message(room_id=room.room_id, client=self)
+            await node.show_message(client=self)
 
             await room.update_menu(
                 node_id=node.o_connection,
@@ -248,7 +224,7 @@ class MatrixHandler(MatrixClient):
 
         node = self.flow.node(room=room)
 
-        if node and node.type == "http_request":
+        if node and node.type == NodeType.HTTPREQUEST.value:
             node.config = self.config
             middleware = self.flow.middleware(room=room, middleware_id=node.middleware)
 

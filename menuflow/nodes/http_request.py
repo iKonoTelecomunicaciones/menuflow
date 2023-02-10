@@ -91,8 +91,10 @@ class HTTPRequest(Switch):
             }
         )
 
-    async def request(self, session: ClientSession, middleware: HTTPMiddleware) -> Tuple(int, str):
+    async def run(self) -> str:
+        pass
 
+    async def request(self, session: ClientSession, middleware: HTTPMiddleware) -> Tuple(int, str):
         request_body = {}
 
         if self.query_params:
