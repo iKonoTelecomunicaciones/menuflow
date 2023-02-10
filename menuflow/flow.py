@@ -19,6 +19,7 @@ class NodeType(Enum):
     SWITCH = "switch"
     INPUT = "input"
     HTTPREQUEST = "http_request"
+    CHECKTIME = "check_time"
 
 
 @dataclass

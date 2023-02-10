@@ -195,6 +195,11 @@ class MatrixHandler(MatrixClient):
 
         self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.state}]")
 
+        if node.type == NodeType.CHECKTIME.value:
+            await node.check_time()
+
+        node = self.flow.node(room=room)
+
         if node.type == NodeType.INPUT.value:
             await node.run(client=self, evt=evt)
             if room.state == RoomState.INPUT.value:
