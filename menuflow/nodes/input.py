@@ -39,13 +39,18 @@ class Input(Switch, Message):
       text: 'Enter a number'
       variable: opt
       validation: '{{ opt.isdigit() }}'
+      inactivity_options:
+        chat_timeout: 20 #seconds
+        warning_message: "Message"
+        time_between_attempts: 10 #seconds
+        attempts: 3
       cases:
-      - id: true
-        o_connection: m1
-      - id: false
-        o_connection: m2
-      - id: default
-        o_connection: m3
+        - id: true
+            o_connection: m1
+        - id: false
+            o_connection: m2
+        - id: default
+            o_connection: m3
     ```
     """
 
@@ -94,7 +99,7 @@ class Input(Switch, Message):
             # Otherwise, run the node and update the menu to the output connection.
             await self.room.update_menu(node_id=self.o_connection or await super().run())
             if self.inactivity_options:
-                await Util.cancel_inactivity_task(room_id=self.room.room_id)
+                await Util.cancel_task(room_id=self.room.room_id)
         else:
             # This is the case where the room is not in the input state
             # and the node is an input node.
@@ -130,11 +135,8 @@ class Input(Switch, Message):
 
         """
 
-        try:
-            # wait the given time to start the task
-            await asyncio.sleep(self.inactivity_options.chat_timeout)
-        except Exception as e:
-            self.log.debug(f"{e}")
+        # wait the given time to start the task
+        await asyncio.sleep(self.inactivity_options.chat_timeout)
 
         count = 0
         while True:
@@ -146,10 +148,6 @@ class Input(Switch, Message):
                 await client.algorithm(room=self.room)
                 break
 
-            try:
-                await self.show_message(client=client, message=self._inactivity_message)
-            except Exception as e:
-                self.log.debug(e)
-
+            await self.show_message(client=client, message=self._inactivity_message)
             await asyncio.sleep(self.inactivity_options.time_between_attempts)
             count += 1

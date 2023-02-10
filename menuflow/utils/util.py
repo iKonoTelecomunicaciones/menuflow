@@ -98,13 +98,13 @@ class Util:
                 return task
 
     @classmethod
-    async def cancel_inactivity_task(self, room_id: RoomID):
+    async def cancel_task(self, task_name: str):
         """It cancels the inactivity task that is running in the background"""
 
-        task = await self.get_tasks_by_name(room_id)
+        task = await self.get_tasks_by_name(task_name)
         if task:
             task.cancel()
-            self.log.debug(f"TASK CANCEL -> {room_id}")
+            self.log.debug(f"TASK CANCEL -> {task_name}")
 
     @classmethod
     def is_within_range(self, number: int, start: int, end: int) -> bool:
