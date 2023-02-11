@@ -13,12 +13,15 @@ from .switch import Case, Switch
 @dataclass
 class CheckTime(Switch):
     """
-    ##CheckTime
+    ## CheckTime
 
     If the current time matches the specified time, it branches to the case `True`.
     Each of the elements can be specified as '*' (forever) or as a range.
     If the current time does not match the specified time the output will be set using case `False`.
 
+    content:
+
+    ```
     - id: "check_time_node"
       type: check_time
       timezone: "America/Bogota"
@@ -37,6 +40,7 @@ class CheckTime(Switch):
           o_connection: "message_1"
           - id: "False"
           o_connection: "message_2"
+    ```
     """
 
     time_ranges: List[str] = ib(metadata={"json": "time_ranges"}, factory=list)
