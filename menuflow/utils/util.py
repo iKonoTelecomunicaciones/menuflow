@@ -130,18 +130,16 @@ class Util:
             return False
 
         return start <= number <= end
-    
+
     @classmethod
     def flow_example(cls) -> Dict:
         return {
             "menu": {
-                "nodes":
-                [
+                "nodes": [
                     {
                         "id": "start",
                         "type": "message",
-                        "text": "Hello! there, this is a sample message, please make sure the flow is configured. Bye!"
-
+                        "text": "Hello! there, this is a sample message, please make sure the flow is configured. Bye!",
                     }
                 ]
             }

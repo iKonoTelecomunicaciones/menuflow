@@ -4,6 +4,7 @@ import asyncio
 from copy import deepcopy
 from typing import Dict, Optional
 
+import yaml
 from mautrix.client import Client as MatrixClient
 from mautrix.types import (
     JSON,
@@ -15,7 +16,6 @@ from mautrix.types import (
     StateUnsigned,
     StrippedStateEvent,
 )
-import yaml
 
 from .config import Config
 from .db.room import RoomState
@@ -38,12 +38,13 @@ class MatrixHandler(MatrixClient):
         try:
             flow.load()
         except FileNotFoundError as e:
-            
             self.log.warning(e)
-            with open(path, 'a') as yaml_file:
+            with open(path, "a") as yaml_file:
                 yaml.dump(Util.flow_example(), yaml_file)
 
-            self.log.warning(f"Please configure your {self.mxid}.yaml file and restart the service")
+            self.log.warning(
+                f"Please configure your {self.mxid}.yaml file and restart the service"
+            )
             flow.load()
 
         self.flow = Flow.deserialize(flow["menu"])
