@@ -15,6 +15,7 @@ from mautrix.types import (
     StateUnsigned,
     StrippedStateEvent,
 )
+import yaml
 
 from .config import Config
 from .db.room import RoomState
@@ -32,8 +33,19 @@ class MatrixHandler(MatrixClient):
     def __init__(self, config: Config, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.config = config
-        flow = Config(path=f"/data/flows/{self.mxid}.yaml", base_path="")
-        flow.load()
+        path = f"/data/flows/{self.mxid}.yaml"
+        flow = Config(path=path, base_path="")
+        try:
+            flow.load()
+        except FileNotFoundError as e:
+            
+            self.log.warning(e)
+            with open(path, 'a') as yaml_file:
+                yaml.dump(Util.flow_example(), yaml_file)
+
+            self.log.warning(f"Please configure your {self.mxid}.yaml file and restart the service")
+            flow.load()
+
         self.flow = Flow.deserialize(flow["menu"])
         self.util = Util(self.config)
 

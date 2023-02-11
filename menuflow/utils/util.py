@@ -130,6 +130,22 @@ class Util:
             return False
 
         return start <= number <= end
+    
+    @classmethod
+    def flow_example(cls) -> Dict:
+        return {
+            "menu": {
+                "nodes":
+                [
+                    {
+                        "id": "start",
+                        "type": "message",
+                        "text": "Hello! there, this is a sample message, please make sure the flow is configured. Bye!"
+
+                    }
+                ]
+            }
+        }
 
     def ignore_user(self, mxid: UserID, origin: str) -> bool:
         """It checks if the user ID matches any of the regex patterns in the config file
