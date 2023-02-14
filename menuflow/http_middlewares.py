@@ -42,7 +42,7 @@ async def start_auth_middleware(
         return
 
     if not str(params.url).startswith(middleware.url):
-        log.info(f"The request url do not match with the meddleware url")
+        log.info(f"The request url do not match with the middleware url")
         return
 
     params.headers.update(middleware._general_headers)
