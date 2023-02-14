@@ -99,7 +99,7 @@ class Input(Switch, Message):
             # Otherwise, run the node and update the menu to the output connection.
             await self.room.update_menu(node_id=self.o_connection or await super().run())
             if self.inactivity_options:
-                await Util.cancel_task(room_id=self.room.room_id)
+                await Util.cancel_task(task_name=self.room.room_id)
         else:
             # This is the case where the room is not in the input state
             # and the node is an input node.

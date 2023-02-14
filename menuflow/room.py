@@ -39,7 +39,7 @@ class Room(DBRoom):
     async def clean_up(self):
         del self.by_room_id[self.room_id]
         self.variables = "{}"
-        self._variables = "{}"
+        self._variables = {}
         self.node_id = RoomState.START.value
         self.state = None
         await self.update()
@@ -72,7 +72,6 @@ class Room(DBRoom):
             return room
 
         if create:
-
             room = cls(room_id=room_id, node_id=RoomState.START.value)
             await room.insert()
             room = cast(cls, await super().get_by_room_id(room_id))
