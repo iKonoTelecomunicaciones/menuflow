@@ -130,10 +130,6 @@ class HTTPRequest(Switch):
             await self.room.update_menu(node_id=o_connection, state=None)
             return 500, e
 
-        # If we don't have variables for the template return
-        if not self.room._variables:
-            return response.status, await response.text()
-
         self.log.debug(
             f"node: {self.id} method: {self.method} url: {self._url} status: {response.status}"
         )
