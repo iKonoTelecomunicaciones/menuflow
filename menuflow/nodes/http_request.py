@@ -43,16 +43,16 @@ class HTTPRequest(Switch):
     ```
     """
 
-    method: str = ib(default=None, metadata={"json": "method"})
-    url: str = ib(default=None, metadata={"json": "url"})
-    middleware: str = ib(default=None, metadata={"json": "middleware"})
-    variables: Dict[str, Any] = ib(metadata={"json": "variables"}, factory=dict)
-    cookies: Dict[str, Any] = ib(metadata={"json": "cookies"}, factory=dict)
-    query_params: Dict[str, Any] = ib(metadata={"json": "query_params"}, factory=dict)
-    headers: Dict[str, Any] = ib(metadata={"json": "headers"}, factory=dict)
-    basic_auth: Dict[str, Any] = ib(metadata={"json": "basic_auth"}, factory=dict)
-    data: Dict[str, Any] = ib(metadata={"json": "data"}, factory=dict)
-    cases: List[Case] = ib(metadata={"json": "cases"}, factory=list)
+    method: str = ib(default=None)
+    url: str = ib(default=None)
+    middleware: str = ib(default=None)
+    variables: Dict[str, Any] = ib(factory=dict)
+    cookies: Dict[str, Any] = ib(factory=dict)
+    query_params: Dict[str, Any] = ib(factory=dict)
+    headers: Dict[str, Any] = ib(factory=dict)
+    basic_auth: Dict[str, Any] = ib(factory=dict)
+    data: Dict[str, Any] = ib(factory=dict)
+    cases: List[Case] = ib(factory=list)
 
     @property
     def _url(self) -> Template:

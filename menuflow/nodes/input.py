@@ -54,11 +54,9 @@ class Input(Switch, Message):
     ```
     """
 
-    variable: str = ib(default=None, metadata={"json": "variable"})
-    cases: List[Case] = ib(metadata={"json": "cases"}, factory=list)
-    inactivity_options: InactivityOptions = ib(
-        default=None, metadata={"json": "inactivity_options"}
-    )
+    variable: str = ib(default=None)
+    cases: List[Case] = ib(factory=list)
+    inactivity_options: InactivityOptions = ib(default=None)
 
     @property
     def _inactivity_message(self) -> Template:

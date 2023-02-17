@@ -24,9 +24,10 @@ class NodeType(Enum):
 
 @dataclass
 class Flow(SerializableAttrs):
-    nodes: List[Message, Input, HTTPRequest] = ib(metadata={"json": "nodes"}, factory=list)
-    middlewares: List[HTTPMiddleware] = ib(default=None, metadata={"json": "middlewares"})
-    flow_variables: Dict[str, Any] = ib(default=None, metadata={"json": "flow_variables"})
+
+    nodes: List[Message, Input, HTTPRequest] = ib(factory=list)
+    middlewares: List[HTTPMiddleware] = ib(default=None)
+    flow_variables: Dict[str, Any] = ib(default=None)
 
     nodes_by_id: Dict[str, FlowObject] = {}
     middlewares_by_id: Dict[str, HTTPMiddleware] = {}
