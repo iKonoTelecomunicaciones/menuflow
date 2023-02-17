@@ -25,7 +25,7 @@ class NodeType(Enum):
 @dataclass
 class Flow(SerializableAttrs):
 
-    nodes: List[Message, Input, HTTPRequest] = ib(factory=list)
+    nodes: List[Message, Input, HTTPRequest, Switch, CheckTime] = ib(factory=list)
     middlewares: List[HTTPMiddleware] = ib(default=None)
     flow_variables: Dict[str, Any] = ib(default=None)
 
