@@ -8,9 +8,9 @@ from .flow_object import FlowObject
 
 @dataclass
 class Case(SerializableAttrs):
-    id: str = ib(metadata={"json": "id"})
-    variables: Dict[str, Any] = ib(metadata={"json": "variables"}, factory=dict)
-    o_connection: str = ib(default=None, metadata={"json": "o_connection"})
+    id: str = ib()
+    variables: Dict[str, Any] = ib(factory=dict)
+    o_connection: str = ib(default=None)
 
 
 @dataclass
@@ -37,8 +37,8 @@ class Switch(FlowObject):
     ```
     """
 
-    validation: str = ib(default=None, metadata={"json": "validation"})
-    cases: List[Case] = ib(metadata={"json": "cases"}, factory=list)
+    validation: str = ib(default=None)
+    cases: List[Case] = ib(factory=list)
 
     async def load_cases(self) -> Dict[str, str]:
         """It loads the cases into a dictionary.

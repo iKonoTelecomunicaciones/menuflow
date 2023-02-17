@@ -15,8 +15,8 @@ from ..utils.base_logger import BaseLogger
 
 @dataclass
 class FlowObject(SerializableAttrs, BaseLogger):
-    id: str = ib(metadata={"json": "id"})
-    type: str = ib(metadata={"json": "type"})
+    id: str = ib()
+    type: str = ib()
 
     room: Room = None
     config: Config = None

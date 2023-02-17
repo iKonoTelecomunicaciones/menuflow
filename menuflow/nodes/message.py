@@ -31,8 +31,8 @@ class Message(FlowObject):
     ```
     """
 
-    text: str = ib(default=None, metadata={"json": "text"})
-    o_connection: str = ib(default=None, metadata={"json": "o_connection"})
+    text: str = ib(default=None)
+    o_connection: str = ib(default=None)
 
     @property
     def _text(self) -> Template:
