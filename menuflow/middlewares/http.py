@@ -152,7 +152,7 @@ class HTTPMiddleware(FlowObject):
             request_body["headers"] = self._headers
 
         if self.auth.data:
-            request_body["json"] = self._data
+            request_body["data"] = self._data
 
         try:
             timeout = ClientTimeout(total=self.config["menuflow.timeouts.middlewares"])
