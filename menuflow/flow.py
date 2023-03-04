@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from enum import Enum
 from typing import Any, Dict, List
 
 from attr import dataclass, ib
@@ -11,15 +10,6 @@ from mautrix.util.logging import TraceLogger
 from .middlewares.http import HTTPMiddleware
 from .nodes import CheckTime, HTTPRequest, Input, Message, Switch
 from .nodes.flow_object import FlowObject
-from .room import Room
-
-
-class NodeType(Enum):
-    MESSAGE = "message"
-    SWITCH = "switch"
-    INPUT = "input"
-    HTTPREQUEST = "http_request"
-    CHECKTIME = "check_time"
 
 
 @dataclass

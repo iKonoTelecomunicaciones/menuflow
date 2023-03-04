@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar, Dict
 
 from asyncpg import Record
@@ -12,9 +12,9 @@ fake_db = Database.create("") if TYPE_CHECKING else None
 
 
 class RoomState(Enum):
-    START = "start"
-    END = "end"
-    INPUT = "input"
+    START = auto()
+    END = auto()
+    INPUT = auto()
 
 
 @dataclass

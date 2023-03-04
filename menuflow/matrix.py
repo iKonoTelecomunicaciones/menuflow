@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from copy import deepcopy
-from typing import Dict, Optional
+from typing import Dict
 
 import yaml
 from mautrix.client import Client as MatrixClient
@@ -17,12 +17,12 @@ from mautrix.types import (
     StrippedStateEvent,
 )
 
+from .algorithm import Thing
 from .config import Config
-from .db.room import RoomState
-from .flow import Flow, NodeType
+from .flow import Flow
 from .room import Room
 from .user import User
-from .utils.util import Util
+from .utils import Util
 
 
 class MatrixHandler(MatrixClient):
@@ -49,6 +49,7 @@ class MatrixHandler(MatrixClient):
 
         self.flow = Flow.deserialize(flow["menu"])
         self.util = Util(self.config)
+        self.thing = Thing(config=config, util=self.util)
 
     def handle_sync(self, data: JSON) -> list[asyncio.Task]:
         # This is a way to remove duplicate events from the sync
@@ -170,132 +171,4 @@ class MatrixHandler(MatrixClient):
         if not room:
             return
 
-        await self.algorithm(room=room, evt=message)
-
-    async def algorithm(self, room: Room, evt: Optional[MessageEvent] = None) -> None:
-        """If the room is in the input state, then set the variable to the room's input,
-        and if the node has an output connection, then update the menu to the output connection.
-        Otherwise, run the node and update the menu to the output connection.
-        If the node is an input node and the room is not in the input state,
-        then show the message and update the menu to the node's id and set the state to input.
-        If the node is a message node, then show the message and if the node has an output connection,
-        then update the menu to the output connection and run the algorithm again
-
-        Parameters
-        ----------
-        room : Room
-            Room - the room object
-        evt : MessageEvent
-            The event that triggered the algorithm.
-
-        Returns
-        -------
-            The return value is the result of the last expression in the function body.
-
-        """
-
-        # This is the case where the room is in the input state.
-        # In this case, the variable is set to the room's input, and if the node has an output connection,
-        # then the menu is updated to the output connection.
-        # Otherwise, the node is run and the menu is updated to the output connection.
-
-        node = self.flow.node(room=room)
-
-        if node is None:
-            self.log.debug(f"Room {room.room_id} does not have a node")
-            await room.update_menu(node_id=RoomState.START.value)
-            return
-
-        self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.state}]")
-
-        if node.type == NodeType.CHECKTIME.value:
-            await node.check_time()
-
-        node = self.flow.node(room=room)
-
-        if node.type == NodeType.INPUT.value:
-            await node.run(client=self, evt=evt)
-            if room.state == RoomState.INPUT.value:
-                return
-
-        node = self.flow.node(room=room)
-
-        if node.type == NodeType.SWITCH.value:
-            await room.update_menu(await node.run())
-
-        node = self.flow.node(room=room)
-
-        # Showing the message and updating the menu to the output connection.
-        if node and node.type == NodeType.MESSAGE.value:
-            self.log.debug(f"Room {room.room_id} enters message node {node.id}")
-            await node.show_message(client=self)
-
-            await room.update_menu(
-                node_id=node.o_connection,
-                state=RoomState.END.value if not node.o_connection else None,
-            )
-
-        node = self.flow.node(room=room)
-
-        if node and node.type == NodeType.HTTPREQUEST.value:
-            node.config = self.config
-            middleware = self.flow.middleware(room=room, middleware_id=node.middleware)
-
-            if middleware:
-                middleware.config = self.config
-
-            self.log.debug(f"Room {room.room_id} enters http_request node {node.id}")
-            try:
-                status, response = await node.request(
-                    session=self.api.session, middleware=middleware
-                )
-                self.log.info(f"http_request node {node.id} had a status of {status}")
-
-                if status == 401:
-                    self.HTTP_ATTEMPTS.update(
-                        {
-                            room.room_id: {
-                                "last_http_node": node.id,
-                                "attempts_count": self.HTTP_ATTEMPTS.get(room.room_id).get(
-                                    "attempts_count"
-                                )
-                                + 1
-                                if self.HTTP_ATTEMPTS.get(room.room_id)
-                                else 1,
-                            }
-                        }
-                    )
-                    self.log.debug(
-                        "HTTP auth attempt"
-                        f"{self.HTTP_ATTEMPTS[room.room_id]['attempts_count']}, trying again ..."
-                    )
-
-                if not status in [200, 201]:
-                    self.log.error(response)
-                else:
-                    self.HTTP_ATTEMPTS.update(
-                        {room.room_id: {"last_http_node": None, "attempts_count": 0}}
-                    )
-            except Exception as e:
-                self.log.exception(e)
-                return
-
-            if (
-                self.HTTP_ATTEMPTS.get(room.room_id)
-                and self.HTTP_ATTEMPTS[room.room_id]["last_http_node"] == node.id
-                and self.HTTP_ATTEMPTS[room.room_id]["attempts_count"] >= middleware._attempts
-            ):
-                self.log.debug("Attempts limit reached, o_connection set as `default`")
-                self.HTTP_ATTEMPTS.update(
-                    {room.room_id: {"last_http_node": None, "attempts_count": 0}}
-                )
-                await room.update_menu(await node.get_case_by_id("default"), None)
-
-        node = self.flow.node(room=room)
-
-        if room.state == RoomState.END.value:
-            self.log.debug(f"The room {room.room_id} has terminated the flow")
-            await room.update_menu(node_id=RoomState.START.value)
-            return
-
-        await self.algorithm(room=room, evt=evt)
+        await self.thing.algorithm(room=room, event=message)

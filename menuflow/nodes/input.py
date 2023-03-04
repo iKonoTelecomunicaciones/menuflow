@@ -58,6 +58,8 @@ class Input(Switch, Message):
     cases: List[Case] = ib(factory=list)
     inactivity_options: InactivityOptions = ib(default=None)
 
+    client: MatrixClient
+
     @property
     def _inactivity_message(self) -> Template:
         return self.render_data(self.inactivity_options.warning_message)
@@ -66,7 +68,7 @@ class Input(Switch, Message):
     def _closing_message(self) -> Template:
         return self.render_data(self.inactivity_options.closing_message)
 
-    async def run(self, client: MatrixClient, evt: Optional[MessageEvent]):
+    async def run(self, input_event: Optional[MessageEvent]):
         """If the room is in input mode, then set the variable.
         Otherwise, show the message and enter input mode
 
@@ -80,15 +82,19 @@ class Input(Switch, Message):
         """
 
         if self.room.state == RoomState.INPUT.value:
-            if not evt:
+            if not input_event:
                 self.log.warning("The [evt] is empty")
                 return
 
-            self.log.debug(f"Creating [variable: {self.variable}] [content: {evt.content.body}]")
+            self.log.debug(
+                f"Creating [variable: {self.variable}] [content: {input_event.content.body}]"
+            )
             try:
                 await self.room.set_variable(
                     self.variable,
-                    int(evt.content.body) if evt.content.body.isdigit() else evt.content.body,
+                    int(input_event.content.body)
+                    if input_event.content.body.isdigit()
+                    else input_event.content.body,
                 )
             except ValueError as e:
                 self.log.warning(e)
@@ -104,12 +110,12 @@ class Input(Switch, Message):
             # In this case, the message is shown and the menu is updated to the node's id
             # and the room state is set to input.
             self.log.debug(f"Room {self.room.room_id} enters input node {self.id}")
-            await self.show_message(client=client)
+            await self.run()
             await self.room.update_menu(node_id=self.id, state=RoomState.INPUT.value)
             if self.inactivity_options:
-                await self.inactivity_task(client=client)
+                await self.inactivity_task()
 
-    async def inactivity_task(self, client: MatrixClient):
+    async def inactivity_task(self):
         """It spawns a task to harass the client to enter information to input option
 
         Parameters
@@ -120,9 +126,9 @@ class Input(Switch, Message):
         """
 
         self.log.debug(f"Inactivity loop starts in room: {self.room.room_id}")
-        asyncio.create_task(self.timeout_active_chats(client=client), name=self.room.room_id)
+        asyncio.create_task(self.timeout_active_chats(), name=self.room.room_id)
 
-    async def timeout_active_chats(self, client: MatrixClient):
+    async def timeout_active_chats(self):
         """It sends messages in time intervals to communicate customer
         that not entered information to input option.
 
@@ -143,9 +149,9 @@ class Input(Switch, Message):
                 self.log.debug(f"INACTIVITY TRIES COMPLETED -> {self.room.room_id}")
                 o_connection = await self.get_case_by_id("timeout")
                 await self.room.update_menu(node_id=o_connection, state=None)
-                await client.algorithm(room=self.room)
+                await self.client.algorithm(room=self.room)
                 break
 
-            await self.show_message(client=client, message=self._inactivity_message)
+            await self.send_message(message=self._inactivity_message)
             await asyncio.sleep(self.inactivity_options.time_between_attempts)
             count += 1

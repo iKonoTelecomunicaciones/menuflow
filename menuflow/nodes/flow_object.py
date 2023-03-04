@@ -9,7 +9,6 @@ from mautrix.types import SerializableAttrs
 
 from ..config import Config
 from ..jinja.jinja_template import jinja_env
-from ..room import Room
 from ..utils.base_logger import BaseLogger
 
 
@@ -18,9 +17,12 @@ class FlowObject(SerializableAttrs, BaseLogger):
     id: str = ib()
     type: str = ib()
 
-    room: Room = None
     config: Config = None
     flow_variables: Dict[str, Any] = {}
+
+    @classmethod
+    def init_cls(cls, config: Config):
+        cls.config = config
 
     @abstractmethod
     async def run(self):
@@ -29,23 +31,7 @@ class FlowObject(SerializableAttrs, BaseLogger):
     def build_node(self):
         return self.deserialize(self.__dict__)
 
-    def render_data(self, data: Dict | List | str) -> Dict | List | str:
-        """It takes a dictionary or list, converts it to a string,
-        and then uses Jinja to render the string
-
-        Parameters
-        ----------
-        data : Dict | List
-            The data to be rendered.
-
-        Returns
-        -------
-            A dictionary or list.
-
-        """
-
-        variables: Dict[str, Any] = {}
-        variables.update(self.room._variables)
+    def render_data(self, data: Dict | List | str, variables: Dict) -> Dict | List | str:
         if self.flow_variables:
             variables.update(self.flow_variables.__dict__)
 

@@ -50,7 +50,7 @@ class CheckTime(Switch):
     timezone: str = ib(metadata={"json": "timezone"}, factory=str)
     cases: List[Case] = ib(metadata={"json": "cases"}, factory=list)
 
-    async def check_time(self):
+    async def run(self):
         """If the current month, day, weekday, and time are within the specified ranges,
         then update the menu to the "True" case. Otherwise, update the menu to the "False" case
 

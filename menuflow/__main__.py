@@ -10,6 +10,7 @@ from .config import Config
 from .db import init as init_db
 from .db import upgrade_table
 from .menu import MenuClient
+from .nodes import FlowObject
 from .server import MenuFlowServer
 
 
@@ -68,6 +69,7 @@ class MenuFlow(Program):
         await asyncio.gather(*[menu.start() async for menu in MenuClient.all()])
         await super().start()
         await self.server.start()
+        FlowObject.init_cls(config=self.config)
 
     async def stop(self) -> None:
         self.add_shutdown_actions(*(menu.stop() for menu in MenuClient.cache.values()))
