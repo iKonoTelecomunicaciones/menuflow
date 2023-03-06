@@ -115,8 +115,9 @@ class MatrixHandler(MatrixClient):
         self.lock_room(evt.room_id)
 
         try:
-            room = await Room.get_by_room_id(room_id=evt.room_id)
+            room = await Room.get_by_room_id(room_id=evt.room_id, menuflow=self.flow)
             room.config = self.config
+            room.matrix_client = self
             if not await room.get_variable("bot_mxid"):
                 await room.set_variable("bot_mxid", self.mxid)
                 await room.set_variable("customer_room_id", evt.room_id)
@@ -125,10 +126,10 @@ class MatrixHandler(MatrixClient):
             self.unlock_room(evt.room_id)
             return
 
-        await self.algorithm(room=room)
+        await self.thing.algorithm(room=room)
 
     async def handle_leave(self, evt: StrippedStateEvent):
-        room = await Room.get_by_room_id(room_id=evt.room_id, create=False)
+        room = await Room.get_by_room_id(room_id=evt.room_id, menuflow=self.flow, create=False)
 
         if not room:
             return
@@ -158,8 +159,10 @@ class MatrixHandler(MatrixClient):
 
         try:
             user: User = await User.get_by_mxid(mxid=message.sender)
-            room = await Room.get_by_room_id(room_id=message.room_id)
+            room = await Room.get_by_room_id(room_id=message.room_id, menuflow=self.flow)
             room.config = user.config = self.config
+            room.matrix_client = self
+            room.menuflow = self.flow
 
             if not await room.get_variable("customer_phone") and user.phone:
                 await room.set_variable("customer_phone", user.phone)

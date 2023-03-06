@@ -58,8 +58,6 @@ class Input(Switch, Message):
     cases: List[Case] = ib(factory=list)
     inactivity_options: InactivityOptions = ib(default=None)
 
-    client: MatrixClient
-
     @property
     def _inactivity_message(self) -> Template:
         return self.render_data(self.inactivity_options.warning_message)

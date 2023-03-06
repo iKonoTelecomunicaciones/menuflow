@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from enum import Enum
 from json import JSONDecodeError, dumps, loads
 from typing import Any, Dict, List
 
@@ -9,15 +10,26 @@ from mautrix.types import SerializableAttrs
 
 from ..config import Config
 from ..jinja.jinja_template import jinja_env
+from ..matrix import MatrixClient
 from ..utils.base_logger import BaseLogger
+
+
+class NodeType(Enum):
+    MESSAGE = "message"
+    SWITCH = "switch"
+    INPUT = "input"
+    HTTPREQUEST = "http_request"
+    CHECKTIME = "check_time"
 
 
 @dataclass
 class FlowObject(SerializableAttrs, BaseLogger):
+
     id: str = ib()
-    type: str = ib()
+    type: NodeType = ib()
 
     config: Config = None
+    client: MatrixClient = None
     flow_variables: Dict[str, Any] = {}
 
     @classmethod

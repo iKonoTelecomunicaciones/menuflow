@@ -3,12 +3,13 @@ from __future__ import annotations
 import base64
 from logging import getLogger
 from types import SimpleNamespace
-from typing import Dict
+from typing import TYPE_CHECKING, Dict
 
 from aiohttp import ClientSession, TraceRequestEndParams, TraceRequestStartParams
 from mautrix.util.logging import TraceLogger
 
-from .room import Room
+if TYPE_CHECKING:
+    from .room import Room
 
 log: TraceLogger = getLogger("menuflow.middleware")
 

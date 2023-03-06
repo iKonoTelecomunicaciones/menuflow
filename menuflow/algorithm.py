@@ -1,5 +1,5 @@
 from logging import getLogger
-from typing import Optional
+from typing import Dict, Optional
 
 from mautrix.types import MessageEvent
 from mautrix.util.logging import TraceLogger
@@ -11,38 +11,35 @@ from .utils import Util
 
 
 class Thing:
-
     log: TraceLogger = getLogger("menuflow.thing")
 
     config: Config
     util: Util
+
+    HTTP_ATTEMPTS: Dict = {}
 
     def __init__(self, config: Config, util: Util = None) -> None:
         self.config = config
         self.util = util
 
     async def algorithm(self, room: Room, event: Optional[MessageEvent] = None) -> None:
-
         if not room.node:
             self.log.debug(f"Room {room.room_id} does not have a node")
-            await room.update_menu(node="start")
+            await room.clean_up()
             return
 
-        self.log.debug(f"The [room: {room.room_id}] [node: {room.node.id}] [state: {room.state}]")
+        self.log.debug(
+            f"The [room: {room.room_id}] [node: {room.node.id}] [state: {room.state or '👻'}]"
+        )
 
-        if room.node.type == NodeType.CHECKTIME:
-            await room.execute_current_node()
-        if room.node.type == NodeType.SWITCH:
-            await room.execute_current_node()
-        if room.node.type == NodeType.MESSAGE:
-            await room.execute_current_node()
         if room.node.type == NodeType.INPUT:
             await room.execute_current_node(input_event=event)
             if room.state == RoomState.INPUT:
                 return
+        else:
+            await room.execute_current_node()
 
         if room.node.type == NodeType.HTTPREQUEST:
-
             middleware = room.menuflow.middleware(room=room, middleware_id=room.node.middleware)
 
             if middleware:
@@ -51,7 +48,7 @@ class Thing:
             self.log.debug(f"Room {room.room_id} enters http_request node {room.node.id}")
             try:
                 status, response = await room.node.run(
-                    session=self.api.session, middleware=middleware
+                    session=room.matrix_client.api.session, middleware=middleware
                 )
                 self.log.info(f"http_request node {room.node.id} had a status of {status}")
 

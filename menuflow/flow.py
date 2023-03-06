@@ -8,8 +8,7 @@ from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
 from .middlewares.http import HTTPMiddleware
-from .nodes import CheckTime, HTTPRequest, Input, Message, Switch
-from .nodes.flow_object import FlowObject
+from .nodes import CheckTime, FlowObject, HTTPRequest, Input, Message, Switch, avilable_nodes
 
 
 @dataclass
@@ -40,6 +39,7 @@ class Flow(SerializableAttrs):
 
         for node in self.nodes:
             if node_id == node.id:
+                node = self.node(node.serialize())
                 self._add_to_cache(node)
                 return node
 
@@ -78,29 +78,14 @@ class Flow(SerializableAttrs):
         """
         return type_class.deserialize(data)
 
-    def node(self, room: Room) -> Message | Input | HTTPRequest | Switch | CheckTime | None:
-        node = self.get_node_by_id(node_id=room.node_id)
+    def node(self, node_data: Dict) -> Message | Input | HTTPRequest | Switch | CheckTime | None:
 
-        if not node:
+        if not node_data:
             return
 
-        node.room = room
-        node.flow_variables = self.flow_variables
+        node_type = node_data.get("type", "")
 
-        if node.type == "message":
-            node = self.build_object(node.serialize(), Message)
-        elif node.type == "input":
-            node = self.build_object(node.serialize(), Input)
-        elif node.type == "http_request":
-            node = self.build_object(node.serialize(), HTTPRequest)
-        elif node.type == "switch":
-            node = self.build_object(node.serialize(), Switch)
-        elif node.type == "check_time":
-            node = self.build_object(node.serialize(), CheckTime)
-        else:
-            return
-
-        return node
+        return self.build_object(node_data, avilable_nodes.get(node_type))
 
     def middleware(self, room: Room, middleware_id: str) -> HTTPMiddleware | None:
         """It returns the middleware object.

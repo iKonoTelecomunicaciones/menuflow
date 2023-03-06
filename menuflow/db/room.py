@@ -34,7 +34,7 @@ class Room:
 
     @property
     def values(self) -> tuple:
-        return (self.room_id, self.variables, self.node_id, self.state)
+        return (self.room_id, self.variables, self.node_id, self.state.name if self.state else "")
 
     _columns = "room_id, variables, node_id, state"
 

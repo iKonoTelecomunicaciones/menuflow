@@ -9,7 +9,7 @@ from mautrix.types import SerializableAttrs
 from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
-from ..nodes.flow_object import FlowObject
+from ..nodes import FlowObject
 
 
 @dataclass
