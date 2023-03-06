@@ -26,7 +26,7 @@ class Message(FlowObject):
     ```
     - id: m1
       type: message
-      message_type: "text | notice"
+      message_type: "m.text | m.notice"
       text: "Hello World!"
       o_connection: m2
     ```
@@ -38,12 +38,10 @@ class Message(FlowObject):
 
     @property
     def _message_type(self) -> MessageType:
-        if self.message_type == "text":
+        if self.message_type not in ["m.text", "m.notice"]:
             translated_msg_type = MessageType.TEXT
-        elif self.message_type == "notice":
-            translated_msg_type = MessageType.NOTICE
         else:
-            translated_msg_type = MessageType.TEXT
+            translated_msg_type = MessageType(self.message_type)
 
         return translated_msg_type
 
