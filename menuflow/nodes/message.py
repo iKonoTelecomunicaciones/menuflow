@@ -7,7 +7,7 @@ from attr import dataclass, ib
 from jinja2 import Template
 from markdown import markdown
 from mautrix.errors.request import MLimitExceeded
-from mautrix.types import Format, MessageType, RoomID, TextMessageEventContent
+from mautrix.types import Format, MessageType, TextMessageEventContent
 
 from ..matrix import MatrixClient
 from .flow_object import FlowObject
@@ -26,13 +26,26 @@ class Message(FlowObject):
     ```
     - id: m1
       type: message
+      message_type: "text | notice"
       text: "Hello World!"
       o_connection: m2
     ```
     """
 
+    message_type: str = ib(default=None)
     text: str = ib(default=None)
     o_connection: str = ib(default=None)
+
+    @property
+    def _message_type(self) -> MessageType:
+        if self.message_type == "text":
+            translated_msg_type = MessageType.TEXT
+        elif self.message_type == "notice":
+            translated_msg_type = MessageType.NOTICE
+        else:
+            translated_msg_type = MessageType.TEXT
+
+        return translated_msg_type
 
     @property
     def _text(self) -> Template:
@@ -60,7 +73,7 @@ class Message(FlowObject):
             return
 
         msg_content = TextMessageEventContent(
-            msgtype=MessageType.TEXT,
+            msgtype=self._message_type,
             body=message or self.text,
             format=Format.HTML,
             formatted_body=markdown(message or self._text),
