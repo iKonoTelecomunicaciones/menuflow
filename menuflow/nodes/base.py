@@ -4,7 +4,7 @@ from abc import abstractmethod
 from enum import Enum
 from json import JSONDecodeError, dumps, loads
 from logging import getLogger
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from aiohttp import ClientSession
 from mautrix.client import Client as MatrixClient
@@ -12,6 +12,7 @@ from mautrix.util.logging import TraceLogger
 
 from ..config import Config
 from ..jinja.jinja_template import jinja_env
+from ..room import Room
 
 
 class NodeType(Enum):
@@ -31,7 +32,7 @@ class Base:
     session: ClientSession
 
     data: Dict
-    variables: Dict = {}
+    room: Room
 
     @property
     def id(self) -> str:
@@ -42,17 +43,17 @@ class Base:
         return NodeType(self.data.get("type", ""))
 
     @classmethod
-    def init_cls(cls, config: Config, matrix_client: MatrixClient, variables: Dict):
+    def init_cls(cls, config: Config, matrix_client: MatrixClient, default_variables: Dict):
         cls.config = config
         cls.matrix_client = matrix_client
         cls.session = matrix_client.api.session
-        cls.variables = variables
+        cls.variables = default_variables
 
     @abstractmethod
     async def run(self):
         pass
 
-    def render_data(self, data: Dict | List | str, variables: Dict) -> Dict | List | str:
+    def render_data(self, data: Dict | List | str) -> Dict | List | str:
         """It takes a dictionary or list, converts it to a string,
         and then uses Jinja to render the string
 
@@ -66,11 +67,6 @@ class Base:
             A dictionary or list.
 
         """
-
-        variables: Dict[str, Any] = {}
-        variables.update(variables)
-        # if self.flow_variables:
-        #     variables.update(self.flow_variables.__dict__)
 
         if isinstance(data, str):
             data_template = jinja_env.from_string(data)
@@ -99,11 +95,11 @@ class Base:
                 return item
 
         try:
-            data = loads(data_template.render(**variables))
+            data = loads(data_template.render(**self.variables))
             data = convert_to_bool(data)
             return data
         except JSONDecodeError:
-            data = data_template.render(**variables)
+            data = data_template.render(**self.variables)
             return convert_to_bool(data)
         except KeyError:
             data = loads(data_template.render())

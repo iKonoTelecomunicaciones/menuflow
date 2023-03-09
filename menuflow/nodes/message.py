@@ -8,10 +8,9 @@ from .base import Base
 
 
 class Message(Base):
-    def __init__(self, message_node_data: MessageR, variables: Dict) -> None:
+    def __init__(self, message_node_data: MessageR) -> None:
         self.log = self.log.getChild(message_node_data.get("id"))
-        self.data: Dict = message_node_data
-        self.variables = variables or {}
+        self.data: Dict = message_node_data.serialize()
 
     @property
     def message_type(self) -> MessageType:
@@ -34,7 +33,7 @@ class Message(Base):
 
     @property
     def text(self) -> str:
-        return self.render_data(data=self.data.get("text"), variables=self.variables)
+        return self.render_data(data=self.data.get("text"))
 
     @property
     def o_connection(self) -> str:

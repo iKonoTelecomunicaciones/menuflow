@@ -5,7 +5,7 @@ from typing import Dict
 
 from mautrix.util.logging import TraceLogger
 
-from .nodes import Message
+from .nodes import Message, Switch
 from .nodes_repository import Flow as FlowR
 from .room import Room
 
@@ -16,18 +16,21 @@ class Flow:
     nodes: Dict[str, Message] = {}
 
     def __init__(self, flow_data: FlowR) -> None:
-        self.data: Dict = flow_data.serialize()
+        self.data: FlowR = flow_data
 
     @property
     def flow_variables(self) -> Dict:
-        return self.data.get("flow_variables")
+        return self.data.flow_variables.__dict__
 
     def load_nodes(self):
-        for node in self.data.get("nodes"):
-            if node.get("type") == "message":
-                self.nodes[node.get("id")] = Message(
-                    message_node_data=node, variables=self.data.get("flow_variable")
-                )
+        for node in self.data.nodes:
+            if node.type == "message":
+                node = Message(message_node_data=node)
+            elif node.type == "switch":
+                node = Switch(input_node_data=node)
+
+            node.variables = self.flow_variables or {}
+            self.nodes[node.id] = node
 
     def get_node_by_id(self, node_id: str) -> Message:
         return self.nodes.get(node_id)
@@ -38,5 +41,7 @@ class Flow:
         if not node:
             return
 
+        node.room = room
         node.variables.update(room._variables)
+
         return node

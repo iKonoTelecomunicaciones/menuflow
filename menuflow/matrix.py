@@ -51,7 +51,9 @@ class MatrixHandler(MatrixClient):
 
         self.util = Util(self.config)
         self.flow = Flow(flow_data=FlowR.deserialize(flow["menu"]))
-        Base.init_cls(config=self.config, matrix_client=self, variables=self.flow.flow_variables)
+        Base.init_cls(
+            config=self.config, matrix_client=self, default_variables=self.flow.flow_variables
+        )
         self.flow.load_nodes()
 
     def handle_sync(self, data: JSON) -> list[asyncio.Task]:
@@ -224,7 +226,7 @@ class MatrixHandler(MatrixClient):
 
         node = self.flow.node(room=room)
 
-        if node.type == NodeType.SWITCH.value:
+        if node.type == NodeType.SWITCH:
             await room.update_menu(await node.run())
 
         node = self.flow.node(room=room)

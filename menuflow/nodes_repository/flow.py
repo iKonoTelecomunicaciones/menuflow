@@ -11,6 +11,7 @@ from mautrix.util.logging import TraceLogger
 # from ..middlewares.http import HTTPMiddleware
 from ..room import Room
 from .message import Message
+from .switch import Switch
 
 # from . import CheckTime, FlowObject, HTTPRequest, Input, Message, Switch
 
