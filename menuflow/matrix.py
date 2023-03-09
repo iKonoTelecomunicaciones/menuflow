@@ -19,10 +19,12 @@ from mautrix.types import (
 
 from .config import Config
 from .db.room import RoomState
-from .flow import Flow, NodeType
+from .flow import Flow
+from .nodes import Base, NodeType
+from .nodes_repository import Flow as FlowR
 from .room import Room
 from .user import User
-from .utils.util import Util
+from .utils import Util
 
 
 class MatrixHandler(MatrixClient):
@@ -47,8 +49,10 @@ class MatrixHandler(MatrixClient):
             )
             flow.load()
 
-        self.flow = Flow.deserialize(flow["menu"])
         self.util = Util(self.config)
+        self.flow = Flow(flow_data=FlowR.deserialize(flow["menu"]))
+        Base.init_cls(config=self.config, matrix_client=self, variables=self.flow.flow_variables)
+        self.flow.load_nodes()
 
     def handle_sync(self, data: JSON) -> list[asyncio.Task]:
         # This is a way to remove duplicate events from the sync
@@ -226,9 +230,9 @@ class MatrixHandler(MatrixClient):
         node = self.flow.node(room=room)
 
         # Showing the message and updating the menu to the output connection.
-        if node and node.type == NodeType.MESSAGE.value:
+        if node and node.type == NodeType.MESSAGE:
             self.log.debug(f"Room {room.room_id} enters message node {node.id}")
-            await node.show_message(client=self)
+            await node.run(room_id=room.room_id)
 
             await room.update_menu(
                 node_id=node.o_connection,
