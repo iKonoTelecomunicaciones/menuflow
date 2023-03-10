@@ -129,6 +129,6 @@ class Room(DBRoom):
             f"and his [state: {self.state}] to [{state}]"
         )
         self.node_id = node_id.value if isinstance(node_id, RoomState) else node_id
-        self.state = state.value if isinstance(state, RoomState) else state
+        self.state = state
         await self.update()
         self._add_to_cache()

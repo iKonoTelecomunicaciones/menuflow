@@ -5,7 +5,7 @@ from typing import Dict
 
 from mautrix.util.logging import TraceLogger
 
-from .nodes import Message, Switch
+from .nodes import Input, Message, Switch
 from .nodes_repository import Flow as FlowR
 from .room import Room
 
@@ -27,7 +27,9 @@ class Flow:
             if node.type == "message":
                 node = Message(message_node_data=node)
             elif node.type == "switch":
-                node = Switch(input_node_data=node)
+                node = Switch(switch_node_data=node)
+            elif node.type == "input":
+                node = Input(input_node_data=node)
 
             node.variables = self.flow_variables or {}
             self.nodes[node.id] = node

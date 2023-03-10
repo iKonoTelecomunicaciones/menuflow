@@ -6,9 +6,9 @@ from .base import Base
 
 
 class Switch(Base):
-    def __init__(self, input_node_data: SwitchR) -> None:
-        self.log = self.log.getChild(input_node_data.get("id"))
-        self.data: Dict = input_node_data
+    def __init__(self, switch_node_data: SwitchR) -> None:
+        self.log = self.log.getChild(switch_node_data.get("id"))
+        self.data: Dict = switch_node_data
 
     @property
     def validation(self) -> str:
@@ -58,7 +58,7 @@ class Switch(Base):
         result = None
 
         try:
-            result = self.render_data(self.validation)
+            result = self.validation
             # TODO What would be the best way to handle this, taking jinja into account?
             # if res == "True":
             #     res = True

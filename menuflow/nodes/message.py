@@ -39,7 +39,7 @@ class Message(Base):
     def o_connection(self) -> str:
         return self.data.get("o_connection", "")
 
-    async def run(self, room_id: RoomID):
+    async def run(self):
 
         if not self.text:
             self.log.warning(f"The message {self.id} hasn't been send because the text is empty")
@@ -52,4 +52,4 @@ class Message(Base):
             formatted_body=markdown(self.text),
         )
 
-        await self.matrix_client.send_message(room_id=room_id, content=msg_content)
+        await self.matrix_client.send_message(room_id=self.room.room_id, content=msg_content)

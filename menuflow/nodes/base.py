@@ -47,7 +47,7 @@ class Base:
         cls.config = config
         cls.matrix_client = matrix_client
         cls.session = matrix_client.api.session
-        cls.variables = default_variables
+        cls.variables = default_variables or {}
 
     @abstractmethod
     async def run(self):
@@ -93,6 +93,8 @@ class Base:
                     return item
             else:
                 return item
+
+        self.variables.update(self.room._variables)
 
         try:
             data = loads(data_template.render(**self.variables))

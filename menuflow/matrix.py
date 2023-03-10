@@ -219,9 +219,9 @@ class MatrixHandler(MatrixClient):
 
         node = self.flow.node(room=room)
 
-        if node.type == NodeType.INPUT.value:
-            await node.run(client=self, evt=evt)
-            if room.state == RoomState.INPUT.value:
+        if node.type == NodeType.INPUT:
+            await node.run(evt=evt)
+            if room.state == RoomState.INPUT:
                 return
 
         node = self.flow.node(room=room)
@@ -234,7 +234,7 @@ class MatrixHandler(MatrixClient):
         # Showing the message and updating the menu to the output connection.
         if node and node.type == NodeType.MESSAGE:
             self.log.debug(f"Room {room.room_id} enters message node {node.id}")
-            await node.run(room_id=room.room_id)
+            await node.run()
 
             await room.update_menu(
                 node_id=node.o_connection,
