@@ -1,16 +1,17 @@
 from typing import Dict
 
 from markdown import markdown
-from mautrix.types import Format, MessageType, RoomID, TextMessageEventContent
+from mautrix.types import Format, MessageType, TextMessageEventContent
 
-from ..nodes_repository import Message as MessageR
+from ..db.room import RoomState
+from ..repository import Message as MessageR
 from .base import Base
 
 
 class Message(Base):
     def __init__(self, message_node_data: MessageR) -> None:
         self.log = self.log.getChild(message_node_data.get("id"))
-        self.data: Dict = message_node_data.serialize()
+        self.data: Dict = message_node_data
 
     @property
     def message_type(self) -> MessageType:
@@ -40,6 +41,7 @@ class Message(Base):
         return self.data.get("o_connection", "")
 
     async def run(self):
+        self.log.debug(f"Room {self.room.room_id} enters message node {self.id}")
 
         if not self.text:
             self.log.warning(f"The message {self.id} hasn't been send because the text is empty")
@@ -53,3 +55,8 @@ class Message(Base):
         )
 
         await self.matrix_client.send_message(room_id=self.room.room_id, content=msg_content)
+
+        await self.room.update_menu(
+            node_id=self.o_connection,
+            state=RoomState.END if not self.o_connection else None,
+        )

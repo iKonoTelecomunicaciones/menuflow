@@ -5,11 +5,9 @@ from typing import Any, Dict
 from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
 
-from ..utils.base_logger import BaseLogger
-
 
 @dataclass
-class FlowObject(SerializableAttrs, BaseLogger):
+class FlowObject(SerializableAttrs):
     id: str = ib()
     type: str = ib()
     flow_variables: Dict[str, Any] = {}

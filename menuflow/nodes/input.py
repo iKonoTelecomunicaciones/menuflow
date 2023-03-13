@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional
 from mautrix.types import MessageEvent
 
 from ..db.room import RoomState
-from ..nodes_repository import Input as InputR
+from ..repository import Input as InputR
 from ..utils import Util
 from .message import Message
 from .switch import Switch
@@ -45,8 +45,8 @@ class Input(Switch, Message):
         """
 
         if self.room.state == RoomState.INPUT:
-            if not evt:
-                self.log.warning("The [evt] is empty")
+            if not evt or not self.variable:
+                self.log.warning("A problem occurred to trying save the variable")
                 return
 
             self.log.debug(f"Creating [variable: {self.variable}] [content: {evt.content.body}]")
@@ -60,7 +60,8 @@ class Input(Switch, Message):
 
             # If the node has an output connection, then update the menu to the output connection.
             # Otherwise, run the node and update the menu to the output connection.
-            await self.room.update_menu(node_id=self.o_connection or await Switch.run(self))
+            await Switch.run(self)
+
             if self.inactivity_options:
                 await Util.cancel_task(task_name=self.room.room_id)
         else:

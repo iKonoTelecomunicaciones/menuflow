@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from enum import Enum
 from json import JSONDecodeError, dumps, loads
 from logging import getLogger
 from typing import Dict, List
@@ -13,14 +12,6 @@ from mautrix.util.logging import TraceLogger
 from ..config import Config
 from ..jinja.jinja_template import jinja_env
 from ..room import Room
-
-
-class NodeType(Enum):
-    MESSAGE = "message"
-    SWITCH = "switch"
-    INPUT = "input"
-    HTTPREQUEST = "http_request"
-    CHECKTIME = "check_time"
 
 
 class Base:
@@ -39,8 +30,8 @@ class Base:
         return self.data.get("id", "")
 
     @property
-    def type(self) -> NodeType:
-        return NodeType(self.data.get("type", ""))
+    def type(self) -> str:
+        return self.data.get("type", "")
 
     @classmethod
     def init_cls(cls, config: Config, matrix_client: MatrixClient, default_variables: Dict):

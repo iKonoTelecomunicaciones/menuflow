@@ -94,6 +94,10 @@ class Room(DBRoom):
         return self._variables.get(variable_id)
 
     async def set_variable(self, variable_id: str, value: Any):
+
+        if not variable_id:
+            return
+
         self._variables[variable_id] = value
         self.variables = json.dumps(self._variables)
         self.log.debug(

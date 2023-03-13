@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
 
-from .flow_object import FlowObject
+from ..flow_object import FlowObject
 
 
 @dataclass

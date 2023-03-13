@@ -6,7 +6,7 @@ from typing import Any, List
 import pytz
 from attr import dataclass, ib
 
-from ..utils.util import Util
+from ...utils.util import Util
 from .switch import Case, Switch
 
 

@@ -1,7 +1,6 @@
 from typing import Dict, List
 
-from ..nodes_repository import Case
-from ..nodes_repository import Switch as SwitchR
+from ..repository import Switch as SwitchR
 from .base import Base
 
 
@@ -15,7 +14,7 @@ class Switch(Base):
         return self.render_data(data=self.data.get("validation"))
 
     @property
-    def cases(self) -> List[Case]:
+    def cases(self) -> List[Dict]:
         return self.data.get("cases")
 
     async def load_cases(self) -> Dict[str, str]:
@@ -35,15 +34,13 @@ class Switch(Base):
         cases_dict = {}
 
         for case in self.cases:
-            cases_dict[str(case.id)] = {
-                "o_connection": case.o_connection,
-                "variables": case.variables
-                if isinstance(case.variables, dict)
-                else case.variables.__dict__,
+            cases_dict[str(case.get("id"))] = {
+                "o_connection": case.get("o_connection"),
+                "variables": case.get("variables"),
             }
         return cases_dict
 
-    async def run(self) -> str:
+    async def _run(self) -> str:
         """It takes a dictionary of variables, runs the rule,
         and returns the connection that matches the case
 
@@ -72,13 +69,15 @@ class Switch(Base):
 
         return await self.get_case_by_id(str(result))
 
+    async def run(self) -> str:
+        await self.room.update_menu(await self._run())
+
     async def get_case_by_id(self, id: str) -> str:
         try:
             cases = await self.load_cases()
-            case_result = cases[id]
+            case_result: Dict = cases[id]
 
             variables_recorded = []
-
             if case_result.get("variables") and self.room:
                 for variable in case_result.get("variables", {}):
                     if variable in variables_recorded:
