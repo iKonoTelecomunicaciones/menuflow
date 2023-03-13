@@ -20,7 +20,7 @@ from mautrix.types import (
 from .config import Config
 from .db.room import RoomState
 from .flow import Flow
-from .nodes import Base, HTTPRequest, Input, Message, Switch
+from .nodes import Base, CheckTime, HTTPRequest, Input, Message, Switch
 from .repository import Flow as FlowR
 from .room import Room
 from .user import User
@@ -198,8 +198,8 @@ class MatrixHandler(MatrixClient):
 
         self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.state}]")
 
-        # if node.type == NodeType.CHECKTIME.value:
-        #     await node.check_time()
+        if type(node) == CheckTime:
+            await node.run()
 
         node = self.flow.node(room=room)
 

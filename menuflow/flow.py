@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict
+from typing import TYPE_CHECKING, Dict
 
 from mautrix.util.logging import TraceLogger
 
-from .middlewares import HTTPMiddleware
-from .nodes import HTTPRequest, Input, Message, Switch
+from .nodes import CheckTime, HTTPRequest, Input, Message, Switch
 from .repository import Flow as FlowR
 from .room import Room
+
+if TYPE_CHECKING:
+    from .middlewares import HTTPMiddleware
 
 
 class Flow:
@@ -37,11 +39,15 @@ class Flow:
                 node = Switch(switch_node_data=node)
             elif node.get("type") == "input":
                 node = Input(input_node_data=node)
+            elif node.get("type") == "check_time":
+                node = CheckTime(check_time_node_data=node)
             elif node.get("type") == "http_request":
                 node = HTTPRequest(http_request_node_data=node)
 
                 if node.data.get("middleware"):
                     node.middleware = self.get_middleware_by_id(node.data.get("middleware"))
+            else:
+                continue
 
             node.variables = self.flow_variables or {}
             self.nodes[node.id] = node
