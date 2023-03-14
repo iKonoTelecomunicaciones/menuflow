@@ -5,14 +5,14 @@ from typing import Any, Dict, Optional
 from mautrix.types import MessageEvent
 
 from ..db.room import RoomState
-from ..repository import Input as InputR
+from ..repository import Input as InputModel
 from ..utils import Util
 from .message import Message
 from .switch import Switch
 
 
 class Input(Switch, Message):
-    def __init__(self, input_node_data: InputR) -> None:
+    def __init__(self, input_node_data: InputModel) -> None:
         Switch.__init__(self, input_node_data)
         Message.__init__(self, input_node_data)
         self.data = input_node_data
@@ -100,12 +100,12 @@ class Input(Switch, Message):
         """
 
         # wait the given time to start the task
-        await asyncio.sleep(self.inactivity_options.get("chat_timeout"))
+        await asyncio.sleep(self.chat_timeout)
 
         count = 0
         while True:
             self.log.debug(f"Inactivity loop: {datetime.now()} -> {self.room.room_id}")
-            if self.inactivity_options.get("attempts") == count:
+            if self.attempts == count:
                 self.log.debug(f"INACTIVITY TRIES COMPLETED -> {self.room.room_id}")
                 o_connection = await self.get_case_by_id("timeout")
                 await self.room.update_menu(node_id=o_connection, state=None)
@@ -115,5 +115,5 @@ class Input(Switch, Message):
             await self.matrix_client.send_text(
                 room_id=self.room.room_id, text=self.warning_message
             )
-            await asyncio.sleep(self.inactivity_options.get("time_between_attempts"))
+            await asyncio.sleep(self.time_between_attempts)
             count += 1

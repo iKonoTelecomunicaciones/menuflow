@@ -21,7 +21,7 @@ from .config import Config
 from .db.room import RoomState
 from .flow import Flow
 from .nodes import Base, CheckTime, HTTPRequest, Input, Media, Message, Switch
-from .repository import Flow as FlowR
+from .repository import Flow as FlowModel
 from .room import Room
 from .user import User
 from .utils import Util
@@ -49,7 +49,7 @@ class MatrixHandler(MatrixClient):
             flow.load()
 
         self.util = Util(self.config)
-        self.flow = Flow(flow_data=FlowR.deserialize(flow["menu"]))
+        self.flow = Flow(flow_data=FlowModel.deserialize(flow["menu"]))
         Base.init_cls(
             config=self.config, matrix_client=self, default_variables=self.flow.flow_variables
         )

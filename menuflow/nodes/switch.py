@@ -1,11 +1,11 @@
 from typing import Dict, List
 
-from ..repository import Switch as SwitchR
+from ..repository import Switch as SwitchModel
 from .base import Base
 
 
 class Switch(Base):
-    def __init__(self, switch_node_data: SwitchR) -> None:
+    def __init__(self, switch_node_data: SwitchModel) -> None:
         self.log = self.log.getChild(switch_node_data.get("id"))
         self.data: Dict = switch_node_data
 
