@@ -1,135 +1,80 @@
-from __future__ import annotations
+from typing import Dict, Tuple
 
-from typing import Any, Dict, Tuple
-
-from aiohttp import ClientSession, ClientTimeout, ContentTypeError
-from attr import dataclass, ib
-from jinja2 import Template
-from mautrix.types import SerializableAttrs
+from aiohttp import ClientTimeout, ContentTypeError
 from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
-from ..nodes.flow_object import FlowObject
+from ..nodes import Base
+from ..repository import HTTPMiddleware as HTTPMiddlewareModel
+from ..room import Room
 
 
-@dataclass
-class Auth(SerializableAttrs):
-    method: str = ib(default=None, metadata={"json": "method"})
-    token_path: str = ib(default=None, metadata={"json": "token_path"})
-    attempts: int = ib(default=None, metadata={"json": "attempts"})
-    headers: Dict[str, Any] = ib(default=None, metadata={"json": "headers"})
-    cookies: Dict[str, Any] = ib(metadata={"json": "cookies"}, factory=dict)
-    data: Dict[str, Any] = ib(default=None, metadata={"json": "data"})
-    query_params: Dict[str, Any] = ib(default=None, metadata={"json": "query_params"})
-    variables: Dict[str, Any] = ib(default=None, metadata={"json": "variables"})
-    token_path: str = ib(default=None, metadata={"json": "token_path"})
-    basic_auth: Dict[str, Any] = ib(default=None, metadata={"json": "basic_auth"})
+class HTTPMiddleware(Base):
 
+    room: Room = None
 
-@dataclass
-class General(SerializableAttrs):
-    headers: Dict[str, Any] = ib(default=None, metadata={"json": "headers"})
-
-
-@dataclass
-class HTTPMiddleware(FlowObject):
-    """
-    ## HTTPMiddleware
-
-    An HTTPMiddleware define what to do before HTTP request will send.
-    You can have more than one middleware on your flow, each one is specific by URL,
-    it only applies for the requests that start by the URL define in the middleware.
-
-    content:
-
-    ```
-    middlewares:
-
-        - id: api_jwt
-            type: jwt
-            url: "https://webapinet.userfoo.com/api"
-            token_type: 'Bearer'
-            auth:
-                method: POST
-                token_path: /login/authenticate
-                headers:
-                    content-type: application/json
-                data:
-                    username: "foo"
-                    password: "secretfoo"
-                variables:
-                    token: token
-            general:
-                headers:
-                    content-type: application/json
-
-        - id: api_basic
-            url: "https://dev.foo.com.co/customers_list"
-            type: basic
-            auth:
-                basic_auth:
-                    login: admin
-                    password: secretfoo
-            general:
-                headers:
-                    content-type: application/x-www-form-urlencoded
-    ```
-    """
-
-    url: str = ib(default=None, metadata={"json": "url"})
-    token_type: str = ib(default=None, metadata={"json": "token_type"})
-    auth: Auth = ib(default=None, metadata={"json": "auth"})
-    general: General = ib(default=None, metadata={"json": "general"})
+    def __init__(self, http_middleware_data: HTTPMiddlewareModel) -> None:
+        self.log = self.log.getChild(http_middleware_data.get("id"))
+        self.data: Dict = http_middleware_data
 
     @property
-    def _url(self) -> Template:
-        return self.render_data(self.url)
+    def url(self) -> str:
+        return self.render_data(self.data.get("url", ""))
 
     @property
-    def _token_url(self) -> Template:
-        complete_url = f"{self.url}{self.auth.token_path}"
+    def token_type(self) -> str:
+        return self.render_data(self.data.get("token_type", ""))
+
+    @property
+    def auth(self) -> Dict:
+        return self.render_data(self.data.get("auth", {}))
+
+    @property
+    def general(self) -> Dict:
+        return self.render_data(self.data.get("general", {}))
+
+    @property
+    def token_url(self) -> str:
+        complete_url = f"{self.url}{self.auth.get('token_path')}"
         return self.render_data(complete_url)
 
     @property
-    def _token_type(self) -> Template:
-        return self.render_data(self.token_type)
+    def attempts(self) -> int:
+        return int(self.auth.get("attempts", 2))
 
     @property
-    def _attempts(self) -> int:
-        return int(self.auth.attempts) if self.auth.attempts else 2
+    def middleware_variables(self) -> Dict:
+        return self.auth.get("variables", {})
 
     @property
-    def _variables(self) -> Template:
-        return self.render_data(self.serialize()["auth"]["variables"])
+    def method(self) -> Dict:
+        return self.auth.get("method", "")
 
     @property
-    def _cookies(self) -> Template:
-        return self.render_data(self.serialize()["auth"]["cookies"])
+    def cookies(self) -> Dict:
+        return self.auth.get("cookies", {})
 
     @property
-    def _headers(self) -> Dict[str, Template]:
-        return self.render_data(self.serialize()["auth"]["headers"])
+    def headers(self) -> Dict:
+        return self.auth.get("headers", {})
 
     @property
-    def _query_params(self) -> Dict[str, Template]:
-        return self.render_data(self.serialize()["auth"]["query_params"])
+    def query_params(self) -> Dict:
+        return self.auth.get("query_params", {})
 
     @property
-    def _data(self) -> Dict[str, Template]:
-        return self.render_data(self.serialize()["auth"]["data"])
+    def body(self) -> Dict:
+        return self.auth.get("data", {})
 
     @property
-    def _basic_auth(self) -> Dict[str, Template]:
-        return self.render_data(self.serialize()["auth"]["basic_auth"])
+    def basic_auth(self) -> Dict:
+        return self.auth.get("basic_auth", {})
 
     @property
-    def _general_headers(self) -> Dict[str, Template]:
-        return self.render_data(self.serialize()["general"]["headers"])
+    def general_headers(self) -> Dict:
+        return self.general.get("general_headers", {})
 
-    async def run(self) -> str:
-        pass
-
-    async def auth_request(self, session: ClientSession) -> Tuple[int, str]:
+    async def auth_request(self) -> Tuple[int, str]:
         """Make the auth request to refresh api token
 
         Parameters
@@ -145,19 +90,19 @@ class HTTPMiddleware(FlowObject):
 
         request_body = {}
 
-        if self.auth.query_params:
-            request_body["params"] = self._query_params
+        if self.query_params:
+            request_body["params"] = self.query_params
 
-        if self.auth.headers:
-            request_body["headers"] = self._headers
+        if self.headers:
+            request_body["headers"] = self.headers
 
-        if self.auth.data:
-            request_body["data"] = self._data
+        if self.body:
+            request_body["data"] = self.body
 
         try:
             timeout = ClientTimeout(total=self.config["menuflow.timeouts.middlewares"])
-            response = await session.request(
-                self.auth.method, self._token_url, timeout=timeout, **request_body
+            response = await self.session.request(
+                self.method, self.token_url, timeout=timeout, **request_body
             )
         except Exception as e:
             self.log.exception(f"Error in middleware: {e}")
@@ -165,12 +110,12 @@ class HTTPMiddleware(FlowObject):
 
         variables = {}
 
-        if self.auth.cookies:
-            for cookie in self._cookies:
+        if self.cookies:
+            for cookie in self.cookies:
                 variables[cookie] = response.cookies.output(cookie)
 
         self.log.debug(
-            f"middleware: {self.id}  type: {self.type} method: {self.auth.method} url: {self._token_url} status: {response.status}"
+            f"middleware: {self.id}  type: {self.type} method: {self.method} url: {self.token_url} status: {response.status}"
         )
 
         try:
@@ -181,17 +126,17 @@ class HTTPMiddleware(FlowObject):
         if isinstance(response_data, dict):
             # Tulir and its magic since time immemorial
             serialized_data = RecursiveDict(CommentedMap(**response_data))
-            if self._variables:
-                for variable in self._variables:
+            if self.middleware_variables:
+                for variable in self.middleware_variables:
                     try:
                         variables[variable] = self.render_data(
-                            serialized_data[self._variables[variable]]
+                            serialized_data[self.middleware_variables[variable]]
                         )
                     except KeyError:
                         pass
         elif isinstance(response_data, str):
-            if self._variables:
-                for variable in self._variables:
+            if self.middleware_variables:
+                for variable in self.middleware_variables:
                     try:
                         variables[variable] = self.render_data(response_data)
                     except KeyError:

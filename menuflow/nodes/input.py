@@ -1,72 +1,37 @@
-from __future__ import annotations
-
 import asyncio
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, Optional
 
-from attr import dataclass, ib
-from jinja2 import Template
-from mautrix.types import MessageEvent, SerializableAttrs
+from mautrix.types import MessageEvent
 
 from ..db.room import RoomState
-from ..matrix import MatrixClient
-from ..utils.util import Util
+from ..repository import Input as InputModel
+from ..utils import Util
 from .message import Message
-from .switch import Case, Switch
+from .switch import Switch
 
 
-@dataclass
-class InactivityOptions(SerializableAttrs):
-    chat_timeout: int = ib(default=None, metadata={"json": "chat_timeout"})
-    warning_message: str = ib(default=None, metadata={"json": "warning_message"})
-    time_between_attempts: int = ib(default=None, metadata={"json": "time_between_attempts"})
-    attempts: int = ib(default=None, metadata={"json": "attempts"})
-
-
-@dataclass
 class Input(Switch, Message):
-    """
-    ## Input
-
-    An input type node allows sending a message formatted with jinja variables
-    and capturing the response to transit to another node according to the validation.
-
-    content:
-
-    ```
-    - id: i1
-      type: input
-      text: 'Enter a number'
-      variable: opt
-      validation: '{{ opt.isdigit() }}'
-      inactivity_options:
-        chat_timeout: 20 #seconds
-        warning_message: "Message"
-        time_between_attempts: 10 #seconds
-        attempts: 3
-      cases:
-        - id: true
-            o_connection: m1
-        - id: false
-            o_connection: m2
-        - id: default
-            o_connection: m3
-    ```
-    """
-
-    variable: str = ib(default=None)
-    cases: List[Case] = ib(factory=list)
-    inactivity_options: InactivityOptions = ib(default=None)
+    def __init__(self, input_node_data: InputModel) -> None:
+        Switch.__init__(self, input_node_data)
+        Message.__init__(self, input_node_data)
+        self.data = input_node_data
 
     @property
-    def _inactivity_message(self) -> Template:
-        return self.render_data(self.inactivity_options.warning_message)
+    def variable(self) -> str:
+        return self.render_data(self.data.get("variable", ""))
 
     @property
-    def _closing_message(self) -> Template:
-        return self.render_data(self.inactivity_options.closing_message)
+    def inactivity_options(self) -> Dict[str, Any]:
+        data: Dict = self.data.get("inactivity_options", {})
+        self.chat_timeout: int = data.get("chat_timeout", 0)
+        self.warning_message: str = self.render_data(data.get("warning_message", ""))
+        self.time_between_attempts: int = data.get("time_between_attempts", 0)
+        self.attempts: int = data.get("attempts", 0)
 
-    async def run(self, client: MatrixClient, evt: Optional[MessageEvent]):
+        return data
+
+    async def run(self, evt: Optional[MessageEvent]):
         """If the room is in input mode, then set the variable.
         Otherwise, show the message and enter input mode
 
@@ -79,9 +44,9 @@ class Input(Switch, Message):
 
         """
 
-        if self.room.state == RoomState.INPUT.value:
-            if not evt:
-                self.log.warning("The [evt] is empty")
+        if self.room.state == RoomState.INPUT:
+            if not evt or not self.variable:
+                self.log.warning("A problem occurred to trying save the variable")
                 return
 
             self.log.debug(f"Creating [variable: {self.variable}] [content: {evt.content.body}]")
@@ -95,7 +60,8 @@ class Input(Switch, Message):
 
             # If the node has an output connection, then update the menu to the output connection.
             # Otherwise, run the node and update the menu to the output connection.
-            await self.room.update_menu(node_id=self.o_connection or await super().run())
+            await Switch.run(self)
+
             if self.inactivity_options:
                 await Util.cancel_task(task_name=self.room.room_id)
         else:
@@ -104,12 +70,12 @@ class Input(Switch, Message):
             # In this case, the message is shown and the menu is updated to the node's id
             # and the room state is set to input.
             self.log.debug(f"Room {self.room.room_id} enters input node {self.id}")
-            await self.show_message(client=client)
-            await self.room.update_menu(node_id=self.id, state=RoomState.INPUT.value)
+            await Message.run(self)
+            await self.room.update_menu(node_id=self.id, state=RoomState.INPUT)
             if self.inactivity_options:
-                await self.inactivity_task(client=client)
+                await self.inactivity_task()
 
-    async def inactivity_task(self, client: MatrixClient):
+    async def inactivity_task(self):
         """It spawns a task to harass the client to enter information to input option
 
         Parameters
@@ -120,9 +86,9 @@ class Input(Switch, Message):
         """
 
         self.log.debug(f"Inactivity loop starts in room: {self.room.room_id}")
-        asyncio.create_task(self.timeout_active_chats(client=client), name=self.room.room_id)
+        asyncio.create_task(self.timeout_active_chats(), name=self.room.room_id)
 
-    async def timeout_active_chats(self, client: MatrixClient):
+    async def timeout_active_chats(self):
         """It sends messages in time intervals to communicate customer
         that not entered information to input option.
 
@@ -134,18 +100,20 @@ class Input(Switch, Message):
         """
 
         # wait the given time to start the task
-        await asyncio.sleep(self.inactivity_options.chat_timeout)
+        await asyncio.sleep(self.chat_timeout)
 
         count = 0
         while True:
             self.log.debug(f"Inactivity loop: {datetime.now()} -> {self.room.room_id}")
-            if self.inactivity_options.attempts == count:
+            if self.attempts == count:
                 self.log.debug(f"INACTIVITY TRIES COMPLETED -> {self.room.room_id}")
                 o_connection = await self.get_case_by_id("timeout")
                 await self.room.update_menu(node_id=o_connection, state=None)
-                await client.algorithm(room=self.room)
+                await self.matrix_client.algorithm(room=self.room)
                 break
 
-            await self.show_message(client=client, message=self._inactivity_message)
-            await asyncio.sleep(self.inactivity_options.time_between_attempts)
+            await self.matrix_client.send_text(
+                room_id=self.room.room_id, text=self.warning_message
+            )
+            await asyncio.sleep(self.time_between_attempts)
             count += 1
