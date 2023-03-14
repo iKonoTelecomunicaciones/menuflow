@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class Flow:
     log: TraceLogger = logging.getLogger("menuflow.flow")
 
-    nodes: Dict[str, (Message, Input, Switch, HTTPRequest)] = {}
+    nodes: Dict[str, (Message, Input, Switch, HTTPRequest, CheckTime)] = {}
     middlewares: Dict[str, HTTPMiddleware] = {}
 
     def __init__(self, flow_data: FlowR) -> None:
@@ -58,13 +58,13 @@ class Flow:
             middleware = HTTPMiddleware(http_middleware_data=middleware)
             self.middlewares[middleware.id] = middleware
 
-    def get_node_by_id(self, node_id: str) -> HTTPRequest | Input | Message | Switch:
+    def get_node_by_id(self, node_id: str) -> HTTPRequest | Input | Message | Switch | CheckTime:
         return self.nodes.get(node_id)
 
     def get_middleware_by_id(self, middleware_id: str) -> HTTPMiddleware:
         return self.middlewares.get(middleware_id)
 
-    def node(self, room: Room) -> HTTPRequest | Input | Message | Switch:
+    def node(self, room: Room) -> HTTPRequest | Input | Message | Switch | CheckTime:
         """It returns the node that should be executed next
 
         Parameters

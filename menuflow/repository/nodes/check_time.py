@@ -40,9 +40,9 @@ class CheckTime(Switch):
     ```
     """
 
-    time_ranges: List[str] = ib(metadata={"json": "time_ranges"}, factory=list)
-    days_of_week: List[str] = ib(metadata={"json": "days_of_week"}, factory=str)
-    days_of_month: List[str] = ib(metadata={"json": "days_of_month"}, factory=str)
-    months: List[str] = ib(metadata={"json": "months"}, factory=str)
-    timezone: str = ib(metadata={"json": "timezone"}, factory=str)
-    cases: List[Case] = ib(metadata={"json": "cases"}, factory=list)
+    time_ranges: List[str] = ib(factory=list)
+    days_of_week: List[str] = ib(factory=str)
+    days_of_month: List[str] = ib(factory=str)
+    months: List[str] = ib(factory=str)
+    timezone: str = ib(factory=str)
+    cases: List[Case] = ib(factory=list)
