@@ -16,7 +16,7 @@ from mautrix.types import (
 from mautrix.util.magic import mimetype
 
 from ..db.room import RoomState
-from ..repository import Media as MediaR
+from ..repository import Media as MediaModel
 from .message import Message
 
 try:
@@ -29,7 +29,7 @@ class Media(Message):
 
     media_cache: Dict[str, MediaMessageEventContent] = {}
 
-    def __init__(self, media_node_data: MediaR) -> None:
+    def __init__(self, media_node_data: MediaModel) -> None:
         Message.__init__(self, media_node_data)
         self.log = self.log.getChild(media_node_data.get("id"))
         self.data: Dict = media_node_data
