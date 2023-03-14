@@ -6,7 +6,7 @@ from ruamel.yaml.comments import CommentedMap
 
 from ..db.room import RoomState
 from ..middlewares import HTTPMiddleware
-from ..repository import HTTPRequest as HTTPRequestR
+from ..repository import HTTPRequest as HTTPRequestModel
 from .switch import Switch
 
 
@@ -16,7 +16,7 @@ class HTTPRequest(Switch):
 
     middleware: HTTPMiddleware = None
 
-    def __init__(self, http_request_node_data: HTTPRequestR) -> None:
+    def __init__(self, http_request_node_data: HTTPRequestModel) -> None:
         Switch.__init__(self, http_request_node_data)
         self.log = self.log.getChild(http_request_node_data.get("id"))
         self.data: Dict = http_request_node_data

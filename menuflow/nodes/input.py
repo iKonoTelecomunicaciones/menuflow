@@ -5,14 +5,14 @@ from typing import Any, Dict, Optional
 from mautrix.types import MessageEvent
 
 from ..db.room import RoomState
-from ..repository import Input as InputR
+from ..repository import Input as InputModel
 from ..utils import Util
 from .message import Message
 from .switch import Switch
 
 
 class Input(Switch, Message):
-    def __init__(self, input_node_data: InputR) -> None:
+    def __init__(self, input_node_data: InputModel) -> None:
         Switch.__init__(self, input_node_data)
         Message.__init__(self, input_node_data)
         self.data = input_node_data

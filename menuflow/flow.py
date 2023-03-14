@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Dict
 from mautrix.util.logging import TraceLogger
 
 from .nodes import CheckTime, HTTPRequest, Input, Message, Switch
-from .repository import Flow as FlowR
+from .repository import Flow as FlowModel
 from .room import Room
 
 if TYPE_CHECKING:
@@ -19,8 +19,8 @@ class Flow:
     nodes: Dict[str, (Message, Input, Switch, HTTPRequest, CheckTime)] = {}
     middlewares: Dict[str, HTTPMiddleware] = {}
 
-    def __init__(self, flow_data: FlowR) -> None:
-        self.data: FlowR = flow_data.serialize()
+    def __init__(self, flow_data: FlowModel) -> None:
+        self.data: FlowModel = flow_data.serialize()
 
     @property
     def flow_variables(self) -> Dict:

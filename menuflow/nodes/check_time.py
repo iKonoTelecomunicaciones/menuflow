@@ -3,13 +3,13 @@ from typing import Any, List
 
 import pytz
 
-from ..repository import CheckTime as CheckTimeR
+from ..repository import CheckTime as CheckTimeModel
 from ..utils import Util
 from .switch import Switch
 
 
 class CheckTime(Switch):
-    def __init__(self, check_time_node_data: CheckTimeR) -> None:
+    def __init__(self, check_time_node_data: CheckTimeModel) -> None:
         Switch.__init__(self, check_time_node_data)
         self.data = check_time_node_data
 

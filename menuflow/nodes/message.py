@@ -4,12 +4,12 @@ from markdown import markdown
 from mautrix.types import Format, MessageType, TextMessageEventContent
 
 from ..db.room import RoomState
-from ..repository import Message as MessageR
+from ..repository import Message as MessageModel
 from .base import Base
 
 
 class Message(Base):
-    def __init__(self, message_node_data: MessageR) -> None:
+    def __init__(self, message_node_data: MessageModel) -> None:
         self.log = self.log.getChild(message_node_data.get("id"))
         self.data: Dict = message_node_data
 

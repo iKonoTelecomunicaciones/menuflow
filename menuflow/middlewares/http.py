@@ -5,7 +5,7 @@ from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
 from ..nodes import Base
-from ..repository import HTTPMiddleware as HTTPMiddlewareR
+from ..repository import HTTPMiddleware as HTTPMiddlewareModel
 from ..room import Room
 
 
@@ -13,7 +13,7 @@ class HTTPMiddleware(Base):
 
     room: Room = None
 
-    def __init__(self, http_middleware_data: HTTPMiddlewareR) -> None:
+    def __init__(self, http_middleware_data: HTTPMiddlewareModel) -> None:
         self.log = self.log.getChild(http_middleware_data.get("id"))
         self.data: Dict = http_middleware_data
 
