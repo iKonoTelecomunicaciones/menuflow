@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Dict
 
 from mautrix.util.logging import TraceLogger
 
-from .nodes import CheckTime, HTTPRequest, Input, Message, Switch
+from .nodes import CheckTime, HTTPRequest, Input, Media, Message, Switch
 from .repository import Flow as FlowR
 from .room import Room
 
@@ -35,6 +35,8 @@ class Flow:
         for node in self.data.get("nodes", []):
             if node.get("type") == "message":
                 node = Message(message_node_data=node)
+            elif node.get("type") == "media":
+                node = Media(media_node_data=node)
             elif node.get("type") == "switch":
                 node = Switch(switch_node_data=node)
             elif node.get("type") == "input":

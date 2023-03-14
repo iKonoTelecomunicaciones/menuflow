@@ -25,7 +25,7 @@ class Message(Base):
 
         message_type = self.data.get("message_type", "")
 
-        if message_type not in ["m.text", "m.notice"]:
+        if message_type not in ["m.text", "m.notice", "m.image", "m.audio", "m.video", "m.file"]:
             translated_msg_type = MessageType.TEXT
         else:
             translated_msg_type = MessageType(message_type)
@@ -34,7 +34,7 @@ class Message(Base):
 
     @property
     def text(self) -> str:
-        return self.render_data(data=self.data.get("text"))
+        return self.render_data(data=self.data.get("text", ""))
 
     @property
     def o_connection(self) -> str:
