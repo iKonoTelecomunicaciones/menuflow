@@ -12,19 +12,22 @@ class Media(Message):
     """
     ## File
 
-    A message node allows a message to be sent,
-    these messages can be formatted using jinja variables.
+    A message node allows a media message to be sent,
+    these text can be formatted using jinja variables.
 
     content:
 
     ```
-    - id: m1
+    - id: media1
       type: media
       message_type: m.image | m.audio | m.video | m.file"
-      text: "Hello World!"
+      text: "Title multimedia information"
       url: "https://images.dog.ceo/breeds/hound-blood/n02088466_12353.jpg"
       info:
-        any: any
+        mimetype: image/jpeg
+        size: 29651
+        height: 500
+        width: 333
       o_connection: m2
     ```
     """

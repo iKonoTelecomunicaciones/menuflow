@@ -54,6 +54,14 @@ class Media(Message):
         return media_info
 
     async def load_media(self) -> MediaMessageEventContent:
+        """It downloads the media from the URL, uploads it to the Matrix server,
+        and returns a MediaMessageEventContent object with the URL of the uploaded media
+
+        Returns
+        -------
+            MediaMessageEventContent
+
+        """
         resp = await self.session.get(self.url)
         data = await resp.read()
         media_info = self.info
@@ -100,6 +108,7 @@ class Media(Message):
         )
 
     async def run(self):
+        """It sends a message to the room with the media attached"""
         self.log.debug(f"Room {self.room.room_id} enters media node {self.id}")
 
         try:
