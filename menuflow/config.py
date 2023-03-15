@@ -19,6 +19,7 @@ class Config(BaseFileConfig):
         copy("menuflow.database_opts")
         copy("menuflow.timeouts.http_requests")
         copy("menuflow.timeouts.middlewares")
+        copy("menuflow.email_servers")
         copy("server.hostname")
         copy("server.port")
         copy("server.public_url")
@@ -29,5 +30,4 @@ class Config(BaseFileConfig):
         else:
             base["server.unshared_secret"] = shared_secret
 
-        copy_dict("menu")
         copy_dict("utils")

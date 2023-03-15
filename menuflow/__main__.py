@@ -1,5 +1,6 @@
 import asyncio
 import sys
+from typing import Dict, List
 
 from mautrix.util.async_db import Database, DatabaseException
 from mautrix.util.program import Program
@@ -9,6 +10,7 @@ from .api import init as init_api
 from .config import Config
 from .db import init as init_db
 from .db import upgrade_table
+from .email_client import EmailClient
 from .menu import MenuClient
 from .server import MenuFlowServer
 
@@ -46,6 +48,28 @@ class MenuFlow(Program):
         management_api = init_api(self.config, self.loop)
         self.server = MenuFlowServer(management_api, self.config, self.loop)
 
+    async def start_email_connections(self):
+        self.log.debug("Starting email clients...")
+        email_servers: List[Dict[str, str]] = self.config["menuflow.email_servers"]
+        for server in email_servers:
+
+            self.log.critical(f"{server}")
+
+            if server.get("server_id", "").lower().startswith("sample"):
+                continue
+
+            email_client = EmailClient(
+                server_id=server.get("server_id"),
+                host=server.get("host"),
+                port=server.get("port"),
+                username=server.get("username"),
+                password=server.get("password"),
+                use_tls=server.get("use_tls"),
+                start_tls=server.get("use_tls"),
+            )
+            await email_client.login()
+            email_client._add_to_cache()
+
     async def start_db(self) -> None:
         self.log.debug("Starting database...")
 
@@ -68,6 +92,8 @@ class MenuFlow(Program):
         await asyncio.gather(*[menu.start() async for menu in MenuClient.all()])
         await super().start()
         await self.server.start()
+        self.add_startup_actions(self.start_email_connections())
+        # await self.start_email_connections()
 
     async def stop(self) -> None:
         self.add_shutdown_actions(*(menu.stop() for menu in MenuClient.cache.values()))

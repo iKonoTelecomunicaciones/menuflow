@@ -21,6 +21,21 @@ menuflow:
         http_request: 10 #seconds
         middlewares: 5 #seconds
 
+    # E-mail servers that you can use in the e-mail nodes
+    email_servers:
+        -   server_id: sample-server-1
+            host: smtp.server1.com
+            port: 587
+            use_tls: false
+            start_tls: false
+            username: user1
+            password: pass1
+        -   server_id: sample-server-2
+            host: smtp.server2.com
+            port: 465
+            username: user2
+            password: pass2
+
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0
