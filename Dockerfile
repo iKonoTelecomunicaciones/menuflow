@@ -2,6 +2,7 @@ FROM alpine:3.17
 
 RUN apk add --no-cache \
       python3 py3-pip py3-setuptools py3-wheel \
+      py3-pillow \
       py3-virtualenv \
       py3-aiohttp \
       py3-magic \

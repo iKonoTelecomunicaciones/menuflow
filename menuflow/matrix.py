@@ -20,7 +20,7 @@ from mautrix.types import (
 from .config import Config
 from .db.room import RoomState
 from .flow import Flow
-from .nodes import Base, CheckTime, HTTPRequest, Input, Message, Switch
+from .nodes import Base, CheckTime, HTTPRequest, Input, Media, Message, Switch
 from .repository import Flow as FlowModel
 from .room import Room
 from .user import User
@@ -211,6 +211,11 @@ class MatrixHandler(MatrixClient):
         node = self.flow.node(room=room)
 
         if type(node) == Message:
+            await node.run()
+
+        node = self.flow.node(room=room)
+
+        if type(node) == Media:
             await node.run()
 
         node = self.flow.node(room=room)

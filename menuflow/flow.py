@@ -6,7 +6,7 @@ from typing import Dict
 from mautrix.util.logging import TraceLogger
 
 from .middlewares import HTTPMiddleware
-from .nodes import CheckTime, HTTPRequest, Input, Message, Switch
+from .nodes import CheckTime, HTTPRequest, Input, Media, Message, Switch
 from .repository import Flow as FlowModel
 from .room import Room
 
@@ -33,6 +33,8 @@ class Flow:
         for node in self.data.get("nodes", []):
             if node.get("type") == "message":
                 node = Message(message_node_data=node)
+            elif node.get("type") == "media":
+                node = Media(media_node_data=node)
             elif node.get("type") == "switch":
                 node = Switch(switch_node_data=node)
             elif node.get("type") == "input":
