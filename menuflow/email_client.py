@@ -33,17 +33,11 @@ class Email:
         self.attachments = attachments
 
     @property
-    async def message(self) -> MIMEMultipart:
+    def message(self) -> MIMEMultipart:
         message = MIMEMultipart("alternative")
         message["Subject"] = self.subject
         message.attach(self.text)
-
-        # Checking if there are any attachments in the email object.
-        # If there are, it will call the attach_files method.
-        if self.attachments:
-            message = await self.attach_files(message)
-
-        return message.as_string()
+        return message
 
     async def attach_files(self, message: MIMEMultipart) -> MIMEMultipart:
         """This function takes a MIMEMultipart object and attaches files to it
@@ -109,6 +103,7 @@ class EmailClient:
 
         try:
             await self.session.connect()
+            await self.session.ehlo()
             self.log.debug(f"The connection to the mail server {self.server_id} was successful")
         except SMTPConnectTimeoutError as e:
             self.log.error(e)
@@ -127,15 +122,23 @@ class EmailClient:
 
         """
 
+        if not self.session.is_connected:
+            await self.login()
+
+        # Checking if there are any attachments in the email object.
+        # If there are, it will call the attach_files method.
+        if email.attachments:
+            message = await email.attach_files(email.message)
+        else:
+            message = email.message
+
         try:
-            await self.session.sendmail(self.username, email.recipients, await email.message)
+            await self.session.sendmail(self.username, email.recipients, message.as_string())
         except SMTPServerDisconnected as disconnected_error:
             self.log.error(
                 f"ERROR SENDING EMAIL - DISCONNECTED: {disconnected_error} - Trying again ..."
             )
-            await self.session.send_message(
-                message=email.message, sender=self.username, recipients=email.recipients
-            )
+            await self.session.sendmail(self.username, email.recipients, message.as_string())
         except Exception as error:
             self.log.exception(f"ERROR SENDING EMAIL: {error}")
 
