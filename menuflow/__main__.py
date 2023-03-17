@@ -53,8 +53,6 @@ class MenuFlow(Program):
         email_servers: List[Dict[str, str]] = self.config["menuflow.email_servers"]
         for server in email_servers:
 
-            self.log.critical(f"{server}")
-
             if server.get("server_id", "").lower().startswith("sample"):
                 continue
 
@@ -64,8 +62,7 @@ class MenuFlow(Program):
                 port=server.get("port"),
                 username=server.get("username"),
                 password=server.get("password"),
-                use_tls=server.get("use_tls"),
-                start_tls=server.get("use_tls"),
+                start_tls=server.get("use_tls", True),
             )
             await email_client.login()
             email_client._add_to_cache()
@@ -92,8 +89,7 @@ class MenuFlow(Program):
         await asyncio.gather(*[menu.start() async for menu in MenuClient.all()])
         await super().start()
         await self.server.start()
-        self.add_startup_actions(self.start_email_connections())
-        # await self.start_email_connections()
+        asyncio.create_task(self.start_email_connections())
 
     async def stop(self) -> None:
         self.add_shutdown_actions(*(menu.stop() for menu in MenuClient.cache.values()))

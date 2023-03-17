@@ -1,42 +1,81 @@
 from __future__ import annotations
 
+from email.encoders import encode_base64
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from logging import getLogger
 from typing import Dict, List
 
+from aiohttp import ClientSession
 from aiosmtplib import SMTP
-from aiosmtplib.errors import SMTPConnectTimeoutError, SMTPServerDisconnected
+from aiosmtplib.errors import (
+    SMTPAuthenticationError,
+    SMTPConnectTimeoutError,
+    SMTPServerDisconnected,
+)
 from mautrix.util.logging import TraceLogger
 
 
 class Email:
     def __init__(
         self,
-        sender: str,
         subject: str,
         text: str,
         recipients: List[str],
+        attachments: List[str] = [],
         format: str = "html",
         encode_type: str = "utf-8",
     ) -> None:
-        self.sender = sender
         self.subject = subject
         self.text = MIMEText(text, format, encode_type)
         self.recipients = recipients
+        self.attachments = attachments
 
     @property
-    def message(self) -> MIMEMultipart:
+    async def message(self) -> MIMEMultipart:
         message = MIMEMultipart("alternative")
         message["Subject"] = self.subject
         message.attach(self.text)
+
+        # Checking if there are any attachments in the email object.
+        # If there are, it will call the attach_files method.
+        if self.attachments:
+            message = await self.attach_files(message)
+
+        return message.as_string()
+
+    async def attach_files(self, message: MIMEMultipart) -> MIMEMultipart:
+        """This function takes a MIMEMultipart object and attaches files to it
+
+        Parameters
+        ----------
+        message : MIMEMultipart
+            The message to be sent.
+
+        Returns
+        -------
+            A MIMEMultipart object with the attachments attached.
+
+        """
+
+        async with ClientSession() as http_session:
+            for file_url in self.attachments:
+                part = MIMEBase("application", "octet-stream")
+                resp = await http_session.get(file_url)
+                part.set_payload(await resp.read())
+                encode_base64(part)
+                part.add_header("Content-Disposition", f'attachment; filename="{file_url}"')
+                message.attach(part)
+
         return message
 
 
 class EmailClient:
     session: SMTP = None
+    http_session: ClientSession = None
 
-    servers: Dict[str, "EmailClient"]
+    servers: Dict[str, "EmailClient"] = {}
     log: TraceLogger = getLogger("menuflow.email_client")
 
     def __init__(
@@ -46,27 +85,25 @@ class EmailClient:
         port: str,
         username: str,
         password: str,
-        use_tls: bool = False,
-        start_tls: bool = False,
+        start_tls: bool = True,
     ) -> None:
         self.server_id = server_id
         self.host = host
         self.port = port
         self.username = username
         self.password = password
-        self.use_tls = use_tls
         self.start_tls = start_tls
 
     def _add_to_cache(self):
         self.servers[self.server_id] = self
 
     async def login(self):
+        """It connects to the mail server and logs in"""
         self.session = SMTP(
             hostname=self.host,
             port=self.port,
             username=self.username,
             password=self.password,
-            use_tls=self.use_tls,
             start_tls=self.start_tls,
         )
 
@@ -74,6 +111,8 @@ class EmailClient:
             await self.session.connect()
             self.log.debug(f"The connection to the mail server {self.server_id} was successful")
         except SMTPConnectTimeoutError as e:
+            self.log.error(e)
+        except SMTPAuthenticationError as e:
             self.log.error(e)
         except Exception as e:
             self.log.exception(e)
@@ -87,20 +126,18 @@ class EmailClient:
             Email - This is the email object that we created earlier.
 
         """
+
         try:
-            await self.session.sendmail(email.sender, email.recipients, email.message)
+            await self.session.sendmail(self.username, email.recipients, await email.message)
         except SMTPServerDisconnected as disconnected_error:
             self.log.error(
                 f"ERROR SENDING EMAIL - DISCONNECTED: {disconnected_error} - Trying again ..."
             )
-            await self.session.sendmail(email.sender, email.recipients, email.message)
+            await self.session.send_message(
+                message=email.message, sender=self.username, recipients=email.recipients
+            )
         except Exception as error:
             self.log.exception(f"ERROR SENDING EMAIL: {error}")
-            self.logout()
-
-    def logout(self):
-        self.log.warning(f"Closing email server conection [{self.host}] ...")
-        self.session.close()
 
     @classmethod
     def get_by_server_id(cls, server_name: str) -> EmailClient:

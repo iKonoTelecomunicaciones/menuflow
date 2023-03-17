@@ -26,13 +26,12 @@ menuflow:
         -   server_id: sample-server-1
             host: smtp.server1.com
             port: 587
-            use_tls: false
-            start_tls: false
+            start_tls: true
             username: user1
             password: pass1
         -   server_id: sample-server-2
             host: smtp.server2.com
-            port: 465
+            port: 25
             username: user2
             password: pass2
 
