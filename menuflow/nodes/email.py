@@ -43,6 +43,8 @@ class Email(Message):
         if not self.email_client:
             self.email_client = EmailClient.get_by_server_id(self.server_id)
 
+        self.log.debug(f"Sending email {self.subject or self.text} to {self.recipients}")
+
         email = EmailMessage(
             subject=self.subject,
             text=self.text,
