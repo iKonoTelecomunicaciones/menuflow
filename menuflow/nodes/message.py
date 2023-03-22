@@ -40,6 +40,12 @@ class Message(Base):
     def o_connection(self) -> str:
         return self.data.get("o_connection", "")
 
+    async def _update_node(self):
+        await self.room.update_menu(
+            node_id=self.o_connection,
+            state=RoomState.END if not self.o_connection else None,
+        )
+
     async def run(self):
         self.log.debug(f"Room {self.room.room_id} enters message node {self.id}")
 
@@ -56,7 +62,4 @@ class Message(Base):
 
         await self.matrix_client.send_message(room_id=self.room.room_id, content=msg_content)
 
-        await self.room.update_menu(
-            node_id=self.o_connection,
-            state=RoomState.END if not self.o_connection else None,
-        )
+        await self._update_node()

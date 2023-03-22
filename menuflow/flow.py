@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict
+from typing import TYPE_CHECKING, Dict
 
 from mautrix.util.logging import TraceLogger
 
-from .middlewares import HTTPMiddleware
-from .nodes import CheckTime, HTTPRequest, Input, Media, Message, Switch
+from .nodes import CheckTime, Email, HTTPRequest, Input, Media, Message, Switch
 from .repository import Flow as FlowModel
 from .room import Room
+
+if TYPE_CHECKING:
+    from .middlewares import HTTPMiddleware
 
 
 class Flow:
@@ -35,6 +37,8 @@ class Flow:
                 node = Message(message_node_data=node)
             elif node.get("type") == "media":
                 node = Media(media_node_data=node)
+            elif node.get("type") == "email":
+                node = Email(email_node_data=node)
             elif node.get("type") == "switch":
                 node = Switch(switch_node_data=node)
             elif node.get("type") == "input":
