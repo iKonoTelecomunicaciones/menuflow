@@ -33,6 +33,7 @@ class Input(Switch, Message):
       text: 'Enter a number'
       variable: opt
       validation: '{{ opt.isdigit() }}'
+      input_type: 'm.text | m.image | m.video | m.audio | m.file'
       inactivity_options:
         chat_timeout: 20 #seconds
         warning_message: "Message"
@@ -51,3 +52,4 @@ class Input(Switch, Message):
     variable: str = ib(default=None)
     cases: List[Case] = ib(factory=list)
     inactivity_options: InactivityOptions = ib(default=None)
+    input_type: str = ib(default=None)
