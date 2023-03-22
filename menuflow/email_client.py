@@ -138,6 +138,7 @@ class EmailClient:
             self.log.error(
                 f"ERROR SENDING EMAIL - DISCONNECTED: {disconnected_error} - Trying again ..."
             )
+            await self.login()
             await self.session.sendmail(self.username, email.recipients, message.as_string())
         except Exception as error:
             self.log.exception(f"ERROR SENDING EMAIL: {error}")
