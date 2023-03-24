@@ -14,7 +14,7 @@ from ..jinja.jinja_template import jinja_env
 from ..room import Room
 
 
-def convert_to_bool(item):
+def convert_to_bool(item) -> Dict | List | str:
     if isinstance(item, dict):
         for k, v in item.items():
             item[k] = convert_to_bool(v)
@@ -33,7 +33,6 @@ def convert_to_bool(item):
 
 
 class Base:
-
     log: TraceLogger = getLogger("menuflow.node")
 
     config: Config

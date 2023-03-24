@@ -11,7 +11,6 @@ from .nodes import CheckTime, HTTPRequest, Input, Message, Switch
 
 @dataclass
 class Flow(SerializableAttrs):
-
     nodes: List[Message, Input, HTTPRequest, Switch, CheckTime] = ib(factory=list)
     middlewares: List[HTTPMiddleware] = ib(default=[])
     flow_variables: Dict[str, Any] = ib(default={})

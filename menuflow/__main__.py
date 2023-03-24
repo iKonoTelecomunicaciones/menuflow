@@ -52,7 +52,6 @@ class MenuFlow(Program):
         self.log.debug("Starting email clients...")
         email_servers: List[Dict[str, str]] = self.config["menuflow.email_servers"]
         for server in email_servers:
-
             if server.get("server_id", "").lower().startswith("sample"):
                 continue
 

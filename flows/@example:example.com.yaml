@@ -1,114 +1,116 @@
 menu:
+  flow_variables:
+    cat_fatc_url: 'https://catfact.ninja/fact'
 
-    # Nodes currently supported
-    #   - message
-    #   - input
-    #   - http_request
-    #   - switch
+  nodes:
 
-    nodes:
-    - id: 'start'
-      type: 'message'
-      text: This is a menu that helps you to get 3 random news items
-      o_connection: 'm2'
+    - id: start
+      type: message
+      text: 'Hello, this a flow sample. {{foo}}'
+      o_connection: input-1
 
-    - id: 'm2'
-      type: 'input'
-      variable: opt
-      text: "
-              We have the following categories:<br>
-              1️⃣ All<br>
-              2️⃣ National // Indian news only<br>
-              3️⃣ Business<br>
-              4️⃣ Sports<br>
-              5️⃣ World<br>
-              6️⃣ Politics<br>
-              7️⃣ Technology<br>
-              8️⃣ Startup<br>
-              9️⃣ Entertainment<br>
-              1️⃣0️⃣ Misc<br>
-              1️⃣1️⃣ Hatke<br>
-              1️⃣2️⃣ Science<br>
-              1️⃣3️⃣ Automobile<br>
-              Send your choice:
-            "
-      validation: "{{ opt }}"
+    - id: input-1
+      type: input
+      text: 'Do you have 1 or more cats?, please enter (y/n)'
+      variable: has_cats
+      validation: '{{ has_cats }}'
+      inactivity_options:
+        chat_timeout: 20
+        warning_message: 'Please enter an option, or the menu will end.'
+        time_between_attempts: 10
+        attempts: 3
       cases:
-        - id: 1
-          o_connection: r1
-          variables:
-            category: all
-        - id: 2
-          o_connection: r1
-          variables:
-            category: national
-        - id: 3
-          o_connection: r1
-          variables:
-            category: business
-        - id: 4
-          o_connection: r1
-          variables:
-            category: sports
-        - id: 5
-          o_connection: r1
-          variables:
-            category: world
-        - id: 6
-          o_connection: r1
-          variables:
-            category: politics
-        - id: 7
-          o_connection: r1
-          variables:
-            category: technology
-        - id: 8
-          o_connection: r1
-          variables:
-            category: startup
-        - id: 9
-          o_connection: r1
-          variables:
-            category: entertainment
-        - id: 10
-          o_connection: r1
-          variables:
-            category: miscellaneous
-        - id: 11
-          o_connection: r1
-          variables:
-            category: hatke
-        - id: 12
-          o_connection: r1
-          variables:
-            category: science
-        - id: 13
-          o_connection: r1
-          variables:
-            category: automobile
+        - id: 'y'
+          o_connection: input-2
+        - id: 'n'
+          o_connection: last-message
+          variable:
+            no_cats: 'You are a user without cats, without life, without happiness ...'
         - id: default
-          o_connection: m2
+          o_connection: last-message
 
+    - id: input-2
+      type: input
+      text: 'Enter your cat''s name:'
+      variable: cat_name
+      validation: '{{ cat_name }}'
+      cases:
+        - id: default
+          o_connection: input-3
 
-    - id: 'r1'
-      type: 'http_request'
-      method: GET # POST
-      url: https://inshorts.deta.dev/news?category={{category}}
+    - id: input-3
+      type: input
+      text: 'Enter your cat''s age in months:'
+      variable: cat_age
+      validation: >-
+        {% set aux = cat_age | string %}{% if aux.isdigit()
+        %}True{%else%}False{% endif %}
+      cases:
+        - id: 'True'
+          o_connection: switch-1
+        - id: default
+          o_connection: input-3
 
+    - id: switch-1
+      type: switch
+      validation: >-
+        {% set aux = cat_age %}{% set aux = aux | int %}{% if aux < 12 %}ok{%
+        elif not cat_age.isdigit() %}{% else %}ko{% endif %}
+      cases:
+        - id: ok
+          o_connection: request-1
+          variables:
+            cat_message: Your cat is a puppy
+        - id: ko
+          o_connection: request-1
+          variables:
+            cat_message: Your cat is an adult
+
+    - id: request-1
+      type: http_request
+      method: GET
+      url: '{{cat_fatc_url}}'
       variables:
-        news: data
-
+        cat_fact: fact
       cases:
         - id: 200
-          o_connection: m4
+          o_connection: message-2
         - id: default
-          o_connection: m5
+          o_connection: error-message-1
 
+    - id: message-2
+      type: message
+      text: >-
+        {{cat_message}}, also let me give you an interesting fact about cats.
+        Did you know that cats: **{{ cat_fact }}**
+      o_connection: null
 
-    - id: 'm4'
-      type: 'message'
-      text: "{% for new in news %} {% if loop.index0 < 3 %} {% set _new = news|random %} --- \n **Title**: {{_new['title']}}\n\n **Author**: {{_new['author']}}\n\n **Date**: {{_new['date']}}\n\n **Image**: {{_new['imageUrl']}}\n\n {{_new['content']}}\n\n {% endif%}{% endfor %}"
+    - id: message-2
+      type: message
+      text: I'm going to share with you a picture of a kitten
+      o_connection: null
 
-    - id: 'm5'
-      type: 'message'
-      text: "I did not find noting :("
+    - id: media-1
+      type: media
+      message_type: m.image
+      text: A cat
+      url: 'https://cataas.com/cat'
+
+    - id: input-3
+      type: input
+      text: 'Ahora tu ingresa la imagen de tu gato:'
+      input_type: m.image
+      variable: user_cat_image
+      cases:
+        - id: true
+          o_connection: last-message
+        - id: false
+          o_connection: input-3
+
+    - id: last-message
+      type: message
+      text: 'Bye bye! ... {{no_cats}}'
+
+    - id: error-message-1
+      type: message
+      text: 'Algo ha salido mal, bye'

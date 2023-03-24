@@ -15,7 +15,7 @@ class Switch(Base):
 
     @property
     def cases(self) -> List[Dict]:
-        return self.data.get("cases")
+        return self.render_data(self.data.get("cases"))
 
     async def load_cases(self) -> Dict[str, str]:
         """It loads the cases into a dictionary.
@@ -56,7 +56,6 @@ class Switch(Base):
 
         try:
             result = self.validation
-
         except Exception as e:
             self.log.warning(f"An exception has occurred in the pipeline [{self.id} ]:: {e}")
             result = "except"

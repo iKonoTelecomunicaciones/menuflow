@@ -26,7 +26,6 @@ except ImportError:
 
 
 class Media(Message):
-
     media_cache: Dict[str, MediaMessageEventContent] = {}
 
     def __init__(self, media_node_data: MediaModel) -> None:

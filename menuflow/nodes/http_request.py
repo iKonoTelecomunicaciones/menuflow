@@ -11,7 +11,6 @@ from .switch import Switch
 
 
 class HTTPRequest(Switch):
-
     HTTP_ATTEMPTS: Dict = {}
 
     middleware: HTTPMiddleware = None

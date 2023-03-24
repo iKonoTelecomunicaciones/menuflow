@@ -41,11 +41,11 @@ class Input(Switch, Message):
         attempts: 3
       cases:
         - id: true
-            o_connection: m1
+          o_connection: m1
         - id: false
-            o_connection: m2
+          o_connection: m2
         - id: default
-            o_connection: m3
+          o_connection: m3
     ```
     """
 

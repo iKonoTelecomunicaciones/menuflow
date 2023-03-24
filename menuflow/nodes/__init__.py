@@ -1,4 +1,4 @@
-from .base import Base
+from .base import Base, convert_to_bool
 from .check_time import CheckTime
 from .email import Email
 from .http_request import HTTPRequest
