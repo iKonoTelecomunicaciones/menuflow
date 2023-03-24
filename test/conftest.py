@@ -38,7 +38,7 @@ async def base(flow: Flow, room: Room, mocker: MockerFixture) -> Base:
 async def message(flow: Flow, base: Base) -> Message:
     message_node = flow.get_node_by_id("start")
     message_node.room = base.room
-    message_node.variables == base.variables
+    message_node.variables = base.variables
     message_node.matrix_client = Client(base_url="")
     return message_node
 
@@ -47,7 +47,7 @@ async def message(flow: Flow, base: Base) -> Message:
 async def switch(flow: Flow, base: Base) -> Switch:
     switch_node = flow.get_node_by_id("switch-1")
     switch_node.room = base.room
-    switch_node.variables == base.variables
+    switch_node.variables = base.variables
     switch_node.matrix_client = Client(base_url="")
     return switch_node
 
@@ -56,7 +56,7 @@ async def switch(flow: Flow, base: Base) -> Switch:
 async def input_text(flow: Flow, base: Base) -> Input:
     input_node = flow.get_node_by_id("input-1")
     input_node.room = base.room
-    input_node.variables == base.variables
+    input_node.variables = base.variables
     input_node.matrix_client = Client(base_url="")
     return input_node
 
@@ -65,6 +65,6 @@ async def input_text(flow: Flow, base: Base) -> Input:
 async def input_media(flow: Flow, base: Base) -> Input:
     input_node = flow.get_node_by_id("input-4")
     input_node.room = base.room
-    input_node.variables == base.variables
+    input_node.variables = base.variables
     input_node.matrix_client = Client(base_url="")
     return input_node

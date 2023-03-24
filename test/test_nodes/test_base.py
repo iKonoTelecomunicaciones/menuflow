@@ -11,8 +11,6 @@ def test_convert_to_bool():
     """
     data = {"foo": "True", "bar": "False", "FooBar": "false", "BarFoo": "true", "BadFoo": "truee"}
 
-    print(convert_to_bool(data))
-
     assert {
         "foo": True,
         "bar": False,
