@@ -22,9 +22,9 @@ def convert_to_bool(item) -> Dict | List | str:
     elif isinstance(item, list):
         return [convert_to_bool(i) for i in item]
     elif isinstance(item, str):
-        if item in ["True", "true"]:
+        if item.lower() == "true":
             return True
-        elif item in ["False", "false"]:
+        elif item.lower() == "false":
             return False
         else:
             return item
