@@ -119,7 +119,7 @@ curl -XPOST -d {"homeserver":"https://matrix.exmaple.com", "access_token": "xyz"
 ```
 
 ## Configura un flujo:
-Un flujo es un archivo `.yaml` que contiene las instrucciones que un bot va a seguir. Para más información sobre cada uno de los nodos, vea a:
+Un flujo es un archivo `.yaml` que contiene las instrucciones que un bot va a seguir. Para más información sobre cada uno de los nodos, vea a: https://github.com/chatbot-smooth/menuflow/wiki#nodes
 
 ```yaml
 menu:

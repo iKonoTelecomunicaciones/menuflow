@@ -10,7 +10,7 @@ from .message import Message
 @dataclass
 class Media(Message):
     """
-    ## File
+    ## Media
 
     A message node allows a media message to be sent,
     these text can be formatted using jinja variables.

@@ -121,7 +121,7 @@ curl -XPOST -d {"homeserver":"https://matrix.exmaple.com", "access_token": "xyz"
 ```
 
 ## Configure a flow:
-A flow is a `.yaml` file that contains the instructions that a bot will follow.
+A flow is a `.yaml` file that contains the instructions that a bot will follow. For more information on each of the nodes, see https://github.com/chatbot-smooth/menuflow/wiki#nodes.
 
 ```yaml
 menu:
