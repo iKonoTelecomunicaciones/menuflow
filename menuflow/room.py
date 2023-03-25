@@ -39,7 +39,7 @@ class Room(DBRoom):
     async def clean_up(self):
         del self.by_room_id[self.room_id]
         self.variables = "{}"
-        self._variables = "{}"
+        self._variables = {}
         self.node_id = RoomState.START.value
         self.state = None
         await self.update()
@@ -72,7 +72,6 @@ class Room(DBRoom):
             return room
 
         if create:
-
             room = cls(room_id=room_id, node_id=RoomState.START.value)
             await room.insert()
             room = cast(cls, await super().get_by_room_id(room_id))
@@ -95,6 +94,9 @@ class Room(DBRoom):
         return self._variables.get(variable_id)
 
     async def set_variable(self, variable_id: str, value: Any):
+        if not variable_id:
+            return
+
         self._variables[variable_id] = value
         self.variables = json.dumps(self._variables)
         self.log.debug(
@@ -130,6 +132,6 @@ class Room(DBRoom):
             f"and his [state: {self.state}] to [{state}]"
         )
         self.node_id = node_id.value if isinstance(node_id, RoomState) else node_id
-        self.state = state.value if isinstance(state, RoomState) else state
+        self.state = state
         await self.update()
         self._add_to_cache()

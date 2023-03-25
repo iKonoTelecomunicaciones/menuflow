@@ -1,139 +1,95 @@
 from __future__ import annotations
 
 import logging
-from enum import Enum
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Dict
 
-from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
-from .middlewares.http import HTTPMiddleware
-from .nodes import CheckTime, HTTPRequest, Input, Message, Switch
-from .nodes.flow_object import FlowObject
+from .nodes import CheckTime, Email, HTTPRequest, Input, Media, Message, Switch
+from .repository import Flow as FlowModel
 from .room import Room
 
-
-class NodeType(Enum):
-    MESSAGE = "message"
-    SWITCH = "switch"
-    INPUT = "input"
-    HTTPREQUEST = "http_request"
-    CHECKTIME = "check_time"
+if TYPE_CHECKING:
+    from .middlewares import HTTPMiddleware
 
 
-@dataclass
-class Flow(SerializableAttrs):
-    nodes: List[Message, Input, HTTPRequest] = ib(metadata={"json": "nodes"}, factory=list)
-    middlewares: List[HTTPMiddleware] = ib(default=None, metadata={"json": "middlewares"})
-    flow_variables: Dict[str, Any] = ib(default=None, metadata={"json": "flow_variables"})
-
-    nodes_by_id: Dict[str, FlowObject] = {}
-    middlewares_by_id: Dict[str, HTTPMiddleware] = {}
-
+class Flow:
     log: TraceLogger = logging.getLogger("menuflow.flow")
 
-    def _add_to_cache(self, obj: FlowObject | HTTPMiddleware):
-        if isinstance(obj, HTTPMiddleware):
-            self.middlewares_by_id[obj.id] = obj
-        elif isinstance(obj, FlowObject):
-            self.nodes_by_id[obj.id] = obj
+    nodes: Dict[str, (Message, Input, Switch, HTTPRequest, CheckTime)] = {}
+    middlewares: Dict[str, HTTPMiddleware] = {}
 
-    def get_node_by_id(
-        self, node_id: str
-    ) -> Message | Input | HTTPRequest | Switch | CheckTime | None:
-        try:
-            return self.nodes_by_id[node_id]
-        except KeyError:
-            pass
+    def __init__(self, flow_data: FlowModel) -> None:
+        self.data: FlowModel = (
+            flow_data.serialize() if isinstance(flow_data, SerializableAttrs) else flow_data
+        )
 
-        for node in self.nodes:
-            if node_id == node.id:
-                self._add_to_cache(node)
-                return node
+    @property
+    def flow_variables(self) -> Dict:
+        return self.data.get("flow_variables", {})
 
-    def get_middleware_by_id(self, middleware_id: str) -> HTTPMiddleware | None:
-        if not self.middlewares:
-            return
+    def load(self):
+        self.load_middlewares()
+        self.load_nodes()
 
-        try:
-            return self.middlewares_by_id[middleware_id]
-        except KeyError:
-            pass
+    def load_nodes(self):
+        """It takes the nodes from the flow data and creates a new node object for each one"""
+        for node in self.data.get("nodes", []):
+            if node.get("type") == "message":
+                node = Message(message_node_data=node)
+            elif node.get("type") == "media":
+                node = Media(media_node_data=node)
+            elif node.get("type") == "email":
+                node = Email(email_node_data=node)
+            elif node.get("type") == "switch":
+                node = Switch(switch_node_data=node)
+            elif node.get("type") == "input":
+                node = Input(input_node_data=node)
+            elif node.get("type") == "check_time":
+                node = CheckTime(check_time_node_data=node)
+            elif node.get("type") == "http_request":
+                node = HTTPRequest(http_request_node_data=node)
 
-        for middleware in self.middlewares:
-            if middleware_id == middleware.id:
-                self._add_to_cache(middleware)
-                return middleware
+                if node.data.get("middleware"):
+                    node.middleware = self.get_middleware_by_id(node.data.get("middleware"))
+            else:
+                continue
 
-    def build_object(
-        self,
-        data: Dict,
-        type_class: Message | Input | HTTPRequest | Switch | HTTPMiddleware | CheckTime | None,
-    ) -> Message | Input | HTTPRequest | Switch | HTTPMiddleware | CheckTime | None:
-        """It takes a dictionary of data and a class, and returns an instance of that class
+            node.variables = self.flow_variables or {}
+            self.nodes[node.id] = node
+
+    def load_middlewares(self):
+        """It loads the middlewares from the data file into the `middlewares` dictionary"""
+        for middleware in self.data.get("middlewares", []):
+            middleware = HTTPMiddleware(http_middleware_data=middleware)
+            self.middlewares[middleware.id] = middleware
+
+    def get_node_by_id(self, node_id: str) -> HTTPRequest | Input | Message | Switch | CheckTime:
+        return self.nodes.get(node_id)
+
+    def get_middleware_by_id(self, middleware_id: str) -> HTTPMiddleware:
+        return self.middlewares.get(middleware_id)
+
+    def node(self, room: Room) -> HTTPRequest | Input | Message | Switch | CheckTime:
+        """It returns the node that should be executed next
 
         Parameters
         ----------
-        data : Dict
-            The data to deserialize.
-        type_class : Message | Input | HTTPRequest | Switch | HTTPMiddleware | None
-            The class of the middleware to be built.
+        room : Room
+            The room object that the user is currently in.
 
         Returns
         -------
-            A deserialized instance of the type_class.
+            The node object.
 
         """
-        return type_class.deserialize(data)
-
-    def node(self, room: Room) -> Message | Input | HTTPRequest | Switch | CheckTime | None:
-        node = self.get_node_by_id(node_id=room.node_id)
+        node = self.get_node_by_id(node_id=room.node_id or "start")
 
         if not node:
             return
 
         node.room = room
-        node.flow_variables = self.flow_variables
-
-        if node.type == "message":
-            node = self.build_object(node.serialize(), Message)
-        elif node.type == "input":
-            node = self.build_object(node.serialize(), Input)
-        elif node.type == "http_request":
-            node = self.build_object(node.serialize(), HTTPRequest)
-        elif node.type == "switch":
-            node = self.build_object(node.serialize(), Switch)
-        elif node.type == "check_time":
-            node = self.build_object(node.serialize(), CheckTime)
-        else:
-            return
+        node.variables.update(room._variables)
 
         return node
-
-    def middleware(self, room: Room, middleware_id: str) -> HTTPMiddleware | None:
-        """It returns the middleware object.
-
-        Parameters
-        ----------
-        room : Room
-            The room that the middleware is being called from.
-        middleware_id : str
-            The ID of the middleware you want to get.
-
-        Returns
-        -------
-            A middleware object
-
-        """
-
-        middleware: HTTPMiddleware = self.get_middleware_by_id(middleware_id=middleware_id)
-
-        if not middleware:
-            return
-
-        middleware.room = room
-        middleware.flow_variables = self.flow_variables
-        middleware = self.build_object(middleware.serialize(), HTTPMiddleware)
-
-        return middleware

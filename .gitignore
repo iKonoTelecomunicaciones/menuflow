@@ -13,3 +13,4 @@ whatsapp
 volumes
 settings.json
 .vscode
+*bin

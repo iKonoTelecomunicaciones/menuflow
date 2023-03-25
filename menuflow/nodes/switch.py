@@ -1,44 +1,21 @@
-from typing import Any, Dict, List
+from typing import Dict, List
 
-from attr import dataclass, ib
-from mautrix.types import SerializableAttrs
-
-from .flow_object import FlowObject
+from ..repository import Switch as SwitchModel
+from .base import Base, convert_to_bool
 
 
-@dataclass
-class Case(SerializableAttrs):
-    id: str = ib(metadata={"json": "id"})
-    variables: Dict[str, Any] = ib(metadata={"json": "variables"}, factory=dict)
-    o_connection: str = ib(default=None, metadata={"json": "o_connection"})
+class Switch(Base):
+    def __init__(self, switch_node_data: SwitchModel) -> None:
+        self.log = self.log.getChild(switch_node_data.get("id"))
+        self.data: Dict = switch_node_data
 
+    @property
+    def validation(self) -> str:
+        return self.render_data(data=self.data.get("validation"))
 
-@dataclass
-class Switch(FlowObject):
-    """
-    ## Switch
-
-    A switch type node allows to validate the content of a jinja variable,
-    and from the result to transit to another node.
-
-    content:
-
-    ```
-    - id: switch-1
-      type: switch
-      validation: '{{ opt }}'
-      cases:
-      - id: 1
-        o_connection: m1
-      - id: 2
-        o_connection: m2
-      - id: default
-        o_connection: m3
-    ```
-    """
-
-    validation: str = ib(default=None, metadata={"json": "validation"})
-    cases: List[Case] = ib(metadata={"json": "cases"}, factory=list)
+    @property
+    def cases(self) -> List[Dict]:
+        return self.render_data(self.data.get("cases"))
 
     async def load_cases(self) -> Dict[str, str]:
         """It loads the cases into a dictionary.
@@ -57,15 +34,13 @@ class Switch(FlowObject):
         cases_dict = {}
 
         for case in self.cases:
-            cases_dict[str(case.id)] = {
-                "o_connection": case.o_connection,
-                "variables": case.variables
-                if isinstance(case.variables, dict)
-                else case.variables.__dict__,
+            cases_dict[convert_to_bool(case.get("id"))] = {
+                "o_connection": case.get("o_connection"),
+                "variables": case.get("variables"),
             }
         return cases_dict
 
-    async def run(self) -> str:
+    async def _run(self) -> str:
         """It takes a dictionary of variables, runs the rule,
         and returns the connection that matches the case
 
@@ -80,27 +55,22 @@ class Switch(FlowObject):
         result = None
 
         try:
-            result = self.render_data(self.validation)
-            # TODO What would be the best way to handle this, taking jinja into account?
-            # if res == "True":
-            #     res = True
-
-            # if res == "False":
-            #     res = False
-
+            result = self.validation
         except Exception as e:
             self.log.warning(f"An exception has occurred in the pipeline [{self.id} ]:: {e}")
             result = "except"
 
-        return await self.get_case_by_id(str(result))
+        return await self.get_case_by_id(result)
+
+    async def run(self) -> str:
+        await self.room.update_menu(await self._run())
 
     async def get_case_by_id(self, id: str) -> str:
         try:
             cases = await self.load_cases()
-            case_result = cases[id]
+            case_result: Dict = cases[id]
 
             variables_recorded = []
-
             if case_result.get("variables") and self.room:
                 for variable in case_result.get("variables", {}):
                     if variable in variables_recorded:
@@ -120,4 +90,4 @@ class Switch(FlowObject):
             return case_o_connection
         except KeyError:
             self.log.debug(f"Case not found [{id}] the [default case] will be sought")
-            return cases["default"]["o_connection"]
+            return cases.get("default", {}).get("o_connection", "start")

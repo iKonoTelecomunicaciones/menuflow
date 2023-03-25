@@ -1,75 +1,65 @@
-from __future__ import annotations
+from typing import Dict
 
-from asyncio import sleep
-from typing import Optional
-
-from attr import dataclass, ib
-from jinja2 import Template
 from markdown import markdown
-from mautrix.errors.request import MLimitExceeded
-from mautrix.types import Format, MessageType, RoomID, TextMessageEventContent
+from mautrix.types import Format, MessageType, TextMessageEventContent
 
-from ..matrix import MatrixClient
-from .flow_object import FlowObject
+from ..db.room import RoomState
+from ..repository import Message as MessageModel
+from .base import Base
 
 
-@dataclass
-class Message(FlowObject):
-    """
-    ## Message
-
-    A message node allows a message to be sent,
-    these messages can be formatted using jinja variables.
-
-    content:
-
-    ```
-    - id: m1
-      type: message
-      text: "Hello World!"
-      o_connection: m2
-    ```
-    """
-
-    text: str = ib(default=None, metadata={"json": "text"})
-    o_connection: str = ib(default=None, metadata={"json": "o_connection"})
+class Message(Base):
+    def __init__(self, message_node_data: MessageModel) -> None:
+        self.log = self.log.getChild(message_node_data.get("id"))
+        self.data: Dict = message_node_data
 
     @property
-    def _text(self) -> Template:
-        return self.render_data(self.text)
+    def message_type(self) -> MessageType:
+        """If the message type is not a text or notice, return a text message type.
+        Otherwise, return the message type
 
-    async def run(self) -> str:
-        pass
-
-    async def show_message(self, client: MatrixClient, message: Optional[str] = None):
-        """It takes a dictionary of variables, a room ID, and a client,
-        and sends a message to the room with the template rendered with the variables
-
-        Parameters
-        ----------
-        variables : dict
-            A dictionary of variables to pass to the template.
-        room_id : RoomID
-            The room ID to send the message to.
-        client : MatrixClient
-            The MatrixClient instance that is running the plugin.
-
+        Returns
+        -------
+            The message type.
         """
+
+        message_type = self.data.get("message_type", "")
+
+        if message_type not in ["m.text", "m.notice", "m.image", "m.audio", "m.video", "m.file"]:
+            translated_msg_type = MessageType.TEXT
+        else:
+            translated_msg_type = MessageType(message_type)
+
+        return translated_msg_type
+
+    @property
+    def text(self) -> str:
+        return self.render_data(data=self.data.get("text", ""))
+
+    @property
+    def o_connection(self) -> str:
+        return self.render_data(self.data.get("o_connection", ""))
+
+    async def _update_node(self):
+        await self.room.update_menu(
+            node_id=self.o_connection,
+            state=RoomState.END if not self.o_connection else None,
+        )
+
+    async def run(self):
+        self.log.debug(f"Room {self.room.room_id} enters message node {self.id}")
+
         if not self.text:
             self.log.warning(f"The message {self.id} hasn't been send because the text is empty")
             return
 
         msg_content = TextMessageEventContent(
-            msgtype=MessageType.TEXT,
-            body=message or self.text,
+            msgtype=self.message_type,
+            body=self.text,
             format=Format.HTML,
-            formatted_body=markdown(message or self._text),
+            formatted_body=markdown(self.text),
         )
 
-        # A way to handle the error that is thrown when the bot sends too many messages too quickly.
-        try:
-            await client.send_message(room_id=self.room.room_id, content=msg_content)
-        except MLimitExceeded as e:
-            self.log.warn(e)
-            await sleep(5)
-            await client.send_message(room_id=self.room.room_id, content=msg_content)
+        await self.matrix_client.send_message(room_id=self.room.room_id, content=msg_content)
+
+        await self._update_node()
