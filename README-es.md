@@ -4,9 +4,9 @@
 
 # Menuflow
 
-Menuflow is a project that is used in the matrix ecosystem, it allows to design conversation flows that will make users interacting with it to be fully guided in a conversation.
+Menuflow es un proyecto que se utiliza en el ecosistema matrix, permite diseñar flujos de conversación que harán que los usuarios que interactúen con él sean totalmente guiados en una conversación.
 
-With Menuflow you can make connections to `REST APIs` through the `HTTP` protocol, control access tokens and update them dynamically. Messages can be customized using [Jinja](https://jinja.palletsprojects.com/en/3.1.x/), variables can be stored using postgres, variables will be stored for each room where they can then be used in the conversation.
+Con Menuflow se pueden realizar conexiones a `REST APIs` a través del protocolo `HTTP`, controlar los tokens de acceso y actualizarlos dinámicamente. Los mensajes pueden ser personalizados usando [Jinja](https://jinja.palletsprojects.com/en/3.1.x/), las variables pueden ser almacenadas usando postgres, las variables serán almacenadas para cada sala donde luego podrán ser usadas en la conversación.
 
 ---
 
@@ -16,9 +16,9 @@ With Menuflow you can make connections to `REST APIs` through the `HTTP` protoco
 
 <br>
 
-## Some sample images:
+## Algunas imágenes de ejemplo:
 
-- Talking with the bot (in this case using the WhatsApp bridge)
+- Conversar con el bot (en este caso usando el bridge de WhatsApp)
 
 ![image](https://user-images.githubusercontent.com/50601186/188774939-0d282706-b085-4906-8f37-f8427f767d07.png)
 
@@ -26,7 +26,7 @@ With Menuflow you can make connections to `REST APIs` through the `HTTP` protoco
 
 <br>
 
-- And you can format messages using Jinja syntax:
+- Y puedes formatear mensajes usando la sintaxis de Jinja:
 
 ```yaml
     - id: 'm1'
@@ -51,77 +51,75 @@ With Menuflow you can make connections to `REST APIs` through the `HTTP` protoco
 
 ![image](https://user-images.githubusercontent.com/50601186/192087256-9aff9f3c-ee0b-4d27-92c1-57bba7b0fe2b.png)
 
-
 <br>
-
 
 # Setup menuflow
 
-Requirements:
+Requisitos:
 
-- PostgreSQL database (We hope to support sqlite in the future)
-- A Matrix server, preferably Synapse; this project was built on top of that server.
+- Base de datos postgres (Espero a futuro soportemos `sqlite`)
+- Un servidor matrix, preferiblemente `Synapse`,  este proyecto fue construido sobre este servidor.
 
-Optionally: 
+Opcionalmente: 
 
-- A bridge (WhatsApp, Instagram, Telegram, etc.)
+- Un bridge (`WhatsApp`, `Instagram`, `Telegram` ...)
 
-## Run this project with Python:
+## Corre este proyecto con python:
 
-- Copy the example configuration file:
+- Copia el archivo de configuración de ejemplo
 ```bash
 cp menuflow/example-config.yaml config.yaml
 ```
 
-- Configure it to your needs:
+- Configúralo según tus necesidades:
 ```bash
 vim config.yaml
 ```
 
-- Install the requirements (preferably in a Python development environment):
+- Instala los requerimientos: (Preferiblemente en un entorno de desarrollo de python):
 ```bash
 pip install -r requirements.txt
 ```
 
-- Now you can start the project:
+- Ahora puedes arrancar el proyecto:
 ```bash
 python -m menuflow
 ```
 
-## Run this project with Docker:
+## Corre este proyecto con Docker:
 
-- Start the container; this will generate the config.yaml file:
+- Levante el contenedor: Esto generará el archivo config.yaml
 ```bash
 docker run --rm -v `pwd`:/data:z bramenn/menuflow:latest`
 ```
 
-- Configure it to your needs:
+- Configúralo según tus necesidades:
 ```bash
 vim config.yaml
 ```
 
-- Now you can start the project:
+- Ahora puedes arrancar el proyecto:
 ```bash
 docker run --restart unless-stopped -v `pwd`:/data:z -p 24900:24900 bramenn/
 menuflow:latest
 ```
 
-## Run this project with Docker Compose:
+## Corre este proyecto con docker-compose: Muy muy simple, solo mira
 
-  - Start the services:
+  - Levanta los servicios:
 ```bash
 docker-compose up -d
 ```
 
-## Register a bot: 
-To do this, we need the homeserver and token of the Matrix user we want to register.
+## Registrar un bot: 
+Para esto necesitamos el homeserver y el token del usuario de matrix que queremos registrar.
 
 ```bash
 curl -XPOST -d {"homeserver":"https://matrix.exmaple.com", "access_token": "xyz"}' "http://menuflow_service/_matrix/menuflow/v1/client/new
 ```
 
-## Configure a flow:
-A flow is a `.yaml` file that contains the instructions that a bot will follow.
+## Configura un flujo:
+Un flujo es un archivo `.yaml` que contiene las instrucciones que un bot va a seguir. Para más información sobre cada uno de los nodos, vea a:
 
 ```yaml
 menu:
