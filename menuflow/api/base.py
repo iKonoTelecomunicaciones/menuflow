@@ -19,5 +19,4 @@ def get_config() -> Config:
 
 @routes.get("/version")
 async def version(_: web.Request) -> web.Response:
-
     return web.json_response({"version": "0.0.1"})

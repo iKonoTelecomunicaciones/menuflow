@@ -19,22 +19,32 @@ class RoomState(Enum):
 
 @dataclass
 class Room:
-
     db: ClassVar[Database] = fake_db
 
     id: int | None
     room_id: RoomID
     variables: Dict | None
     node_id: str | RoomState
-    state: RoomState | None = None
+    state: RoomState | str | None = None
 
     @classmethod
     def _from_row(cls, row: Record) -> Room | None:
-        return cls(**row)
+        data = {**row}
+        try:
+            state = RoomState(data.pop("state"))
+        except ValueError:
+            state = ""
+
+        return cls(state=state, **data)
 
     @property
     def values(self) -> tuple:
-        return (self.room_id, self.variables, self.node_id, self.state)
+        return (
+            self.room_id,
+            self.variables,
+            self.node_id,
+            self.state.value if isinstance(self.state, RoomState) else self.state,
+        )
 
     _columns = "room_id, variables, node_id, state"
 

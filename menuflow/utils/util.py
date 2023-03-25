@@ -1,3 +1,5 @@
+import json
+import os
 from asyncio import Task, all_tasks
 from logging import getLogger
 from re import match
@@ -133,17 +135,8 @@ class Util:
 
     @classmethod
     def flow_example(cls) -> Dict:
-        return {
-            "menu": {
-                "nodes": [
-                    {
-                        "id": "start",
-                        "type": "message",
-                        "text": "Hello! there, this is a sample message, please make sure the flow is configured. Bye!",
-                    }
-                ]
-            }
-        }
+        with open("menuflow/utils/sample_flows/cat_fact.json", "r") as f:
+            return json.loads(f.read())
 
     def ignore_user(self, mxid: UserID, origin: str) -> bool:
         """It checks if the user ID matches any of the regex patterns in the config file

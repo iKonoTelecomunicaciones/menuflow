@@ -3,12 +3,15 @@ from __future__ import annotations
 import base64
 from logging import getLogger
 from types import SimpleNamespace
-from typing import Dict
+from typing import TYPE_CHECKING, Dict
 
 from aiohttp import ClientSession, TraceRequestEndParams, TraceRequestStartParams
 from mautrix.util.logging import TraceLogger
 
 from .room import Room
+
+if TYPE_CHECKING:
+    from .middlewares import HTTPMiddleware
 
 log: TraceLogger = getLogger("menuflow.middleware")
 
@@ -35,7 +38,7 @@ async def start_auth_middleware(
         return
 
     context_params: Dict = trace_request_ctx["trace_request_ctx"]
-    middleware = context_params.get("middleware")
+    middleware: HTTPMiddleware = context_params.get("middleware")
 
     if not middleware:
         log.info(f"There's no define middleware for this request: {params.url}")
@@ -45,25 +48,23 @@ async def start_auth_middleware(
         log.info(f"The request url do not match with the middleware url")
         return
 
-    params.headers.update(middleware._general_headers)
+    params.headers.update(middleware.general_headers)
 
     if middleware.type == "jwt":
         room: Room = await Room.get_by_room_id(room_id=context_params.get("customer_room_id"))
-        room_variables: Dict = middleware.auth.variables.__dict__
+        room_variables: Dict = middleware.auth.get("variables", {})
         token_key: str = list(room_variables.keys())[0]
 
         if not await room.get_variable(token_key):
-            await middleware.auth_request(session=session)
+            await middleware.auth_request()
 
         params.headers.update(
-            {"Authorization": f"{middleware._token_type} {await room.get_variable(token_key)}"}
+            {"Authorization": f"{middleware.token_type} {await room.get_variable(token_key)}"}
         )
     elif middleware.type == "basic":
         log.info(f"middleware: {middleware.id} type: {middleware.type} executing ...")
-        auth_str = (
-            f"{middleware._basic_auth['login']}:{middleware._basic_auth['password']}".encode(
-                "utf-8"
-            )
+        auth_str = f"{middleware.basic_auth['login']}:{middleware.basic_auth['password']}".encode(
+            "utf-8"
         )
         params.headers.update({"Authorization": f"Basic {base64.b64encode(auth_str).decode()}"})
 
@@ -93,7 +94,7 @@ async def end_auth_middleware(
         return
 
     context_params: Dict = trace_request_ctx["trace_request_ctx"]
-    middleware = context_params.get("middleware")
+    middleware: HTTPMiddleware = context_params.get("middleware")
 
     if not middleware:
         log.info(f"There's no define middleware for this request: {params.url}")
@@ -106,4 +107,4 @@ async def end_auth_middleware(
 
         if middleware.type == "jwt":
             log.info("Token expired, refreshing token ...")
-            await middleware.auth_request(session=session)
+            await middleware.auth_request()

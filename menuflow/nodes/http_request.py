@@ -1,89 +1,59 @@
-from __future__ import annotations
+from typing import Dict
 
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple
-
-from aiohttp import BasicAuth, ClientSession, ClientTimeout
-from aiohttp.client_exceptions import ContentTypeError
-from attr import dataclass, ib
-from jinja2 import Template
+from aiohttp import BasicAuth, ClientTimeout, ContentTypeError
 from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
 from ..db.room import RoomState
-from .switch import Case, Switch
+from ..middlewares import HTTPMiddleware
+from ..repository import HTTPRequest as HTTPRequestModel
+from .switch import Switch
 
-if TYPE_CHECKING:
-    from middlewares.http import HTTPMiddleware
 
-
-@dataclass
 class HTTPRequest(Switch):
-    """
-    ## HTTPRequest
+    HTTP_ATTEMPTS: Dict = {}
 
-    HTTPRequest is a subclass of Switch which allows sending a message formatted with jinja
-    variables and capturing the response to transit to another node according to the validation
+    middleware: HTTPMiddleware = None
 
-    content:
-
-    ```
-    - id: 'r1'
-      type: 'http_request'
-      method: 'GET'
-      url: 'https://inshorts.deta.dev/news?category={{category}}'
-
-      variables:
-        news: data
-
-      cases:
-        - id: 200
-          o_connection: m1
-        - id: default
-          o_connection: m2
-    ```
-    """
-
-    method: str = ib(default=None)
-    url: str = ib(default=None)
-    middleware: str = ib(default=None)
-    variables: Dict[str, Any] = ib(factory=dict)
-    cookies: Dict[str, Any] = ib(factory=dict)
-    query_params: Dict[str, Any] = ib(factory=dict)
-    headers: Dict[str, Any] = ib(factory=dict)
-    basic_auth: Dict[str, Any] = ib(factory=dict)
-    data: Dict[str, Any] = ib(factory=dict)
-    cases: List[Case] = ib(factory=list)
+    def __init__(self, http_request_node_data: HTTPRequestModel) -> None:
+        Switch.__init__(self, http_request_node_data)
+        self.log = self.log.getChild(http_request_node_data.get("id"))
+        self.data: Dict = http_request_node_data
 
     @property
-    def _url(self) -> Template:
-        return self.render_data(self.url)
+    def method(self) -> str:
+        return self.data.get("method", "")
 
     @property
-    def _variables(self) -> Template:
-        return self.render_data(self.serialize()["variables"])
+    def url(self) -> str:
+        return self.render_data(self.data.get("url", ""))
 
     @property
-    def _cookies(self) -> Template:
-        return self.render_data(self.serialize()["cookies"])
+    def http_variables(self) -> Dict:
+        return self.render_data(self.data.get("variables", {}))
 
     @property
-    def _headers(self) -> Dict[str, Template]:
-        return self.render_data(self.serialize()["headers"])
+    def cookies(self) -> Dict:
+        return self.render_data(self.data.get("cookies", {}))
 
     @property
-    def _auth(self) -> Dict[str, Template]:
-        return self.render_data(self.serialize()["basic_auth"])
+    def headers(self) -> Dict:
+        return self.render_data(self.data.get("headers", {}))
 
     @property
-    def _query_params(self) -> Dict:
-        return self.render_data(self.serialize()["query_params"])
+    def basic_auth(self) -> Dict:
+        return self.render_data(self.data.get("basic_auth", {}))
 
     @property
-    def _data(self) -> Dict:
-        return self.render_data(self.serialize()["data"])
+    def query_params(self) -> Dict:
+        return self.render_data(self.data.get("query_params", {}))
 
     @property
-    def _context_params(self) -> Dict[str, Template]:
+    def body(self) -> Dict:
+        return self.render_data(self.data.get("data", {}))
+
+    @property
+    def context_params(self) -> Dict[str, str]:
         return self.render_data(
             {
                 "bot_mxid": "{{bot_mxid}}",
@@ -91,35 +61,51 @@ class HTTPRequest(Switch):
             }
         )
 
-    async def run(self) -> str:
-        pass
-
-    async def request(self, session: ClientSession, middleware: HTTPMiddleware) -> Tuple(int, str):
+    def prepare_request(self) -> Dict:
         request_body = {}
 
         if self.query_params:
-            request_body["params"] = self._query_params
+            request_body["params"] = self.query_params
 
         if self.basic_auth:
             request_body["auth"] = BasicAuth(
-                login=self._auth["login"],
-                password=self._auth["password"],
+                login=self.basic_auth["login"],
+                password=self.basic_auth["password"],
             )
 
         if self.headers:
-            request_body["headers"] = self._headers
+            request_body["headers"] = self.headers
 
-        if self.data:
-            request_body["json"] = self._data
+        if self.body:
+            request_body["json"] = self.body
 
-        request_params_ctx = self._context_params
-        request_params_ctx.update({"middleware": middleware})
+        return request_body
+
+    async def make_request(self):
+        """It makes a request to the URL specified in the node,
+        and then it does some stuff with the response
+
+        Returns
+        -------
+            The status code and the response text.
+        """
+
+        self.log.debug(f"Room {self.room.room_id} enters http_request node {self.id}")
+
+        request_body = self.prepare_request()
+
+        if self.middleware:
+            self.middleware.room = self.room
+            request_params_ctx = self.context_params
+            request_params_ctx.update({"middleware": self.middleware})
+        else:
+            request_params_ctx = {}
 
         try:
             timeout = ClientTimeout(total=self.config["menuflow.timeouts.http_request"])
-            response = await session.request(
+            response = await self.session.request(
                 self.method,
-                self._url,
+                self.url,
                 **request_body,
                 trace_request_ctx=request_params_ctx,
                 timeout=timeout,
@@ -131,7 +117,7 @@ class HTTPRequest(Switch):
             return 500, e
 
         self.log.debug(
-            f"node: {self.id} method: {self.method} url: {self._url} status: {response.status}"
+            f"node: {self.id} method: {self.method} url: {self.url} status: {response.status}"
         )
 
         if response.status == 401:
@@ -140,8 +126,8 @@ class HTTPRequest(Switch):
         variables = {}
         o_connection = None
 
-        if self._cookies:
-            for cookie in self._cookies:
+        if self.cookies:
+            for cookie in self.cookies:
                 variables[cookie] = response.cookies.output(cookie)
 
         try:
@@ -152,17 +138,17 @@ class HTTPRequest(Switch):
         if isinstance(response_data, dict):
             # Tulir and its magic since time immemorial
             serialized_data = RecursiveDict(CommentedMap(**response_data))
-            if self._variables:
-                for variable in self._variables:
+            if self.http_variables:
+                for variable in self.http_variables:
                     try:
                         variables[variable] = self.render_data(
-                            serialized_data[self.variables[variable]]
+                            serialized_data[self.http_variables[variable]]
                         )
                     except KeyError:
                         pass
         elif isinstance(response_data, str):
-            if self._variables:
-                for variable in self._variables:
+            if self.http_variables:
+                for variable in self.http_variables:
                     try:
                         variables[variable] = self.render_data(response_data)
                     except KeyError:
@@ -175,10 +161,79 @@ class HTTPRequest(Switch):
 
         if o_connection:
             await self.room.update_menu(
-                node_id=o_connection, state=RoomState.END.value if not self.cases else None
+                node_id=o_connection, state=RoomState.END if not self.cases else None
             )
 
         if variables:
             await self.room.set_variables(variables=variables)
 
         return response.status, await response.text()
+
+    async def run_middleware(self, status: int, response: str):
+        """If the HTTP status code is not 200 or 201,
+        the function will log the response as an error. If the status code is 200 or 201,
+        the function will reset the HTTP_ATTEMPTS dictionary.
+        If the HTTP_ATTEMPTS dictionary has a key that matches the room ID,
+        and the last HTTP node is the current node,
+        and the number of attempts is greater than or equal to the number of attempts specified in
+        the middleware, the function will reset the HTTP_ATTEMPTS dictionary and set the default
+        connection as the active connection
+
+        Parameters
+        ----------
+        status : int
+            The HTTP status code returned by the server.
+        response : str
+            The response from the server.
+
+        """
+
+        if status == 401:
+            self.HTTP_ATTEMPTS.update(
+                {
+                    self.room.room_id: {
+                        "last_http_node": self.id,
+                        "attempts_count": self.HTTP_ATTEMPTS.get(self.room.room_id, {}).get(
+                            "attempts_count"
+                        )
+                        + 1
+                        if self.HTTP_ATTEMPTS.get(self.room.room_id)
+                        else 1,
+                    }
+                }
+            )
+            self.log.debug(
+                "HTTP auth attempt"
+                f"{self.HTTP_ATTEMPTS[self.room.room_id]['attempts_count']}, trying again ..."
+            )
+
+        if not status in [200, 201]:
+            self.log.error(response)
+        else:
+            self.HTTP_ATTEMPTS.update(
+                {self.room.room_id: {"last_http_node": None, "attempts_count": 0}}
+            )
+
+        if (
+            self.HTTP_ATTEMPTS.get(self.room.room_id)
+            and self.HTTP_ATTEMPTS[self.room.room_id]["last_http_node"] == self.id
+            and self.HTTP_ATTEMPTS[self.room.room_id]["attempts_count"] >= self.middleware.attempts
+        ):
+            self.log.debug("Attempts limit reached, o_connection set as `default`")
+            self.HTTP_ATTEMPTS.update(
+                {self.room.room_id: {"last_http_node": None, "attempts_count": 0}}
+            )
+            await self.room.update_menu(await self.get_case_by_id("default"), None)
+
+    async def run(self):
+        """It makes a request to the URL specified in the node's configuration,
+        and then runs the middleware
+        """
+        try:
+            status, response = await self.make_request()
+            self.log.info(f"http_request node {self.id} had a status of {status}")
+        except Exception as e:
+            self.log.exception(e)
+
+        if self.middleware:
+            await self.run_middleware(status=status, response=response)
