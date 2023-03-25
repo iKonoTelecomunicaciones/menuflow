@@ -35,7 +35,7 @@
                         }
                     },
                     {
-                        "id": "default",
+                        "id": "timeout",
                         "o_connection": "last-message"
                     }
                 ]
