@@ -12,7 +12,6 @@ from .db.user import User as DBUser
 
 
 class User(DBUser):
-
     by_mxid: Dict[UserID, "User"] = {}
 
     config: Config

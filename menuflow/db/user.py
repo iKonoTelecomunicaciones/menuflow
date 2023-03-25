@@ -12,7 +12,6 @@ fake_db = Database.create("") if TYPE_CHECKING else None
 
 @dataclass
 class User:
-
     db: ClassVar[Database] = fake_db
 
     id: int | None

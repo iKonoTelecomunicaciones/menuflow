@@ -10,7 +10,6 @@ from ..room import Room
 
 
 class HTTPMiddleware(Base):
-
     room: Room = None
 
     def __init__(self, http_middleware_data: HTTPMiddlewareModel) -> None:

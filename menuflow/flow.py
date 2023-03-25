@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Dict
 
+from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
 from .nodes import CheckTime, Email, HTTPRequest, Input, Media, Message, Switch
@@ -20,7 +21,9 @@ class Flow:
     middlewares: Dict[str, HTTPMiddleware] = {}
 
     def __init__(self, flow_data: FlowModel) -> None:
-        self.data: FlowModel = flow_data.serialize()
+        self.data: FlowModel = (
+            flow_data.serialize() if isinstance(flow_data, SerializableAttrs) else flow_data
+        )
 
     @property
     def flow_variables(self) -> Dict:

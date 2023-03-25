@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from mautrix.types import MessageEvent
+from mautrix.types import MessageEvent, MessageEventContent, MessageType
 
 from ..db.room import RoomState
 from ..repository import Input as InputModel
@@ -22,6 +22,10 @@ class Input(Switch, Message):
         return self.render_data(self.data.get("variable", ""))
 
     @property
+    def input_type(self) -> MessageType:
+        return MessageType(self.render_data(self.data.get("input_type", "m.text")))
+
+    @property
     def inactivity_options(self) -> Dict[str, Any]:
         data: Dict = self.data.get("inactivity_options", {})
         self.chat_timeout: int = data.get("chat_timeout", 0)
@@ -30,6 +34,46 @@ class Input(Switch, Message):
         self.attempts: int = data.get("attempts", 0)
 
         return data
+
+    async def input_media(self, content: MessageEventContent):
+        """It checks if the input type is the same as the message type, if it is,
+        it sets the variable to the message content and goes to the next case, if it isn't,
+        it goes to the previous case
+
+        Parameters
+        ----------
+        content : MessageEventContent
+            MessageEventContent
+
+        """
+        if self.input_type != content.msgtype:
+            o_connection = await self.get_case_by_id(False)
+        else:
+            await self.room.set_variable(self.variable, content.serialize())
+            o_connection = await self.get_case_by_id(True)
+
+        await self.room.update_menu(o_connection or "default")
+
+    async def input_text(self, content: MessageEventContent):
+        """It takes the input from the user and sets the variable to the input
+
+        Parameters
+        ----------
+        content : MessageEventContent
+            The content of the message event.
+
+        """
+        try:
+            await self.room.set_variable(
+                self.variable,
+                int(content.body) if content.body.isdigit() else content.body,
+            )
+        except ValueError as e:
+            self.log.warning(e)
+
+        # If the node has an output connection, then update the menu to the output connection.
+        # Otherwise, run the node and update the menu to the output connection.
+        await Switch.run(self)
 
     async def run(self, evt: Optional[MessageEvent]):
         """If the room is in input mode, then set the variable.
@@ -49,18 +93,15 @@ class Input(Switch, Message):
                 self.log.warning("A problem occurred to trying save the variable")
                 return
 
-            self.log.debug(f"Creating [variable: {self.variable}] [content: {evt.content.body}]")
-            try:
-                await self.room.set_variable(
-                    self.variable,
-                    int(evt.content.body) if evt.content.body.isdigit() else evt.content.body,
-                )
-            except ValueError as e:
-                self.log.warning(e)
-
-            # If the node has an output connection, then update the menu to the output connection.
-            # Otherwise, run the node and update the menu to the output connection.
-            await Switch.run(self)
+            if self.input_type == MessageType.TEXT:
+                await self.input_text(content=evt.content)
+            elif self.input_type in [
+                MessageType.AUDIO,
+                MessageType.IMAGE,
+                MessageType.FILE,
+                MessageType.VIDEO,
+            ]:
+                await self.input_media(content=evt.content)
 
             if self.inactivity_options:
                 await Util.cancel_task(task_name=self.room.room_id)

@@ -38,7 +38,7 @@ class Message(Base):
 
     @property
     def o_connection(self) -> str:
-        return self.data.get("o_connection", "")
+        return self.render_data(self.data.get("o_connection", ""))
 
     async def _update_node(self):
         await self.room.update_menu(

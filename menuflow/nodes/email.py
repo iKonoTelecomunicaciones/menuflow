@@ -7,7 +7,6 @@ from .message import Message
 
 
 class Email(Message):
-
     email_client: EmailClient = None
 
     def __init__(self, email_node_data: EmailModel) -> None:
@@ -39,7 +38,6 @@ class Email(Message):
         return self.render_data(self.data.get("encode_type", ""))
 
     async def run(self):
-
         if not self.email_client:
             self.email_client = EmailClient.get_by_server_id(self.server_id)
 

@@ -14,8 +14,25 @@ from ..jinja.jinja_template import jinja_env
 from ..room import Room
 
 
-class Base:
+def convert_to_bool(item) -> Dict | List | str:
+    if isinstance(item, dict):
+        for k, v in item.items():
+            item[k] = convert_to_bool(v)
+        return item
+    elif isinstance(item, list):
+        return [convert_to_bool(i) for i in item]
+    elif isinstance(item, str):
+        if item.lower() == "true":
+            return True
+        elif item.lower() == "false":
+            return False
+        else:
+            return item
+    else:
+        return item
 
+
+class Base:
     log: TraceLogger = getLogger("menuflow.node")
 
     config: Config
@@ -67,23 +84,6 @@ class Base:
             except Exception as e:
                 self.log.exception(e)
                 return
-
-        def convert_to_bool(item):
-            if isinstance(item, dict):
-                for k, v in item.items():
-                    item[k] = convert_to_bool(v)
-                return item
-            elif isinstance(item, list):
-                return [convert_to_bool(i) for i in item]
-            elif isinstance(item, str):
-                if item in ["True", "true"]:
-                    return True
-                elif item in ["False", "false"]:
-                    return False
-                else:
-                    return item
-            else:
-                return item
 
         self.variables.update(self.room._variables)
 

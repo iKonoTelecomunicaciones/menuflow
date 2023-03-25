@@ -1,7 +1,7 @@
 from typing import Dict, List
 
 from ..repository import Switch as SwitchModel
-from .base import Base
+from .base import Base, convert_to_bool
 
 
 class Switch(Base):
@@ -15,7 +15,7 @@ class Switch(Base):
 
     @property
     def cases(self) -> List[Dict]:
-        return self.data.get("cases")
+        return self.render_data(self.data.get("cases"))
 
     async def load_cases(self) -> Dict[str, str]:
         """It loads the cases into a dictionary.
@@ -34,7 +34,7 @@ class Switch(Base):
         cases_dict = {}
 
         for case in self.cases:
-            cases_dict[str(case.get("id"))] = {
+            cases_dict[convert_to_bool(case.get("id"))] = {
                 "o_connection": case.get("o_connection"),
                 "variables": case.get("variables"),
             }
@@ -56,18 +56,11 @@ class Switch(Base):
 
         try:
             result = self.validation
-            # TODO What would be the best way to handle this, taking jinja into account?
-            # if res == "True":
-            #     res = True
-
-            # if res == "False":
-            #     res = False
-
         except Exception as e:
             self.log.warning(f"An exception has occurred in the pipeline [{self.id} ]:: {e}")
             result = "except"
 
-        return await self.get_case_by_id(str(result))
+        return await self.get_case_by_id(result)
 
     async def run(self) -> str:
         await self.room.update_menu(await self._run())
@@ -97,4 +90,4 @@ class Switch(Base):
             return case_o_connection
         except KeyError:
             self.log.debug(f"Case not found [{id}] the [default case] will be sought")
-            return cases["default"]["o_connection"]
+            return cases.get("default", {}).get("o_connection", "start")

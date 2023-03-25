@@ -94,7 +94,6 @@ class Room(DBRoom):
         return self._variables.get(variable_id)
 
     async def set_variable(self, variable_id: str, value: Any):
-
         if not variable_id:
             return
 
