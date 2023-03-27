@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from copy import deepcopy
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 import yaml
 from mautrix.client import Client as MatrixClient
@@ -198,42 +198,12 @@ class MatrixHandler(MatrixClient):
 
         self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.state}]")
 
-        if type(node) == CheckTime:
-            await node.run()
-
-        node = self.flow.node(room=room)
-
         if type(node) == Input:
             await node.run(evt=evt)
             if room.state == RoomState.INPUT:
                 return
-
-        node = self.flow.node(room=room)
-
-        if type(node) == Message:
+        else:
             await node.run()
-
-        node = self.flow.node(room=room)
-
-        if type(node) == Media:
-            await node.run()
-
-        node = self.flow.node(room=room)
-
-        if type(node) == Email:
-            await node.run()
-
-        node = self.flow.node(room=room)
-
-        if type(node) == HTTPRequest:
-            await node.run()
-
-        node = self.flow.node(room=room)
-
-        if type(node) == Switch:
-            await node.run()
-
-        node = self.flow.node(room=room)
 
         if room.state == RoomState.END:
             self.log.debug(f"The room {room.room_id} has terminated the flow")
