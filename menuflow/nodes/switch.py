@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Dict, List
 
 from ..repository import Switch as SwitchModel
@@ -65,10 +67,12 @@ class Switch(Base):
     async def run(self) -> str:
         await self.room.update_menu(await self._run())
 
-    async def get_case_by_id(self, id: str) -> str:
+    async def get_case_by_id(self, id: str | int) -> str:
         try:
             cases = await self.load_cases()
-            case_result: Dict = cases[id]
+            case_result: Dict = (
+                cases[int(id)] if isinstance(id, str) and id.isdigit() else cases[id]
+            )
 
             variables_recorded = []
             if case_result.get("variables") and self.room:
@@ -89,5 +93,5 @@ class Switch(Base):
             )
             return case_o_connection
         except KeyError:
-            self.log.debug(f"Case not found [{id}] the [default case] will be sought")
+            self.log.debug(f"Case [{id}] not found; the [default case] will be sought")
             return cases.get("default", {}).get("o_connection", "start")
