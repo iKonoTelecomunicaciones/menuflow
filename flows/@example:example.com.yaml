@@ -190,6 +190,11 @@ menu:
       message_type: m.image
       text: A cat
       url: 'https://cataas.com/cat'
+      o_connection: location-1
+    - id: location-1
+      type: location
+      latitude: 132.4877572355567
+      longitude: 33.73677405847739
       o_connection: input-4
     - id: input-4
       type: input

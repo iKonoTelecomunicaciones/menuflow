@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Dict
 from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
-from .nodes import CheckTime, Email, HTTPRequest, Input, Media, Message, Switch
+from .nodes import CheckTime, Email, HTTPRequest, Input, Location, Media, Message, Switch
 from .repository import Flow as FlowModel
 from .room import Room
 
@@ -42,6 +42,8 @@ class Flow:
                 node = Media(media_node_data=node)
             elif node.get("type") == "email":
                 node = Email(email_node_data=node)
+            elif node.get("type") == "location":
+                node = Location(location_node_data=node)
             elif node.get("type") == "switch":
                 node = Switch(switch_node_data=node)
             elif node.get("type") == "input":

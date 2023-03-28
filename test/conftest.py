@@ -3,7 +3,7 @@ from mautrix.client import Client
 from pytest_mock import MockerFixture
 
 from menuflow import Flow, Room, Util
-from menuflow.nodes import Base, Input, Message, Switch
+from menuflow.nodes import Base, Input, Location, Message, Switch
 
 
 @pytest_asyncio.fixture
@@ -68,3 +68,12 @@ async def input_media(flow: Flow, base: Base) -> Input:
     input_node.variables = base.variables
     input_node.matrix_client = Client(base_url="")
     return input_node
+
+
+@pytest_asyncio.fixture
+async def location(flow: Flow, base: Base) -> Location:
+    location_node = flow.get_node_by_id("location-1")
+    location_node.room = base.room
+    location_node.variables = base.variables
+    location_node.matrix_client = Client(base_url="")
+    return location_node

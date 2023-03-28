@@ -1,8 +1,16 @@
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-from mautrix.types import MessageEvent, MessageEventContent, MessageType
+from mautrix.types import (
+    LocationMessageEventContent,
+    MediaMessageEventContent,
+    MessageEvent,
+    MessageEventContent,
+    MessageType,
+)
 
 from ..db.room import RoomState
 from ..repository import Input as InputModel
@@ -35,23 +43,26 @@ class Input(Switch, Message):
 
         return data
 
-    async def input_media(self, content: MessageEventContent):
-        """It checks if the input type is the same as the message type, if it is,
-        it sets the variable to the message content and goes to the next case, if it isn't,
-        it goes to the previous case
-
-        Parameters
-        ----------
-        content : MessageEventContent
-            MessageEventContent
-
-        """
-        if self.input_type != content.msgtype:
-            o_connection = await self.get_case_by_id(False)
+    async def _set_input_content(
+        self, content: MediaMessageEventContent | LocationMessageEventContent
+    ) -> str:
+        if self.input_type == content.msgtype:
+            input_content = (
+                content.serialize()
+                if isinstance(content, MediaMessageEventContent)
+                else content.geo_uri
+            )
+            await self.room.set_variable(self.variable, input_content)
+            return await self.get_case_by_id(True)
         else:
-            await self.room.set_variable(self.variable, content.serialize())
-            o_connection = await self.get_case_by_id(True)
+            return await self.get_case_by_id(False)
 
+    async def input_media(self, content: MediaMessageEventContent):
+        o_connection = await self._set_input_content(content)
+        await self.room.update_menu(o_connection or "default")
+
+    async def input_location(self, content: LocationMessageEventContent):
+        o_connection = await self._set_input_content(content)
         await self.room.update_menu(o_connection or "default")
 
     async def input_text(self, content: MessageEventContent):
@@ -102,6 +113,8 @@ class Input(Switch, Message):
                 MessageType.VIDEO,
             ]:
                 await self.input_media(content=evt.content)
+            elif self.input_type == MessageType.LOCATION:
+                await self.input_location(content=evt.content)
 
             if self.inactivity_options:
                 await Util.cancel_task(task_name=self.room.room_id)

@@ -7,6 +7,7 @@ from .nodes import (
     HTTPRequest,
     InactivityOptions,
     Input,
+    Location,
     Media,
     Message,
     Switch,
