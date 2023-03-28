@@ -60,6 +60,6 @@ class Message(Base):
             formatted_body=markdown(self.text),
         )
 
-        await self.matrix_client.send_message(room_id=self.room.room_id, content=msg_content)
+        await self.send_message(room_id=self.room.room_id, content=msg_content)
 
         await self._update_node()

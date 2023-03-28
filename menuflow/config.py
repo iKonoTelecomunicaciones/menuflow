@@ -20,6 +20,7 @@ class Config(BaseFileConfig):
         copy("menuflow.timeouts.http_requests")
         copy("menuflow.timeouts.middlewares")
         copy("menuflow.email_servers")
+        copy("menuflow.typing_notification")
         copy("server.hostname")
         copy("server.port")
         copy("server.public_url")

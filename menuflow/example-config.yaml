@@ -35,6 +35,13 @@ menuflow:
             username: user2
             password: pass2
 
+    # Do you want the menu to generate a typing notification event before sending messages to rooms?
+    # The range is related to the time duration of the write notification event.
+    typing_notification:
+        enable: true
+        start: 1
+        end: 3
+
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0

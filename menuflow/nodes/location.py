@@ -30,7 +30,7 @@ class Location(Message):
             body=f"User Location geo:{self.longitude},{self.latitude} at {datetime.utcnow()}",
             geo_uri=f"geo:{self.longitude},{self.latitude}",
         )
-        await self.matrix_client.send_message(room_id=self.room.room_id, content=location_message)
+        await self.send_message(room_id=self.room.room_id, content=location_message)
         await self.room.update_menu(
             node_id=self.o_connection,
             state=RoomState.END if not self.o_connection else None,
