@@ -91,10 +91,13 @@ class Base:
 
         """
 
-        if self.config["menuflow.typing_notification.enable"]:
-            await self.set_typing(room_id=room_id)
+        async def send():
+            if self.config["menuflow.typing_notification.enable"]:
+                await self.set_typing(room_id=room_id)
 
-        await self.matrix_client.send_message(room_id=room_id, content=content)
+            await self.matrix_client.send_message(room_id=room_id, content=content)
+
+        create_task(send())
 
     def render_data(self, data: Dict | List | str) -> Dict | List | str:
         """It takes a dictionary or list, converts it to a string,
