@@ -33,7 +33,7 @@ class Input(Switch, Message):
       text: 'Enter a number'
       variable: opt
       validation: '{{ opt.isdigit() }}'
-      input_type: 'm.text | m.image | m.video | m.audio | m.file'
+      input_type: 'm.text | m.image | m.video | m.audio | m.file | m.location'
       inactivity_options:
         chat_timeout: 20 #seconds
         warning_message: "Message"
