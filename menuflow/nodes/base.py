@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from abc import abstractmethod
+from asyncio import create_task, sleep
 from json import JSONDecodeError, dumps, loads
 from logging import getLogger
+from random import randrange
 from typing import Dict, List
 
 from aiohttp import ClientSession
 from mautrix.client import Client as MatrixClient
+from mautrix.types import MessageEventContent, RoomID
 from mautrix.util.logging import TraceLogger
 
 from ..config import Config
@@ -60,6 +63,41 @@ class Base:
     @abstractmethod
     async def run(self):
         pass
+
+    async def set_typing(self, room_id: RoomID):
+        """It sets the typing notification for a random amount of time between 1 and 3 seconds
+
+        Parameters
+        ----------
+        room_id : RoomID
+            The room ID of the room you want to send the typing notification to.
+
+        """
+        start = self.config["menuflow.typing_notification.start"] or 1
+        end = self.config["menuflow.typing_notification.end"] or 3
+        typing_time = randrange(start, end)
+        await self.matrix_client.set_typing(room_id=room_id, timeout=typing_time)
+        await sleep(typing_time)
+
+    async def send_message(self, room_id: RoomID, content: MessageEventContent):
+        """It sends a message to the room.
+
+        Parameters
+        ----------
+        room_id : RoomID
+            The room ID of the room you want to send the message to.
+        content : MessageEventContent
+            The content of the message.
+
+        """
+
+        async def send():
+            if self.config["menuflow.typing_notification.enable"]:
+                await self.set_typing(room_id=room_id)
+
+            await self.matrix_client.send_message(room_id=room_id, content=content)
+
+        create_task(send())
 
     def render_data(self, data: Dict | List | str) -> Dict | List | str:
         """It takes a dictionary or list, converts it to a string,

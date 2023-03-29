@@ -17,6 +17,6 @@ class TestLocationNode:
     @pytest.mark.asyncio
     async def test_run(self, location: Location, mocker: MockerFixture):
         async_mock = AsyncMock()
-        mock_func = mocker.patch.object(Client, "send_message", side_effect=async_mock)
+        mock_func = mocker.patch.object(Location, "send_message", side_effect=async_mock)
         await location.run()
         assert mock_func.called == True

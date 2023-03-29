@@ -3,13 +3,28 @@ from mautrix.client import Client
 from pytest_mock import MockerFixture
 
 from menuflow import Flow, Room, Util
+from menuflow.config import Config
 from menuflow.nodes import Base, Input, Location, Message, Switch
 
 
 @pytest_asyncio.fixture
-async def flow() -> Flow:
+async def config() -> Config:
+    _config = Config(
+        path="menuflow/example-config.yaml",
+        base_path="menuflow",
+    )
+    _config.load()
+    return _config
+
+
+@pytest_asyncio.fixture
+async def flow(config: Config) -> Flow:
     flow = Flow(Util.flow_example().get("menu"))
     flow.load()
+
+    for node in [Input, Location, Message, Switch]:
+        node.config = config
+
     return flow
 
 

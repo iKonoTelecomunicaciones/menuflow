@@ -116,7 +116,7 @@ class Media(Message):
             media_message = await self.load_media()
             self.media_cache[self.url] = media_message
 
-        await self.matrix_client.send_message(room_id=self.room.room_id, content=media_message)
+        await self.send_message(room_id=self.room.room_id, content=media_message)
 
         await self.room.update_menu(
             node_id=self.o_connection,

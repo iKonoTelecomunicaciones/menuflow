@@ -1,7 +1,6 @@
 import nest_asyncio
 import pytest
 from asyncmock import AsyncMock
-from mautrix.client import Client
 from mautrix.types import MessageType
 from pytest_mock import MockerFixture
 
@@ -39,9 +38,9 @@ class TestMessageNode:
         assert message.room.node_id == ""
         assert message.room.state == RoomState.END
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_run(self, message: Message, mocker: MockerFixture):
         async_mock = AsyncMock()
-        mock_func = mocker.patch.object(Client, "send_message", side_effect=async_mock)
+        mock_func = mocker.patch.object(Message, "send_message", side_effect=async_mock)
         await message.run()
         assert mock_func.called == True
