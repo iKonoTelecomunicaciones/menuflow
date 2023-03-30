@@ -54,10 +54,9 @@ class Base:
         return self.data.get("type", "")
 
     @classmethod
-    def init_cls(cls, config: Config, matrix_client: MatrixClient, default_variables: Dict):
+    def init_cls(cls, config: Config, session: ClientSession, default_variables: Dict):
         cls.config = config
-        cls.matrix_client = matrix_client
-        cls.session = matrix_client.api.session
+        cls.session = session
         cls.variables = default_variables or {}
 
     @abstractmethod
@@ -76,7 +75,7 @@ class Base:
         start = self.config["menuflow.typing_notification.start"] or 1
         end = self.config["menuflow.typing_notification.end"] or 3
         typing_time = randrange(start, end)
-        await self.matrix_client.set_typing(room_id=room_id, timeout=typing_time)
+        await self.room.matrix_client.set_typing(room_id=room_id, timeout=typing_time)
         await sleep(typing_time)
 
     async def send_message(self, room_id: RoomID, content: MessageEventContent):
@@ -95,7 +94,8 @@ class Base:
             if self.config["menuflow.typing_notification.enable"]:
                 await self.set_typing(room_id=room_id)
 
-            await self.matrix_client.send_message(room_id=room_id, content=content)
+            await self.room.matrix_client.send_message(room_id=room_id, content=content)
+        
 
         create_task(send())
 
