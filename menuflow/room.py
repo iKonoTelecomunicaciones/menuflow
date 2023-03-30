@@ -4,9 +4,9 @@ import json
 from logging import getLogger
 from typing import Any, Dict, cast
 
+from mautrix.client import Client as MatrixClient
 from mautrix.types import RoomID
 from mautrix.util.logging import TraceLogger
-from mautrix.client import Client as MatrixClient
 
 from .config import Config
 from .db.room import Room as DBRoom

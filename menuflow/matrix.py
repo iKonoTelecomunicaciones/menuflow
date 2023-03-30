@@ -51,7 +51,9 @@ class MatrixHandler(MatrixClient):
         self.util = Util(self.config)
         self.flow = Flow(flow_data=FlowModel.deserialize(flow["menu"]))
         Base.init_cls(
-            config=self.config, session=self.api.session, default_variables=self.flow.flow_variables
+            config=self.config,
+            session=self.api.session,
+            default_variables=self.flow.flow_variables,
         )
         self.flow.load()
 

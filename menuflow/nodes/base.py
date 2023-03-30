@@ -95,7 +95,6 @@ class Base:
                 await self.set_typing(room_id=room_id)
 
             await self.room.matrix_client.send_message(room_id=room_id, content=content)
-        
 
         create_task(send())
 
