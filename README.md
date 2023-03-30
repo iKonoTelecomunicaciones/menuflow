@@ -226,7 +226,7 @@ menu:
 
     - id: input-4
       type: input
-      text: 'Ahora tu ingresa la imagen de tu gato:'
+      text: 'Now you enter the image of your cat:'
       input_type: m.image
       variable: user_cat_image
       cases:
@@ -241,5 +241,5 @@ menu:
 
     - id: error-message-1
       type: message
-      text: 'Algo ha salido mal, bye'
+      text: 'Something has gone wrong, bye'
 ```
