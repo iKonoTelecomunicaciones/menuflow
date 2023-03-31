@@ -107,10 +107,12 @@ menu:
   flow_variables:
     cat_fatc_url: 'https://catfact.ninja/fact'
   nodes:
+
     - id: start
       type: message
       text: 'Hello, this a flow sample. {{foo}}'
       o_connection: input-1
+
     - id: input-1
       type: input
       text: 'Do you have 1 or more cats?, please enter (y/n)'
@@ -130,6 +132,7 @@ menu:
             no_cats: 'You are a user without cats, without life, without happiness ...'
         - id: timeout
           o_connection: last-message
+
     - id: input-2
       type: input
       text: 'Enter your cat''s name:'
@@ -138,6 +141,7 @@ menu:
       cases:
         - id: default
           o_connection: input-3
+
     - id: input-3
       type: input
       text: 'Enter your cat''s age in months:'
@@ -150,6 +154,7 @@ menu:
           o_connection: switch-1
         - id: default
           o_connection: input-3
+
     - id: switch-1
       type: switch
       validation: >-
@@ -164,6 +169,7 @@ menu:
           o_connection: request-1
           variables:
             cat_message: Your cat is an adult
+
     - id: request-1
       type: http_request
       method: GET
@@ -171,31 +177,36 @@ menu:
       variables:
         cat_fact: fact
       cases:
-        - id: '200'
+        - id: 200
           o_connection: message-2
         - id: default
           o_connection: error-message-1
+
     - id: message-2
       type: message
       text: >-
         {{cat_message}}, also let me give you an interesting fact about cats.
         Did you know that cats: **{{ cat_fact }}**
       o_connection: message-3
+
     - id: message-3
       type: message
       text: I'm going to share with you a picture of a kitten
       o_connection: media-1
+
     - id: media-1
       type: media
       message_type: m.image
       text: A cat
       url: 'https://cataas.com/cat'
       o_connection: location-1
+
     - id: location-1
       type: location
       latitude: 132.4877572355567
       longitude: 33.73677405847739
       o_connection: input-4
+
     - id: input-4
       type: input
       text: 'Now you enter the image of your cat:'
@@ -206,9 +217,11 @@ menu:
           o_connection: last-message
         - id: false
           o_connection: input-3
+
     - id: last-message
       type: message
       text: 'Bye bye! ... {{no_cats}}'
+
     - id: error-message-1
       type: message
       text: 'Something has gone wrong, bye'
