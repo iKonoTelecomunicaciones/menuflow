@@ -17,13 +17,15 @@ if TYPE_CHECKING:
 class Flow:
     log: TraceLogger = logging.getLogger("menuflow.flow")
 
-    nodes: Dict[str, (Message, Input, Switch, HTTPRequest, CheckTime)] = {}
-    middlewares: Dict[str, HTTPMiddleware] = {}
+    nodes: Dict[str, (Message, Input, Switch, HTTPRequest, CheckTime)]
+    middlewares: Dict[str, HTTPMiddleware]
 
     def __init__(self, flow_data: FlowModel) -> None:
         self.data: FlowModel = (
             flow_data.serialize() if isinstance(flow_data, SerializableAttrs) else flow_data
         )
+        self.nodes = {}
+        self.middlewares = {}
 
     @property
     def flow_variables(self) -> Dict:

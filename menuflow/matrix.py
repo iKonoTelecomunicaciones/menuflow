@@ -35,6 +35,7 @@ class MatrixHandler(MatrixClient):
         super().__init__(*args, **kwargs)
         self.config = config
         path = f"/data/flows/{self.mxid}.yaml"
+        self.log.critical(f"{path}")
         flow = Config(path=path, base_path="")
         try:
             flow.load()
@@ -56,6 +57,7 @@ class MatrixHandler(MatrixClient):
             default_variables=self.flow.flow_variables,
         )
         self.flow.load()
+        self.log.critical(f"{self.flow.data}")
 
     def handle_sync(self, data: JSON) -> list[asyncio.Task]:
         # This is a way to remove duplicate events from the sync
@@ -144,6 +146,9 @@ class MatrixHandler(MatrixClient):
         self.unlock_room(evt.room_id)
 
     async def handle_message(self, message: MessageEvent) -> None:
+
+        self.log.critical(f"{self.mxid} {self.flow.data}")
+
         self.log.debug(
             f"Incoming message [user: {message.sender}] [message: {message.content.body}] [room_id: {message.room_id}]"
         )
