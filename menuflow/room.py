@@ -4,6 +4,7 @@ import json
 from logging import getLogger
 from typing import Any, Dict, cast
 
+from mautrix.client import Client as MatrixClient
 from mautrix.types import RoomID
 from mautrix.util.logging import TraceLogger
 
@@ -17,6 +18,8 @@ class Room(DBRoom):
 
     config: Config
     log: TraceLogger = getLogger("menuflow.room")
+
+    matrix_client: MatrixClient
 
     def __init__(
         self,

@@ -5,7 +5,7 @@ from asyncio import create_task, sleep
 from json import JSONDecodeError, dumps, loads
 from logging import getLogger
 from random import randrange
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from aiohttp import ClientSession
 from mautrix.client import Client as MatrixClient
@@ -35,6 +35,29 @@ def convert_to_bool(item) -> Dict | List | str:
         return item
 
 
+def convert_to_int(item: Any) -> Dict | List | int:
+    if isinstance(item, dict):
+        for k, v in item.items():
+            item[k] = convert_to_int(v)
+        return item
+    elif isinstance(item, list):
+        return [convert_to_int(i) for i in item]
+    elif isinstance(item, str) and item.isdigit():
+        return int(item)
+    else:
+        return item
+
+
+def safe_data_convertion(item: Any, _bool: bool = True, _int: bool = True) -> Any:
+    if _bool:
+        item = convert_to_bool(item)
+
+    if _int:
+        item = convert_to_int(item)
+
+    return item
+
+
 class Base:
     log: TraceLogger = getLogger("menuflow.node")
 
@@ -54,10 +77,9 @@ class Base:
         return self.data.get("type", "")
 
     @classmethod
-    def init_cls(cls, config: Config, matrix_client: MatrixClient, default_variables: Dict):
+    def init_cls(cls, config: Config, session: ClientSession, default_variables: Dict):
         cls.config = config
-        cls.matrix_client = matrix_client
-        cls.session = matrix_client.api.session
+        cls.session = session
         cls.variables = default_variables or {}
 
     @abstractmethod
@@ -76,7 +98,7 @@ class Base:
         start = self.config["menuflow.typing_notification.start"] or 1
         end = self.config["menuflow.typing_notification.end"] or 3
         typing_time = randrange(start, end)
-        await self.matrix_client.set_typing(room_id=room_id, timeout=typing_time)
+        await self.room.matrix_client.set_typing(room_id=room_id, timeout=typing_time)
         await sleep(typing_time)
 
     async def send_message(self, room_id: RoomID, content: MessageEventContent):
@@ -91,13 +113,18 @@ class Base:
 
         """
 
-        async def send():
-            if self.config["menuflow.typing_notification.enable"]:
-                await self.set_typing(room_id=room_id)
+        # async def send():
+        #     if self.config["menuflow.typing_notification.enable"]:
+        #         await self.set_typing(room_id=room_id)
 
-            await self.matrix_client.send_message(room_id=room_id, content=content)
+        #     await self.room.matrix_client.send_message(room_id=room_id, content=content)
 
-        create_task(send())
+        if self.config["menuflow.typing_notification.enable"]:
+            await self.set_typing(room_id=room_id)
+
+        await self.room.matrix_client.send_message(room_id=room_id, content=content)
+
+        # create_task(send())
 
     def render_data(self, data: Dict | List | str) -> Dict | List | str:
         """It takes a dictionary or list, converts it to a string,

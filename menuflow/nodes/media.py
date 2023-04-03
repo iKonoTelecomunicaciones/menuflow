@@ -92,7 +92,7 @@ class Media(Message):
         file_name = f"{self.message_type.value[2:]}{extension}" if self.message_type else None
 
         try:
-            mxc = await self.matrix_client.upload_media(
+            mxc = await self.room.matrix_client.upload_media(
                 data=data, mime_type=media_info.mimetype, filename=file_name
             )
         except MUnknown as e:

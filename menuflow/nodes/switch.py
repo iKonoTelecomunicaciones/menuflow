@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ..repository import Switch as SwitchModel
-from .base import Base, convert_to_bool
+from .base import Base, safe_data_convertion
 
 
 class Switch(Base):
@@ -36,7 +36,7 @@ class Switch(Base):
         cases_dict = {}
 
         for case in self.cases:
-            cases_dict[convert_to_bool(case.get("id"))] = {
+            cases_dict[safe_data_convertion(case.get("id"))] = {
                 "o_connection": case.get("o_connection"),
                 "variables": case.get("variables"),
             }
@@ -68,11 +68,11 @@ class Switch(Base):
         await self.room.update_menu(await self._run())
 
     async def get_case_by_id(self, id: str | int) -> str:
+        id = safe_data_convertion(id)
+
         try:
             cases = await self.load_cases()
-            case_result: Dict = (
-                cases[int(id)] if isinstance(id, str) and id.isdigit() else cases[id]
-            )
+            case_result: Dict = cases[id]
 
             variables_recorded = []
             if case_result.get("variables") and self.room:

@@ -163,10 +163,10 @@ class Input(Switch, Message):
                 self.log.debug(f"INACTIVITY TRIES COMPLETED -> {self.room.room_id}")
                 o_connection = await self.get_case_by_id("timeout")
                 await self.room.update_menu(node_id=o_connection, state=None)
-                await self.matrix_client.algorithm(room=self.room)
+                await self.room.matrix_client.algorithm(room=self.room)
                 break
 
-            await self.matrix_client.send_text(
+            await self.room.matrix_client.send_text(
                 room_id=self.room.room_id, text=self.warning_message
             )
             await asyncio.sleep(self.time_between_attempts)

@@ -51,15 +51,14 @@ class Message(Base):
 
         if not self.text:
             self.log.warning(f"The message {self.id} hasn't been send because the text is empty")
-            return
+        else:
+            msg_content = TextMessageEventContent(
+                msgtype=self.message_type,
+                body=self.text,
+                format=Format.HTML,
+                formatted_body=markdown(self.text),
+            )
 
-        msg_content = TextMessageEventContent(
-            msgtype=self.message_type,
-            body=self.text,
-            format=Format.HTML,
-            formatted_body=markdown(self.text),
-        )
-
-        await self.send_message(room_id=self.room.room_id, content=msg_content)
+            await self.send_message(room_id=self.room.room_id, content=msg_content)
 
         await self._update_node()

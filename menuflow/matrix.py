@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from copy import deepcopy
-from typing import Any, Dict, Optional
+from typing import Dict, Optional
 
 import yaml
 from mautrix.client import Client as MatrixClient
@@ -20,7 +20,7 @@ from mautrix.types import (
 from .config import Config
 from .db.room import RoomState
 from .flow import Flow
-from .nodes import Base, CheckTime, Email, HTTPRequest, Input, Media, Message, Switch
+from .nodes import Base, Input
 from .repository import Flow as FlowModel
 from .room import Room
 from .user import User
@@ -51,7 +51,9 @@ class MatrixHandler(MatrixClient):
         self.util = Util(self.config)
         self.flow = Flow(flow_data=FlowModel.deserialize(flow["menu"]))
         Base.init_cls(
-            config=self.config, matrix_client=self, default_variables=self.flow.flow_variables
+            config=self.config,
+            session=self.api.session,
+            default_variables=self.flow.flow_variables,
         )
         self.flow.load()
 
@@ -121,6 +123,7 @@ class MatrixHandler(MatrixClient):
         try:
             room = await Room.get_by_room_id(room_id=evt.room_id)
             room.config = self.config
+            room.matrix_client = self
             if not await room.get_variable("bot_mxid"):
                 await room.set_variable("bot_mxid", self.mxid)
                 await room.set_variable("customer_room_id", evt.room_id)
@@ -164,6 +167,7 @@ class MatrixHandler(MatrixClient):
             user: User = await User.get_by_mxid(mxid=message.sender)
             room = await Room.get_by_room_id(room_id=message.room_id)
             room.config = user.config = self.config
+            room.matrix_client = self
 
             if not await room.get_variable("customer_phone") and user.phone:
                 await room.set_variable("customer_phone", user.phone)
