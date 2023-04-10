@@ -15,9 +15,9 @@ RUN apk add --no-cache \
 COPY requirements.txt /opt/menuflow/requirements.txt
 WORKDIR /opt/menuflow
 RUN apk add --virtual .build-deps python3-dev libffi-dev build-base \
-      && pip install --upgrade pip \
-      && pip3 install -r requirements.txt \
-      && apk del .build-deps
+&& pip install --upgrade pip \
+&& pip3 install -r requirements.txt \
+&& apk del .build-deps
 
 COPY . /opt/menuflow
 RUN cp menuflow/example-config.yaml .
