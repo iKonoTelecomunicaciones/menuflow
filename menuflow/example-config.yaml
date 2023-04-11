@@ -4,6 +4,13 @@ menuflow:
         min_size: 1
         max_size: 10
 
+    sync:
+        # You can use of the fields defined in RoomEventFilter, for more information:
+        # https://github.com/mautrix/python/blob/master/mautrix/types/filter.py#L57
+        room_event_filter:
+            limit: 5
+            lazy_load_members: true
+
     # Ignore messages or invitations from this users, it accepts user_ids and regex
     ignore:
         messages_from:
@@ -54,9 +61,6 @@ server:
     # The shared secret to sign API access tokens.
     # Set to "generate" to generate and save a new token at startup.
     unshared_secret: generate
-
-utils:
-    user_phone_regex: "^@(?P<user_prefix>.+)_(?P<number>[0-9]{8,}):.+$"
 
 # Python logging configuration.
 #

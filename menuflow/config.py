@@ -12,11 +12,11 @@ class Config(BaseFileConfig):
     def do_update(self, helper: ConfigUpdateHelper) -> None:
         base = helper.base
         copy = helper.copy
-        copy_dict = helper.copy_dict
         copy("menuflow.ignore.messages_from")
         copy("menuflow.ignore.invitations_from")
         copy("menuflow.database")
         copy("menuflow.database_opts")
+        copy("menuflow.sync.room_event_filter")
         copy("menuflow.timeouts.http_requests")
         copy("menuflow.timeouts.middlewares")
         copy("menuflow.email_servers")
@@ -30,5 +30,3 @@ class Config(BaseFileConfig):
             base["server.unshared_secret"] = self._new_token()
         else:
             base["server.unshared_secret"] = shared_secret
-
-        copy_dict("utils")
