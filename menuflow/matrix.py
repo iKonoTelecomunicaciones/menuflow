@@ -7,7 +7,6 @@ from typing import Dict, Optional
 import yaml
 from mautrix.client import Client as MatrixClient
 from mautrix.types import (
-    JSON,
     Membership,
     MemberStateEventContent,
     MessageEvent,
