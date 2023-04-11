@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import abstractmethod
-from asyncio import create_task, sleep
+from asyncio import sleep
 from json import JSONDecodeError, dumps, loads
 from logging import getLogger
 from random import randrange
@@ -65,16 +65,16 @@ class Base:
     matrix_client: MatrixClient
     session: ClientSession
 
-    data: Dict
+    content: Dict
     room: Room
 
     @property
     def id(self) -> str:
-        return self.data.get("id", "")
+        return self.content.get("id", "")
 
     @property
     def type(self) -> str:
-        return self.data.get("type", "")
+        return self.content.get("type", "")
 
     @classmethod
     def init_cls(cls, config: Config, session: ClientSession, default_variables: Dict):

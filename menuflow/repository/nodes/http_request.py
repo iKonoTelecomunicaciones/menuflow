@@ -43,4 +43,5 @@ class HTTPRequest(Switch):
     headers: Dict[str, Any] = ib(factory=dict)
     basic_auth: Dict[str, Any] = ib(factory=dict)
     data: Dict[str, Any] = ib(factory=dict)
+    json: Dict[str, Any] = ib(factory=dict)
     cases: List[Case] = ib(factory=list)

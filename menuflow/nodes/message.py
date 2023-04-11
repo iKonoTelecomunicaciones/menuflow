@@ -11,7 +11,7 @@ from .base import Base
 class Message(Base):
     def __init__(self, message_node_data: MessageModel) -> None:
         self.log = self.log.getChild(message_node_data.get("id"))
-        self.data: Dict = message_node_data
+        self.content: Dict = message_node_data
 
     @property
     def message_type(self) -> MessageType:
@@ -23,7 +23,7 @@ class Message(Base):
             The message type.
         """
 
-        message_type = self.data.get("message_type", "")
+        message_type = self.content.get("message_type", "")
 
         if message_type not in ["m.text", "m.notice", "m.image", "m.audio", "m.video", "m.file"]:
             translated_msg_type = MessageType.TEXT
@@ -34,11 +34,11 @@ class Message(Base):
 
     @property
     def text(self) -> str:
-        return self.render_data(data=self.data.get("text", ""))
+        return self.render_data(data=self.content.get("text", ""))
 
     @property
     def o_connection(self) -> str:
-        return self.render_data(self.data.get("o_connection", ""))
+        return self.render_data(self.content.get("o_connection", ""))
 
     async def _update_node(self):
         await self.room.update_menu(
