@@ -119,19 +119,40 @@ class MatrixHandler(MatrixClient):
         self.log.debug(f"{evt.state_key} ACCEPTED -- EVENT JOIN ... {evt.room_id}")
         self.lock_room(evt.room_id)
 
-        try:
-            room = await Room.get_by_room_id(room_id=evt.room_id)
-            room.config = self.config
-            room.matrix_client = self
-            if not await room.get_variable("bot_mxid"):
-                await room.set_variable("bot_mxid", self.mxid)
-                await room.set_variable("customer_room_id", evt.room_id)
-        except Exception as e:
-            self.log.exception(e)
-            self.unlock_room(evt.room_id)
-            return
+        room = await Room.get_by_room_id(room_id=evt.room_id)
+
+        await self.load_room_constants()
 
         await self.algorithm(room=room)
+
+    async def load_room_constants(self):
+        """This function loads room constants for joined rooms in a Matrix chat using Python.
+
+        Returns
+        -------
+            If there are no joined rooms, the function will return nothing.
+            If there are joined rooms, the function will execute the code block and return nothing.
+
+        """
+
+        joined_room = await self.get_joined_rooms()
+
+        if not joined_room:
+            return
+
+        self.log.debug("Loading room constants ...")
+
+        for joined_room in joined_room:
+            room = await Room.get_by_room_id(room_id=joined_room)
+
+            room.config = self.config
+            room.matrix_client = self
+
+            if not await room.get_variable("customer_room_id"):
+                await room.set_variable("customer_room_id", joined_room)
+
+            if not await room.get_variable("bot_mxid"):
+                await room.set_variable("bot_mxid", self.mxid)
 
     async def handle_leave(self, evt: StrippedStateEvent):
         room = await Room.get_by_room_id(room_id=evt.room_id, create=False)

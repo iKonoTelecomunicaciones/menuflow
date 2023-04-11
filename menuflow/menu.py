@@ -97,6 +97,7 @@ class MenuClient(DBClient):
         self.started = False
         self.sync_ok = True
         self.matrix_handler: MatrixHandler = self._make_client()
+        asyncio.create_task(self.matrix_handler.load_room_constants())
         # if self.enable_crypto:
         #     self._prepare_crypto()
         # else:
