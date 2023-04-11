@@ -9,7 +9,6 @@ RUN apk add --no-cache \
       py3-ruamel.yaml \
       py3-commonmark \
       bash \
-      curl \
       su-exec
 
 COPY requirements.txt /opt/menuflow/requirements.txt
