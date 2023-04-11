@@ -127,9 +127,6 @@ class HTTPRequest(Switch):
             f"node: {self.id} method: {self.method} url: {self.url} status: {response.status}"
         )
 
-        if response.status == 401:
-            return response.status, await response.text()
-
         variables = {}
         o_connection = None
 
