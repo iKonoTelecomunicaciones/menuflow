@@ -31,22 +31,22 @@ class Media(Message):
     def __init__(self, media_node_data: MediaModel) -> None:
         Message.__init__(self, media_node_data)
         self.log = self.log.getChild(media_node_data.get("id"))
-        self.data: Dict = media_node_data
+        self.content: Dict = media_node_data
 
     @property
     def url(self) -> str:
-        return self.render_data(self.data.get("url", ""))
+        return self.render_data(self.content.get("url", ""))
 
     @property
     def info(self) -> ImageInfo | VideoInfo | AudioInfo | FileInfo:
         if MessageType.AUDIO == self.message_type:
-            media_info = AudioInfo(**self.render_data(self.data.get("info", {})))
+            media_info = AudioInfo(**self.render_data(self.content.get("info", {})))
         elif MessageType.VIDEO == self.message_type:
-            media_info = VideoInfo(**self.render_data(self.data.get("info", {})))
+            media_info = VideoInfo(**self.render_data(self.content.get("info", {})))
         elif MessageType.IMAGE == self.message_type:
-            media_info = ImageInfo(**self.render_data(self.data.get("info", {})))
+            media_info = ImageInfo(**self.render_data(self.content.get("info", {})))
         elif MessageType.FILE == self.message_type:
-            media_info = FileInfo(**self.render_data(self.data.get("info", {})))
+            media_info = FileInfo(**self.render_data(self.content.get("info", {})))
         else:
             return
 

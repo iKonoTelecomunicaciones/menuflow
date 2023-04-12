@@ -9,15 +9,15 @@ from .base import Base, safe_data_convertion
 class Switch(Base):
     def __init__(self, switch_node_data: SwitchModel) -> None:
         self.log = self.log.getChild(switch_node_data.get("id"))
-        self.data: Dict = switch_node_data
+        self.content: Dict = switch_node_data
 
     @property
     def validation(self) -> str:
-        return self.render_data(data=self.data.get("validation"))
+        return self.render_data(data=self.content.get("validation"))
 
     @property
     def cases(self) -> List[Dict]:
-        return self.render_data(self.data.get("cases"))
+        return self.render_data(self.content.get("cases"))
 
     async def load_cases(self) -> Dict[str, str]:
         """It loads the cases into a dictionary.

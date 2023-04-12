@@ -7,7 +7,6 @@ from typing import Dict, Optional
 import yaml
 from mautrix.client import Client as MatrixClient
 from mautrix.types import (
-    JSON,
     Membership,
     MemberStateEventContent,
     MessageEvent,
@@ -57,7 +56,7 @@ class MatrixHandler(MatrixClient):
         )
         self.flow.load()
 
-    def handle_sync(self, data: JSON) -> list[asyncio.Task]:
+    def handle_sync(self, data: Dict) -> list[asyncio.Task]:
         # This is a way to remove duplicate events from the sync
         aux_data = deepcopy(data)
         for room_id, room_data in aux_data.get("rooms", {}).get("join", {}).items():
@@ -169,8 +168,8 @@ class MatrixHandler(MatrixClient):
             room.config = user.config = self.config
             room.matrix_client = self
 
-            if not await room.get_variable("customer_phone") and user.phone:
-                await room.set_variable("customer_phone", user.phone)
+            if not await room.get_variable("customer_mxid"):
+                await room.set_variable("customer_mxid", user.mxid)
 
         except Exception as e:
             self.log.exception(e)

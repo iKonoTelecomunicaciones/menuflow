@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from logging import getLogger
-from re import match
 from typing import Dict, cast
 
 from mautrix.types import UserID
@@ -28,12 +27,6 @@ class User(DBUser):
     def _add_to_cache(self) -> None:
         if self.mxid:
             self.by_mxid[self.mxid] = self
-
-    @property
-    def phone(self) -> str | None:
-        user_match = match(self.config["utils.user_phone_regex"], self.mxid)
-        if user_match:
-            return user_match.group("number")
 
     @classmethod
     async def get_by_mxid(cls, mxid: UserID, create: bool = True) -> "User" | None:

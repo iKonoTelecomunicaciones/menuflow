@@ -174,8 +174,7 @@ class MenuClient(DBClient):
                 Filter(
                     room=RoomFilter(
                         timeline=RoomEventFilter(
-                            limit=50,
-                            lazy_load_members=True,
+                            **self.menuflow.config["menuflow.sync.room_event_filter"]
                         ),
                         state=StateFilter(
                             lazy_load_members=True,

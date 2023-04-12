@@ -55,8 +55,8 @@ class Flow:
             elif node.get("type") == "http_request":
                 node = HTTPRequest(http_request_node_data=node)
 
-                if node.data.get("middleware"):
-                    node.middleware = self.get_middleware_by_id(node.data.get("middleware"))
+                if node.content.get("middleware"):
+                    node.middleware = self.get_middleware_by_id(node.content.get("middleware"))
             else:
                 continue
 

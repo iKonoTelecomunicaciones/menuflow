@@ -14,15 +14,15 @@ class Location(Message):
     def __init__(self, location_node_data: LocationModel) -> None:
         Message.__init__(self, location_node_data)
         self.log = self.log.getChild(location_node_data.get("id"))
-        self.data: Dict = location_node_data
+        self.content: Dict = location_node_data
 
     @property
     def longitude(self) -> str:
-        return self.render_data(self.data.get("longitude", ""))
+        return self.render_data(self.content.get("longitude", ""))
 
     @property
     def latitude(self) -> str:
-        return self.render_data(self.data.get("latitude", ""))
+        return self.render_data(self.content.get("latitude", ""))
 
     async def run(self):
         location_message = LocationMessageEventContent(

@@ -14,23 +14,23 @@ class HTTPMiddleware(Base):
 
     def __init__(self, http_middleware_data: HTTPMiddlewareModel) -> None:
         self.log = self.log.getChild(http_middleware_data.get("id"))
-        self.data: Dict = http_middleware_data
+        self.content: Dict = http_middleware_data
 
     @property
     def url(self) -> str:
-        return self.render_data(self.data.get("url", ""))
+        return self.render_data(self.content.get("url", ""))
 
     @property
     def token_type(self) -> str:
-        return self.render_data(self.data.get("token_type", ""))
+        return self.render_data(self.content.get("token_type", ""))
 
     @property
     def auth(self) -> Dict:
-        return self.render_data(self.data.get("auth", {}))
+        return self.render_data(self.content.get("auth", {}))
 
     @property
     def general(self) -> Dict:
-        return self.render_data(self.data.get("general", {}))
+        return self.render_data(self.content.get("general", {}))
 
     @property
     def token_url(self) -> str:
@@ -68,10 +68,6 @@ class HTTPMiddleware(Base):
     @property
     def basic_auth(self) -> Dict:
         return self.auth.get("basic_auth", {})
-
-    @property
-    def general_headers(self) -> Dict:
-        return self.general.get("general_headers", {})
 
     async def auth_request(self) -> Tuple[int, str]:
         """Make the auth request to refresh api token

@@ -18,39 +18,43 @@ class HTTPRequest(Switch):
     def __init__(self, http_request_node_data: HTTPRequestModel) -> None:
         Switch.__init__(self, http_request_node_data)
         self.log = self.log.getChild(http_request_node_data.get("id"))
-        self.data: Dict = http_request_node_data
+        self.content: Dict = http_request_node_data
 
     @property
     def method(self) -> str:
-        return self.data.get("method", "")
+        return self.content.get("method", "")
 
     @property
     def url(self) -> str:
-        return self.render_data(self.data.get("url", ""))
+        return self.render_data(self.content.get("url", ""))
 
     @property
     def http_variables(self) -> Dict:
-        return self.render_data(self.data.get("variables", {}))
+        return self.render_data(self.content.get("variables", {}))
 
     @property
     def cookies(self) -> Dict:
-        return self.render_data(self.data.get("cookies", {}))
+        return self.render_data(self.content.get("cookies", {}))
 
     @property
     def headers(self) -> Dict:
-        return self.render_data(self.data.get("headers", {}))
+        return self.render_data(self.content.get("headers", {}))
 
     @property
     def basic_auth(self) -> Dict:
-        return self.render_data(self.data.get("basic_auth", {}))
+        return self.render_data(self.content.get("basic_auth", {}))
 
     @property
     def query_params(self) -> Dict:
-        return self.render_data(self.data.get("query_params", {}))
+        return self.render_data(self.content.get("query_params", {}))
 
     @property
-    def body(self) -> Dict:
-        return self.render_data(self.data.get("data", {}))
+    def data(self) -> Dict:
+        return self.render_data(self.content.get("data", {}))
+
+    @property
+    def json(self) -> Dict:
+        return self.render_data(self.content.get("json", {}))
 
     @property
     def context_params(self) -> Dict[str, str]:
@@ -76,8 +80,11 @@ class HTTPRequest(Switch):
         if self.headers:
             request_body["headers"] = self.headers
 
-        if self.body:
-            request_body["json"] = self.body
+        if self.data:
+            request_body["data"] = self.data
+
+        if self.json:
+            request_body["json"] = self.json
 
         return request_body
 
@@ -120,41 +127,39 @@ class HTTPRequest(Switch):
             f"node: {self.id} method: {self.method} url: {self.url} status: {response.status}"
         )
 
-        if response.status == 401:
-            return response.status, await response.text()
-
         variables = {}
         o_connection = None
 
-        if self.cookies:
-            for cookie in self.cookies:
-                variables[cookie] = response.cookies.output(cookie)
+        if response.status in [200, 201]:
+            if self.cookies:
+                for cookie in self.cookies:
+                    variables[cookie] = response.cookies.output(cookie)
 
-        try:
-            response_data = await response.json()
-        except ContentTypeError:
-            response_data = {}
+            try:
+                response_data = await response.json()
+            except ContentTypeError:
+                response_data = {}
 
-        if isinstance(response_data, dict):
-            # Tulir and its magic since time immemorial
-            serialized_data = RecursiveDict(CommentedMap(**response_data))
-            if self.http_variables:
-                for variable in self.http_variables:
-                    try:
-                        variables[variable] = self.render_data(
-                            serialized_data[self.http_variables[variable]]
-                        )
-                    except KeyError:
-                        pass
-        elif isinstance(response_data, str):
-            if self.http_variables:
-                for variable in self.http_variables:
-                    try:
-                        variables[variable] = self.render_data(response_data)
-                    except KeyError:
-                        pass
+            if isinstance(response_data, dict):
+                # Tulir and its magic since time immemorial
+                serialized_data = RecursiveDict(CommentedMap(**response_data))
+                if self.http_variables:
+                    for variable in self.http_variables:
+                        try:
+                            variables[variable] = self.render_data(
+                                serialized_data[self.http_variables[variable]]
+                            )
+                        except KeyError:
+                            pass
+            elif isinstance(response_data, str):
+                if self.http_variables:
+                    for variable in self.http_variables:
+                        try:
+                            variables[variable] = self.render_data(response_data)
+                        except KeyError:
+                            pass
 
-                    break
+                        break
 
         if self.cases:
             o_connection = await self.get_case_by_id(id=response.status)
@@ -203,11 +208,11 @@ class HTTPRequest(Switch):
                 }
             )
             self.log.debug(
-                "HTTP auth attempt"
+                "HTTP auth attempt "
                 f"{self.HTTP_ATTEMPTS[self.room.room_id]['attempts_count']}, trying again ..."
             )
 
-        if not status in [200, 201]:
+        if status not in [200, 201]:
             self.log.error(response)
         else:
             self.HTTP_ATTEMPTS.update(

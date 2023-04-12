@@ -3,9 +3,12 @@ from re import match
 
 from jinja2 import BaseLoader, Environment
 from jinja2_ansible_filters import AnsibleCoreFiltersExtension
+from jinja2_matrix_filters import MatrixFiltersExtension
 
 jinja_env = Environment(
-    autoescape=True, loader=BaseLoader, extensions=[AnsibleCoreFiltersExtension]
+    autoescape=True,
+    loader=BaseLoader,
+    extensions=[AnsibleCoreFiltersExtension, MatrixFiltersExtension],
 )
 
 jinja_env.globals.update(utcnow_isoformat=lambda: datetime.utcnow().isoformat())

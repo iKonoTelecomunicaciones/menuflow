@@ -23,19 +23,19 @@ class Input(Switch, Message):
     def __init__(self, input_node_data: InputModel) -> None:
         Switch.__init__(self, input_node_data)
         Message.__init__(self, input_node_data)
-        self.data = input_node_data
+        self.content = input_node_data
 
     @property
     def variable(self) -> str:
-        return self.render_data(self.data.get("variable", ""))
+        return self.render_data(self.content.get("variable", ""))
 
     @property
     def input_type(self) -> MessageType:
-        return MessageType(self.render_data(self.data.get("input_type", "m.text")))
+        return MessageType(self.render_data(self.content.get("input_type", "m.text")))
 
     @property
     def inactivity_options(self) -> Dict[str, Any]:
-        data: Dict = self.data.get("inactivity_options", {})
+        data: Dict = self.content.get("inactivity_options", {})
         self.chat_timeout: int = data.get("chat_timeout", 0)
         self.warning_message: str = self.render_data(data.get("warning_message", ""))
         self.time_between_attempts: int = data.get("time_between_attempts", 0)

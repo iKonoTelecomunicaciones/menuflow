@@ -11,27 +11,27 @@ from .switch import Switch
 class CheckTime(Switch):
     def __init__(self, check_time_node_data: CheckTimeModel) -> None:
         Switch.__init__(self, check_time_node_data)
-        self.data = check_time_node_data
+        self.content = check_time_node_data
 
     @property
     def time_ranges(self) -> List[str]:
-        return self.render_data(self.data.get("time_ranges", []))
+        return self.render_data(self.content.get("time_ranges", []))
 
     @property
     def days_of_week(self) -> List[str]:
-        return self.render_data(self.data.get("days_of_week", []))
+        return self.render_data(self.content.get("days_of_week", []))
 
     @property
     def days_of_month(self) -> List[str]:
-        return self.render_data(self.data.get("days_of_month", []))
+        return self.render_data(self.content.get("days_of_month", []))
 
     @property
     def months(self) -> List[str]:
-        return self.render_data(self.data.get("months", []))
+        return self.render_data(self.content.get("months", []))
 
     @property
     def timezone(self) -> str:
-        return self.render_data(self.data.get("timezone", str))
+        return self.render_data(self.content.get("timezone", str))
 
     async def run(self):
         """If the current month, day, weekday, and time are within the specified ranges,

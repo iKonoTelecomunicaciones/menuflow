@@ -33,7 +33,7 @@ class TestMessageNode:
 
     @pytest.mark.asyncio
     async def test_update_node_to_end(self, message: Message):
-        del message.data["o_connection"]
+        del message.content["o_connection"]
         await message._update_node()
         assert message.room.node_id == ""
         assert message.room.state == RoomState.END
