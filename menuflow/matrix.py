@@ -111,21 +111,7 @@ class MatrixHandler(MatrixClient):
         self.log.debug(f"LOCKING ROOM... {room_id}")
         self.LOCKED_ROOMS.add(room_id)
 
-    async def handle_join(self, evt: StrippedStateEvent):
-        if evt.room_id in self.LOCKED_ROOMS:
-            self.log.debug(f"Ignoring menu request in {evt.room_id} Menu locked")
-            return
-
-        self.log.debug(f"{evt.state_key} ACCEPTED -- EVENT JOIN ... {evt.room_id}")
-        self.lock_room(evt.room_id)
-
-        room = await Room.get_by_room_id(room_id=evt.room_id)
-
-        await self.load_room_constants()
-
-        await self.algorithm(room=room)
-
-    async def load_room_constants(self):
+    async def load_all_room_constants(self):
         """This function loads room constants for joined rooms in a Matrix chat using Python.
 
         Returns
@@ -140,19 +126,45 @@ class MatrixHandler(MatrixClient):
         if not joined_room:
             return
 
-        self.log.debug("Loading room constants ...")
+        self.log.debug("Loading rooms constants ...")
 
         for joined_room in joined_room:
-            room = await Room.get_by_room_id(room_id=joined_room)
+            await self.load_room_constants(room_id=joined_room)
 
-            room.config = self.config
-            room.matrix_client = self
+    async def load_room_constants(self, room_id: RoomID):
+        """This function loads constants for a given room and sets variables if they do not exist.
 
-            if not await room.get_variable("customer_room_id"):
-                await room.set_variable("customer_room_id", joined_room)
+        Parameters
+        ----------
+        room_id : RoomID
+            The ID of the Matrix room that the constants are being loaded for.
 
-            if not await room.get_variable("bot_mxid"):
-                await room.set_variable("bot_mxid", self.mxid)
+        """
+
+        room = await Room.get_by_room_id(room_id=room_id)
+
+        room.config = self.config
+        room.matrix_client = self
+
+        if not await room.get_variable("customer_room_id"):
+            await room.set_variable("customer_room_id", room_id)
+
+        if not await room.get_variable("bot_mxid"):
+            await room.set_variable("bot_mxid", self.mxid)
+
+    async def handle_join(self, evt: StrippedStateEvent):
+        if evt.room_id in self.LOCKED_ROOMS:
+            self.log.debug(f"Ignoring menu request in {evt.room_id} Menu locked")
+            return
+
+        self.log.debug(f"{evt.state_key} ACCEPTED -- EVENT JOIN ... {evt.room_id}")
+        self.lock_room(evt.room_id)
+
+        room = await Room.get_by_room_id(room_id=evt.room_id)
+
+        await self.load_room_constants(evt.room_id)
+
+        await self.algorithm(room=room)
 
     async def handle_leave(self, evt: StrippedStateEvent):
         room = await Room.get_by_room_id(room_id=evt.room_id, create=False)
