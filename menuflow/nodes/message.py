@@ -23,7 +23,7 @@ class Message(Base):
             The message type.
         """
 
-        message_type = self.content.get("message_type", "")
+        message_type = self.render_data(self.content.get("message_type", ""))
 
         if message_type not in ["m.text", "m.notice", "m.image", "m.audio", "m.video", "m.file"]:
             translated_msg_type = MessageType.TEXT
