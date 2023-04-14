@@ -1,3 +1,4 @@
+import asyncio
 from typing import List
 
 from ..email_client import Email as EmailMessage
@@ -51,6 +52,7 @@ class Email(Message):
             format=self.format,
             encode_type=self.encode_type,
         )
-        await self.email_client.send_email(email=email)
+
+        asyncio.create_task(self.email_client.send_email(email=email))
 
         await self._update_node()
