@@ -9,6 +9,7 @@ from mautrix.types import (
     AudioInfo,
     FileInfo,
     ImageInfo,
+    MediaInfo,
     MediaMessageEventContent,
     MessageType,
     VideoInfo,
@@ -38,7 +39,7 @@ class Media(Message):
         return self.render_data(self.content.get("url", ""))
 
     @property
-    def info(self) -> ImageInfo | VideoInfo | AudioInfo | FileInfo:
+    def info(self) -> MediaInfo:
         if MessageType.AUDIO == self.message_type:
             media_info = AudioInfo(**self.render_data(self.content.get("info", {})))
         elif MessageType.VIDEO == self.message_type:
@@ -48,6 +49,9 @@ class Media(Message):
         elif MessageType.FILE == self.message_type:
             media_info = FileInfo(**self.render_data(self.content.get("info", {})))
         else:
+            self.log.warning(
+                f"It has not been possible to identify the message type of the node {self.id}"
+            )
             return
 
         return media_info
@@ -64,6 +68,9 @@ class Media(Message):
         resp = await self.session.get(self.url)
         data = await resp.read()
         media_info = self.info
+
+        if media_info is None:
+            return
 
         if not media_info.mimetype:
             media_info.mimetype = mimetype(data)
@@ -114,6 +121,11 @@ class Media(Message):
             media_message = self.media_cache[self.url]
         except KeyError:
             media_message = await self.load_media()
+            if media_message is None:
+                await self.room.update_menu(
+                    node_id=self.o_connection,
+                    state=RoomState.END if not self.o_connection else None,
+                )
             self.media_cache[self.url] = media_message
 
         await self.send_message(room_id=self.room.room_id, content=media_message)
