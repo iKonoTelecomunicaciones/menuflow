@@ -151,6 +151,10 @@ class MatrixHandler(MatrixClient):
         if not await room.get_variable("bot_mxid"):
             await room.set_variable("bot_mxid", self.mxid)
 
+        if not await room.get_variable("customer_mxid"):
+            await User.get_by_mxid(mxid=await room.creator)
+            await room.set_variable("customer_mxid", await room.creator)
+
     async def handle_join(self, evt: StrippedStateEvent):
         if evt.room_id in self.LOCKED_ROOMS:
             self.log.debug(f"Ignoring menu request in {evt.room_id} Menu locked")
@@ -194,18 +198,9 @@ class MatrixHandler(MatrixClient):
             )
             return
 
-        try:
-            user: User = await User.get_by_mxid(mxid=message.sender)
-            room = await Room.get_by_room_id(room_id=message.room_id)
-            room.config = user.config = self.config
-            room.matrix_client = self
-
-            if not await room.get_variable("customer_mxid"):
-                await room.set_variable("customer_mxid", user.mxid)
-
-        except Exception as e:
-            self.log.exception(e)
-            return
+        room = await Room.get_by_room_id(room_id=message.room_id)
+        room.config = self.config = self.config
+        room.matrix_client = self
 
         if not room:
             return
