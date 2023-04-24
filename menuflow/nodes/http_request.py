@@ -1,19 +1,21 @@
-from typing import Dict
+from typing import TYPE_CHECKING, Dict
 
 from aiohttp import BasicAuth, ClientTimeout, ContentTypeError
 from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
 from ..db.room import RoomState
-from ..middlewares import HTTPMiddleware
 from ..repository import HTTPRequest as HTTPRequestModel
 from .switch import Switch
+
+if TYPE_CHECKING:
+    from ..middlewares import HTTPMiddleware
 
 
 class HTTPRequest(Switch):
     HTTP_ATTEMPTS: Dict = {}
 
-    middleware: HTTPMiddleware = None
+    middleware: "HTTPMiddleware" = None
 
     def __init__(self, http_request_node_data: HTTPRequestModel) -> None:
         Switch.__init__(self, http_request_node_data)

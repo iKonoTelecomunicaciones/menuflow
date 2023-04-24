@@ -6,12 +6,10 @@ from typing import TYPE_CHECKING, Dict, List
 from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
+from .middlewares import HTTPMiddleware
 from .nodes import CheckTime, Email, HTTPRequest, Input, Location, Media, Message, Switch
 from .repository import Flow as FlowModel
 from .room import Room
-
-if TYPE_CHECKING:
-    from .middlewares import HTTPMiddleware
 
 
 class Flow:
