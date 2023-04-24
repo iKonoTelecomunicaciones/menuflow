@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Dict, List
 
 from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
@@ -17,83 +17,94 @@ if TYPE_CHECKING:
 class Flow:
     log: TraceLogger = logging.getLogger("menuflow.flow")
 
-    nodes: Dict[str, (Message, Input, Switch, HTTPRequest, CheckTime)]
-    middlewares: Dict[str, HTTPMiddleware]
+    nodes: List[Dict]
+    middlewares: List[Dict]
+    nodes_by_id: Dict[str, Dict] = {}
+    middlewares_by_id: Dict[str, Dict] = {}
 
     def __init__(self, flow_data: FlowModel) -> None:
         self.data: FlowModel = (
             flow_data.serialize() if isinstance(flow_data, SerializableAttrs) else flow_data
         )
-        self.nodes = {}
-        self.middlewares = {}
+        self.nodes = self.data.get("nodes", [])
+        self.middlewares = self.data.get("middlewares", [])
+
+    def _add_node_to_cache(self, node_data: Dict):
+        self.nodes_by_id[node_data.get("id")] = node_data
+
+    def _add_middleware_to_cache(self, node_data: Dict):
+        self.nodes_by_id[node_data.get("id")] = node_data
 
     @property
     def flow_variables(self) -> Dict:
         return self.data.get("flow_variables", {})
 
-    def load(self):
-        self.load_middlewares()
-        self.load_nodes()
+    def get_node_by_id(self, node_id: str) -> Dict:
+        node = self.nodes_by_id.get(node_id)
+        if node:
+            return node
 
-    def load_nodes(self):
-        """It takes the nodes from the flow data and creates a new node object for each one"""
-        for node in self.data.get("nodes", []):
-            if node.get("type") == "message":
-                node = Message(message_node_data=node)
-            elif node.get("type") == "media":
-                node = Media(media_node_data=node)
-            elif node.get("type") == "email":
-                node = Email(email_node_data=node)
-            elif node.get("type") == "location":
-                node = Location(location_node_data=node)
-            elif node.get("type") == "switch":
-                node = Switch(switch_node_data=node)
-            elif node.get("type") == "input":
-                node = Input(input_node_data=node)
-            elif node.get("type") == "check_time":
-                node = CheckTime(check_time_node_data=node)
-            elif node.get("type") == "http_request":
-                node = HTTPRequest(http_request_node_data=node)
+        for node in self.nodes:
+            if node_id == node.get("id", ""):
+                self._add_node_to_cache(node)
+                return node
 
-                if node.content.get("middleware"):
-                    node.middleware = self.get_middleware_by_id(node.content.get("middleware"))
-            else:
-                continue
+        return None
 
-            node.variables = self.flow_variables or {}
-            self.nodes[node.id] = node
+    def get_middleware_by_id(self, middleware_id):
+        middleware = self.middlewares_by_id.get(middleware_id)
+        if middleware:
+            return middleware
 
-    def load_middlewares(self):
-        """It loads the middlewares from the data file into the `middlewares` dictionary"""
-        for middleware in self.data.get("middlewares", []):
-            middleware = HTTPMiddleware(http_middleware_data=middleware)
-            self.middlewares[middleware.id] = middleware
+        for middleware in self.middlewares:
+            if middleware_id == middleware.get("id", ""):
+                self._add_middleware_to_cache(middleware)
+                return middleware
 
-    def get_node_by_id(self, node_id: str) -> HTTPRequest | Input | Message | Switch | CheckTime:
-        return self.nodes.get(node_id)
+    def middleware(self, middleware_id: str, room: Room) -> HTTPMiddleware:
+        middleware_data = self.get_middleware_by_id(middleware_id=middleware_id)
 
-    def get_middleware_by_id(self, middleware_id: str) -> HTTPMiddleware:
-        return self.middlewares.get(middleware_id)
-
-    def node(self, room: Room) -> HTTPRequest | Input | Message | Switch | CheckTime:
-        """It returns the node that should be executed next
-
-        Parameters
-        ----------
-        room : Room
-            The room object that the user is currently in.
-
-        Returns
-        -------
-            The node object.
-
-        """
-        node = self.get_node_by_id(node_id=room.node_id or "start")
-
-        if not node:
+        if not middleware_data:
             return
 
-        node.room = room
-        node.variables.update(room._variables)
+        middleware_initialized = HTTPMiddleware(http_middleware_data=middleware_data)
+        middleware_initialized.room = room
 
-        return node
+        return middleware_initialized
+
+    def node(
+        self, room: Room
+    ) -> Message | Input | HTTPRequest | Switch | CheckTime | Media | Email | Location | None:
+        node_data = self.get_node_by_id(node_id=room.node_id)
+
+        if not node_data:
+            return
+
+        if node_data.get("type") == "message":
+            node_initialiced = Message(message_node_data=node_data)
+        elif node_data.get("type") == "media":
+            node_initialiced = Media(media_node_data=node_data)
+        elif node_data.get("type") == "email":
+            node_initialiced = Email(email_node_data=node_data)
+        elif node_data.get("type") == "location":
+            node_initialiced = Location(location_node_data=node_data)
+        elif node_data.get("type") == "switch":
+            node_initialiced = Switch(switch_node_data=node_data)
+        elif node_data.get("type") == "input":
+            node_initialiced = Input(input_node_data=node_data)
+        elif node_data.get("type") == "check_time":
+            node_initialiced = CheckTime(check_time_node_data=node_data)
+        elif node_data.get("type") == "http_request":
+            node_initialiced = HTTPRequest(http_request_node_data=node_data)
+
+            if node_data.get("middleware"):
+                middleware = self.middleware(node_data.get("middleware"), room)
+                node_initialiced.middleware = middleware
+        else:
+            return
+
+        node_initialiced.room = room
+        node_initialiced.variables = self.flow_variables or {}
+        node_initialiced.variables.update(room._variables)
+
+        return node_initialiced

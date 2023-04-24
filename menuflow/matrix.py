@@ -54,7 +54,6 @@ class MatrixHandler(MatrixClient):
             session=self.api.session,
             default_variables=self.flow.flow_variables,
         )
-        self.flow.load()
 
     def handle_sync(self, data: Dict) -> list[asyncio.Task]:
         # This is a way to remove duplicate events from the sync
