@@ -132,36 +132,35 @@ class HTTPRequest(Switch):
         variables = {}
         o_connection = None
 
-        if response.status in [200, 201]:
-            if self.cookies:
-                for cookie in self.cookies:
-                    variables[cookie] = response.cookies.output(cookie)
+        if self.cookies:
+            for cookie in self.cookies:
+                variables[cookie] = response.cookies.output(cookie)
 
-            try:
-                response_data = await response.json()
-            except ContentTypeError:
-                response_data = {}
+        try:
+            response_data = await response.json()
+        except ContentTypeError:
+            response_data = {}
 
-            if isinstance(response_data, dict):
-                # Tulir and its magic since time immemorial
-                serialized_data = RecursiveDict(CommentedMap(**response_data))
-                if self.http_variables:
-                    for variable in self.http_variables:
-                        try:
-                            variables[variable] = self.render_data(
-                                serialized_data[self.http_variables[variable]]
-                            )
-                        except KeyError:
-                            pass
-            elif isinstance(response_data, str):
-                if self.http_variables:
-                    for variable in self.http_variables:
-                        try:
-                            variables[variable] = self.render_data(response_data)
-                        except KeyError:
-                            pass
+        if isinstance(response_data, dict):
+            # Tulir and its magic since time immemorial
+            serialized_data = RecursiveDict(CommentedMap(**response_data))
+            if self.http_variables:
+                for variable in self.http_variables:
+                    try:
+                        variables[variable] = self.render_data(
+                            serialized_data[self.http_variables[variable]]
+                        )
+                    except KeyError:
+                        pass
+        elif isinstance(response_data, str):
+            if self.http_variables:
+                for variable in self.http_variables:
+                    try:
+                        variables[variable] = self.render_data(response_data)
+                    except KeyError:
+                        pass
 
-                        break
+                    break
 
         if self.cases:
             o_connection = await self.get_case_by_id(id=response.status)
