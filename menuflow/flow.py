@@ -17,8 +17,6 @@ class Flow:
 
     nodes: List[Dict]
     middlewares: List[Dict]
-    nodes_by_id: Dict[str, Dict] = {}
-    middlewares_by_id: Dict[str, Dict] = {}
 
     def __init__(self, flow_data: FlowModel) -> None:
         self.data: FlowModel = (
@@ -26,6 +24,8 @@ class Flow:
         )
         self.nodes = self.data.get("nodes", [])
         self.middlewares = self.data.get("middlewares", [])
+        self.nodes_by_id: Dict[str, Dict] = {}
+        self.middlewares_by_id: Dict[str, Dict] = {}
 
     def _add_node_to_cache(self, node_data: Dict):
         self.nodes_by_id[node_data.get("id")] = node_data
@@ -37,7 +37,7 @@ class Flow:
     def flow_variables(self) -> Dict:
         return self.data.get("flow_variables", {})
 
-    def get_node_by_id(self, node_id: str) -> Dict:
+    def get_node_by_id(self, node_id: str) -> Dict | None:
         node = self.nodes_by_id.get(node_id)
         if node:
             return node
@@ -49,7 +49,7 @@ class Flow:
 
         return None
 
-    def get_middleware_by_id(self, middleware_id):
+    def get_middleware_by_id(self, middleware_id: str) -> Dict | None:
         middleware = self.middlewares_by_id.get(middleware_id)
         if middleware:
             return middleware
@@ -58,6 +58,8 @@ class Flow:
             if middleware_id == middleware.get("id", ""):
                 self._add_middleware_to_cache(middleware)
                 return middleware
+
+        return None
 
     def middleware(self, middleware_id: str, room: Room) -> HTTPMiddleware:
         middleware_data = self.get_middleware_by_id(middleware_id=middleware_id)
