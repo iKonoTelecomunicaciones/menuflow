@@ -11,6 +11,7 @@ from mautrix.util.logging import TraceLogger
 from .config import Config
 from .db.room import Room as DBRoom
 from .db.room import RoomState
+from .utils import Util
 
 
 class Room(DBRoom):
@@ -40,6 +41,7 @@ class Room(DBRoom):
             self.by_room_id[self.room_id] = self
 
     async def clean_up(self):
+        await Util.cancel_task(task_name=self.room_id)
         del self.by_room_id[self.room_id]
         self.variables = "{}"
         self._variables = {}

@@ -30,8 +30,8 @@ class Flow:
     def _add_node_to_cache(self, node_data: Dict):
         self.nodes_by_id[node_data.get("id")] = node_data
 
-    def _add_middleware_to_cache(self, node_data: Dict):
-        self.nodes_by_id[node_data.get("id")] = node_data
+    def _add_middleware_to_cache(self, middleware_data: Dict):
+        self.middlewares_by_id[middleware_data.get("id")] = middleware_data
 
     @property
     def flow_variables(self) -> Dict:
@@ -81,30 +81,30 @@ class Flow:
             return
 
         if node_data.get("type") == "message":
-            node_initialiced = Message(message_node_data=node_data)
+            node_initialized = Message(message_node_data=node_data)
         elif node_data.get("type") == "media":
-            node_initialiced = Media(media_node_data=node_data)
+            node_initialized = Media(media_node_data=node_data)
         elif node_data.get("type") == "email":
-            node_initialiced = Email(email_node_data=node_data)
+            node_initialized = Email(email_node_data=node_data)
         elif node_data.get("type") == "location":
-            node_initialiced = Location(location_node_data=node_data)
+            node_initialized = Location(location_node_data=node_data)
         elif node_data.get("type") == "switch":
-            node_initialiced = Switch(switch_node_data=node_data)
+            node_initialized = Switch(switch_node_data=node_data)
         elif node_data.get("type") == "input":
-            node_initialiced = Input(input_node_data=node_data)
+            node_initialized = Input(input_node_data=node_data)
         elif node_data.get("type") == "check_time":
-            node_initialiced = CheckTime(check_time_node_data=node_data)
+            node_initialized = CheckTime(check_time_node_data=node_data)
         elif node_data.get("type") == "http_request":
-            node_initialiced = HTTPRequest(http_request_node_data=node_data)
+            node_initialized = HTTPRequest(http_request_node_data=node_data)
 
             if node_data.get("middleware"):
                 middleware = self.middleware(node_data.get("middleware"), room)
-                node_initialiced.middleware = middleware
+                node_initialized.middleware = middleware
         else:
             return
 
-        node_initialiced.room = room
-        node_initialiced.variables = self.flow_variables or {}
-        node_initialiced.variables.update(room._variables)
+        node_initialized.room = room
+        node_initialized.variables = self.flow_variables or {}
+        node_initialized.variables.update(room._variables)
 
-        return node_initialiced
+        return node_initialized
