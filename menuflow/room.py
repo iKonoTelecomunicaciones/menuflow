@@ -5,12 +5,13 @@ from logging import getLogger
 from typing import Any, Dict, cast
 
 from mautrix.client import Client as MatrixClient
-from mautrix.types import RoomID
+from mautrix.types import EventType, RoomID, StateEventContent
 from mautrix.util.logging import TraceLogger
 
 from .config import Config
 from .db.room import Room as DBRoom
 from .db.room import RoomState
+from .utils import Util
 
 
 class Room(DBRoom):
@@ -40,12 +41,27 @@ class Room(DBRoom):
             self.by_room_id[self.room_id] = self
 
     async def clean_up(self):
+        await Util.cancel_task(task_name=self.room_id)
         del self.by_room_id[self.room_id]
         self.variables = "{}"
         self._variables = {}
         self.node_id = RoomState.START.value
         self.state = None
         await self.update()
+
+    @property
+    async def creator(self) -> Dict:
+        """This function retrieves the creator of a Matrix room.
+
+        Returns
+        -------
+            The `creator` of the Matrix room is being returned as a string.
+
+        """
+        created_room_event: StateEventContent = await self.matrix_client.get_state_event(
+            self.room_id, event_type=EventType.ROOM_CREATE
+        )
+        return created_room_event.get("creator")
 
     @classmethod
     async def get_by_room_id(cls, room_id: RoomID, create: bool = True) -> "Room" | None:

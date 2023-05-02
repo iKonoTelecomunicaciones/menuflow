@@ -13,7 +13,7 @@ class TestFlow:
 
     def test_get_node_by_id(self, flow: Flow):
         node = flow.get_node_by_id("request-1")
-        assert node.id == "request-1"
+        assert node.get("id") == "request-1"
 
     def test_get_middleware_by_id(self, flow: Flow):
         pass

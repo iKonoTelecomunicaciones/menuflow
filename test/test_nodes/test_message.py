@@ -1,6 +1,7 @@
+from unittest.mock import AsyncMock
+
 import nest_asyncio
 import pytest
-from asyncmock import AsyncMock
 from mautrix.types import MessageType
 from pytest_mock import MockerFixture
 

@@ -1,6 +1,7 @@
+from unittest.mock import AsyncMock
+
 import nest_asyncio
 import pytest
-from asyncmock import AsyncMock
 from mautrix.client import Client
 from pytest_mock import MockerFixture
 
