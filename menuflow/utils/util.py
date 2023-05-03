@@ -134,8 +134,27 @@ class Util:
         return start <= number <= end
 
     @classmethod
-    def flow_example(cls) -> Dict:
-        with open("menuflow/utils/sample_flows/cat_fact.json", "r") as f:
+    def flow_example(cls, flow_index: int = 0) -> Dict:
+        '''This function reads a JSON file containing either a cat or dog fact and returns its 
+        contents as a dictionary.
+        
+        Parameters
+        ----------
+        flow_index : int, optional
+            `flow_index` is an integer parameter that specifies the index of the flow to be loaded 
+            from the `sample_flows` directory. The default value is 0, which means that the first 
+            flow in the list (`cat_fact.json`) will be loaded if no value is provided for `flow_index
+        
+        Returns
+        -------
+            A dictionary containing the contents of a JSON file specified by the `flow_index` parameter. 
+            The JSON file is read from the `sample_flows` directory and its contents are loaded 
+            into a dictionary using the `json.loads()` method.
+        
+        '''
+
+        flows = ["cat_fact.json", "dog_fact.json"]
+        with open(f"menuflow/utils/sample_flows/{flows[flow_index]}", "r") as f:
             return json.loads(f.read())
 
     def ignore_user(self, mxid: UserID, origin: str) -> bool:
