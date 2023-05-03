@@ -38,28 +38,54 @@ class Flow:
         return self.data.get("flow_variables", {})
 
     def get_node_by_id(self, node_id: str) -> Dict | None:
-        node = self.nodes_by_id.get(node_id)
-        if node:
-            return node
+        """This function returns a node from a cache or a list of nodes based on its ID.
+
+        Parameters
+        ----------
+        node_id : str
+            The ID of the node that we want to retrieve from the graph.
+
+        Returns
+        -------
+            This function returns a dictionary object representing a node in a graph, or `None`
+            if the node with the given ID is not found.
+
+        """
+
+        try:
+            return self.nodes_by_id[node_id]
+        except KeyError:
+            pass
 
         for node in self.nodes:
             if node_id == node.get("id", ""):
                 self._add_node_to_cache(node)
                 return node
 
-        return None
-
     def get_middleware_by_id(self, middleware_id: str) -> Dict | None:
-        middleware = self.middlewares_by_id.get(middleware_id)
-        if middleware:
-            return middleware
+        """This function retrieves a middleware by its ID from a cache or a list of middlewares.
+
+        Parameters
+        ----------
+        middleware_id : str
+            A string representing the ID of the middleware that needs to be retrieved.
+
+        Returns
+        -------
+            This function returns a dictionary object representing a middleware in a graph, or `None`
+            if the node with the given ID is not found.
+
+        """
+
+        try:
+            return self.middlewares_by_id[middleware_id]
+        except KeyError:
+            pass
 
         for middleware in self.middlewares:
             if middleware_id == middleware.get("id", ""):
                 self._add_middleware_to_cache(middleware)
                 return middleware
-
-        return None
 
     def middleware(self, middleware_id: str, room: Room) -> HTTPMiddleware:
         middleware_data = self.get_middleware_by_id(middleware_id=middleware_id)
