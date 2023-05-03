@@ -25,6 +25,7 @@ async def sample_flow_1(config: Config) -> Flow:
 
     return flow
 
+
 @pytest_asyncio.fixture
 async def sample_flow_2(config: Config) -> Flow:
     flow = Flow(Util.flow_example(flow_index=1).get("menu"))
@@ -32,6 +33,7 @@ async def sample_flow_2(config: Config) -> Flow:
         node.config = config
 
     return flow
+
 
 @pytest_asyncio.fixture
 async def room(mocker: MockerFixture) -> Room:
