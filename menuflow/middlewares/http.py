@@ -43,31 +43,35 @@ class HTTPMiddleware(Base):
 
     @property
     def middleware_variables(self) -> Dict:
-        return self.auth.get("variables", {})
+        return self.render_data(self.auth.get("variables", {}))
 
     @property
     def method(self) -> Dict:
-        return self.auth.get("method", "")
+        return self.render_data(self.auth.get("method", ""))
 
     @property
     def cookies(self) -> Dict:
-        return self.auth.get("cookies", {})
+        return self.render_data(self.auth.get("cookies", {}))
 
     @property
     def headers(self) -> Dict:
-        return self.auth.get("headers", {})
+        return self.render_data(self.auth.get("headers", {}))
 
     @property
     def query_params(self) -> Dict:
-        return self.auth.get("query_params", {})
+        return self.render_data(self.auth.get("query_params", {}))
 
     @property
-    def body(self) -> Dict:
-        return self.auth.get("data", {})
+    def data(self) -> Dict:
+        return self.render_data(self.auth.get("data", {}))
+
+    @property
+    def json(self) -> Dict:
+        return self.render_data(self.auth.get("json", {}))
 
     @property
     def basic_auth(self) -> Dict:
-        return self.auth.get("basic_auth", {})
+        return self.render_data(self.auth.get("basic_auth", {}))
 
     async def auth_request(self) -> Tuple[int, str]:
         """Make the auth request to refresh api token
@@ -91,8 +95,11 @@ class HTTPMiddleware(Base):
         if self.headers:
             request_body["headers"] = self.headers
 
-        if self.body:
-            request_body["data"] = self.body
+        if self.data:
+            request_body["data"] = self.data
+
+        if self.json:
+            request_body["json"] = self.json
 
         try:
             timeout = ClientTimeout(total=self.config["menuflow.timeouts.middlewares"])

@@ -16,6 +16,7 @@ class Auth(SerializableAttrs):
     headers: Dict[str, Any] = ib(default=None)
     cookies: Dict[str, Any] = ib(factory=dict)
     data: Dict[str, Any] = ib(default=None)
+    json: Dict[str, Any] = ib(default=None)
     query_params: Dict[str, Any] = ib(default=None)
     variables: Dict[str, Any] = ib(default=None)
     token_path: str = ib(default=None)
