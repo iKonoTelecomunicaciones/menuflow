@@ -130,7 +130,5 @@ class Flow:
             return
 
         node_initialized.room = room
-        node_initialized.variables = self.flow_variables or {}
-        node_initialized.variables.update(room._variables)
 
         return node_initialized

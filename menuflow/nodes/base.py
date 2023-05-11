@@ -150,14 +150,14 @@ class Base:
                 self.log.exception(e)
                 return
 
-        self.variables.update(self.room._variables)
+        copy_variables = {**self.variables, **self.room._variables}
 
         try:
-            data = loads(data_template.render(**self.variables))
+            data = loads(data_template.render(**copy_variables))
             data = convert_to_bool(data)
             return data
         except JSONDecodeError:
-            data = data_template.render(**self.variables)
+            data = data_template.render(**copy_variables)
             return convert_to_bool(data)
         except KeyError:
             data = loads(data_template.render())
