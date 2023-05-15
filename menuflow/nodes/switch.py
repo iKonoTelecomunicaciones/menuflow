@@ -17,7 +17,7 @@ class Switch(Base):
 
     @property
     def cases(self) -> List[Dict]:
-        return self.render_data(self.content.get("cases"))
+        return self.content.get("cases")
 
     async def load_cases(self) -> Dict[str, str]:
         """It loads the cases into a dictionary.
