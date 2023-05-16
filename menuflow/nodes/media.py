@@ -18,6 +18,7 @@ from mautrix.util.magic import mimetype
 
 from ..db.room import RoomState
 from ..repository import Media as MediaModel
+from ..room import Room
 from .message import Message
 
 try:
@@ -29,8 +30,8 @@ except ImportError:
 class Media(Message):
     media_cache: Dict[str, MediaMessageEventContent] = {}
 
-    def __init__(self, media_node_data: MediaModel) -> None:
-        Message.__init__(self, media_node_data)
+    def __init__(self, media_node_data: MediaModel, room: Room, default_variables: Dict) -> None:
+        Message.__init__(self, media_node_data, room=room, default_variables=default_variables)
         self.log = self.log.getChild(media_node_data.get("id"))
         self.content: Dict = media_node_data
 

@@ -3,11 +3,13 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ..repository import Switch as SwitchModel
+from ..room import Room
 from .base import Base, safe_data_convertion
 
 
 class Switch(Base):
-    def __init__(self, switch_node_data: SwitchModel) -> None:
+    def __init__(self, switch_node_data: SwitchModel, room: Room, default_variables: Dict) -> None:
+        Base.__init__(self, room=room, default_variables=default_variables)
         self.log = self.log.getChild(switch_node_data.get("id"))
         self.content: Dict = switch_node_data
 

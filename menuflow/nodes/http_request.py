@@ -6,6 +6,7 @@ from ruamel.yaml.comments import CommentedMap
 
 from ..db.room import RoomState
 from ..repository import HTTPRequest as HTTPRequestModel
+from ..room import Room
 from .switch import Switch
 
 if TYPE_CHECKING:
@@ -17,8 +18,12 @@ class HTTPRequest(Switch):
 
     middleware: "HTTPMiddleware" = None
 
-    def __init__(self, http_request_node_data: HTTPRequestModel) -> None:
-        Switch.__init__(self, http_request_node_data)
+    def __init__(
+        self, http_request_node_data: HTTPRequestModel, room: Room, default_variables: Dict
+    ) -> None:
+        Switch.__init__(
+            self, http_request_node_data, room=room, default_variables=default_variables
+        )
         self.log = self.log.getChild(http_request_node_data.get("id"))
         self.content: Dict = http_request_node_data
 

@@ -1,16 +1,19 @@
 from datetime import datetime
-from typing import Any, List
+from typing import Any, Dict, List
 
 import pytz
 
 from ..repository import CheckTime as CheckTimeModel
+from ..room import Room
 from ..utils import Util
 from .switch import Switch
 
 
 class CheckTime(Switch):
-    def __init__(self, check_time_node_data: CheckTimeModel) -> None:
-        Switch.__init__(self, check_time_node_data)
+    def __init__(
+        self, check_time_node_data: CheckTimeModel, room: Room, default_variables: Dict
+    ) -> None:
+        Switch.__init__(self, check_time_node_data, room=room, default_variables=default_variables)
         self.content = check_time_node_data
 
     @property

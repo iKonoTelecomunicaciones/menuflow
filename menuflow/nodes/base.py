@@ -66,7 +66,10 @@ class Base:
     session: ClientSession
 
     content: Dict
-    room: Room
+
+    def __init__(self, room: Room, default_variables: Dict) -> None:
+        self.room = room
+        self.default_variables = default_variables
 
     @property
     def id(self) -> str:
@@ -77,10 +80,9 @@ class Base:
         return self.content.get("type", "")
 
     @classmethod
-    def init_cls(cls, config: Config, session: ClientSession, default_variables: Dict):
+    def init_cls(cls, config: Config, session: ClientSession):
         cls.config = config
         cls.session = session
-        cls.variables = default_variables or {}
 
     @abstractmethod
     async def run(self):
@@ -150,7 +152,7 @@ class Base:
                 self.log.exception(e)
                 return
 
-        copy_variables = {**self.variables, **self.room._variables}
+        copy_variables = {**self.default_variables, **self.room._variables}
 
         try:
             data = loads(data_template.render(**copy_variables))

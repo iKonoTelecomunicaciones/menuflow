@@ -14,15 +14,16 @@ from mautrix.types import (
 
 from ..db.room import RoomState
 from ..repository import Input as InputModel
+from ..room import Room
 from ..utils import Util
 from .message import Message
 from .switch import Switch
 
 
 class Input(Switch, Message):
-    def __init__(self, input_node_data: InputModel) -> None:
-        Switch.__init__(self, input_node_data)
-        Message.__init__(self, input_node_data)
+    def __init__(self, input_node_data: InputModel, room: Room, default_variables: Dict) -> None:
+        Switch.__init__(self, input_node_data, room=room, default_variables=default_variables)
+        Message.__init__(self, input_node_data, room=room, default_variables=default_variables)
         self.content = input_node_data
 
     @property
