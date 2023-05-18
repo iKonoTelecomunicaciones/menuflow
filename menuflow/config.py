@@ -17,7 +17,7 @@ class Config(BaseFileConfig):
         copy("menuflow.database")
         copy("menuflow.database_opts")
         copy("menuflow.sync.room_event_filter")
-        copy("menuflow.timeouts.http_requests")
+        copy("menuflow.timeouts.http_request")
         copy("menuflow.timeouts.middlewares")
         copy("menuflow.email_servers")
         copy("menuflow.typing_notification")
