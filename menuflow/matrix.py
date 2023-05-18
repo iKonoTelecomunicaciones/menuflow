@@ -52,7 +52,6 @@ class MatrixHandler(MatrixClient):
         Base.init_cls(
             config=self.config,
             session=self.api.session,
-            default_variables=self.flow.flow_variables,
         )
 
     def handle_sync(self, data: Dict) -> list[asyncio.Task]:

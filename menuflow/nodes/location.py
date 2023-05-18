@@ -7,12 +7,15 @@ from mautrix.types import LocationMessageEventContent, MessageType
 
 from ..db.room import RoomState
 from ..repository import Location as LocationModel
+from ..room import Room
 from .message import Message
 
 
 class Location(Message):
-    def __init__(self, location_node_data: LocationModel) -> None:
-        Message.__init__(self, location_node_data)
+    def __init__(
+        self, location_node_data: LocationModel, room: Room, default_variables: Dict
+    ) -> None:
+        Message.__init__(self, location_node_data, room=room, default_variables=default_variables)
         self.log = self.log.getChild(location_node_data.get("id"))
         self.content: Dict = location_node_data
 

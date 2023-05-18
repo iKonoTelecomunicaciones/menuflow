@@ -1,15 +1,19 @@
-from typing import Dict
+from typing import Any, Dict
 
 from markdown import markdown
 from mautrix.types import Format, MessageType, TextMessageEventContent
 
 from ..db.room import RoomState
 from ..repository import Message as MessageModel
+from ..room import Room
 from .base import Base
 
 
 class Message(Base):
-    def __init__(self, message_node_data: MessageModel) -> None:
+    def __init__(
+        self, message_node_data: MessageModel, room: Room, default_variables: Dict
+    ) -> None:
+        Base.__init__(self, room=room, default_variables=default_variables)
         self.log = self.log.getChild(message_node_data.get("id"))
         self.content: Dict = message_node_data
 

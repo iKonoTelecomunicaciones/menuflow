@@ -10,9 +10,10 @@ from ..room import Room
 
 
 class HTTPMiddleware(Base):
-    room: Room = None
-
-    def __init__(self, http_middleware_data: HTTPMiddlewareModel) -> None:
+    def __init__(
+        self, http_middleware_data: HTTPMiddlewareModel, room: Room, default_variables: Dict
+    ) -> None:
+        Base.__init__(self, room=room, default_variables=default_variables)
         self.log = self.log.getChild(http_middleware_data.get("id"))
         self.content: Dict = http_middleware_data
 

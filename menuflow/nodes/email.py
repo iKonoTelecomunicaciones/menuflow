@@ -1,17 +1,18 @@
 import asyncio
-from typing import List
+from typing import Dict, List
 
 from ..email_client import Email as EmailMessage
 from ..email_client import EmailClient
 from ..repository import Email as EmailModel
+from ..room import Room
 from .message import Message
 
 
 class Email(Message):
     email_client: EmailClient = None
 
-    def __init__(self, email_node_data: EmailModel) -> None:
-        Message.__init__(self, email_node_data)
+    def __init__(self, email_node_data: EmailModel, room: Room, default_variables: Dict) -> None:
+        Message.__init__(self, email_node_data, room=room, default_variables=default_variables)
         self.content = email_node_data
 
     @property

@@ -50,18 +50,16 @@ async def base(sample_flow_1: Flow, room: Room, mocker: MockerFixture) -> Base:
         Base,
         "run",
     )
-    base = Base()
-    base.room = room
-    base.variables = sample_flow_1.flow_variables
+    base = Base(room=room, default_variables=sample_flow_1.flow_variables)
     return base
 
 
 @pytest_asyncio.fixture
 async def message(sample_flow_1: Flow, base: Base) -> Message:
     message_node_data = sample_flow_1.get_node_by_id("start")
-    message_node = Message(message_node_data)
-    message_node.room = base.room
-    message_node.variables = base.variables
+    message_node = Message(
+        message_node_data, room=base.room, default_variables=base.default_variables
+    )
     message_node.matrix_client = Client(base_url="")
     return message_node
 
@@ -69,9 +67,9 @@ async def message(sample_flow_1: Flow, base: Base) -> Message:
 @pytest_asyncio.fixture
 async def switch(sample_flow_1: Flow, base: Base) -> Switch:
     switch_node_data = sample_flow_1.get_node_by_id("switch-1")
-    switch_node = Switch(switch_node_data)
-    switch_node.room = base.room
-    switch_node.variables = base.variables
+    switch_node = Switch(
+        switch_node_data, room=base.room, default_variables=base.default_variables
+    )
     switch_node.matrix_client = Client(base_url="")
     return switch_node
 
@@ -79,9 +77,7 @@ async def switch(sample_flow_1: Flow, base: Base) -> Switch:
 @pytest_asyncio.fixture
 async def input_text(sample_flow_1: Flow, base: Base) -> Input:
     input_node_data = sample_flow_1.get_node_by_id("input-1")
-    input_node = Input(input_node_data)
-    input_node.room = base.room
-    input_node.variables = base.variables
+    input_node = Input(input_node_data, room=base.room, default_variables=base.default_variables)
     input_node.matrix_client = Client(base_url="")
     return input_node
 
@@ -89,9 +85,7 @@ async def input_text(sample_flow_1: Flow, base: Base) -> Input:
 @pytest_asyncio.fixture
 async def input_media(sample_flow_1: Flow, base: Base) -> Input:
     input_node_data = sample_flow_1.get_node_by_id("input-4")
-    input_node = Input(input_node_data)
-    input_node.room = base.room
-    input_node.variables = base.variables
+    input_node = Input(input_node_data, room=base.room, default_variables=base.default_variables)
     input_node.matrix_client = Client(base_url="")
     return input_node
 
@@ -99,8 +93,8 @@ async def input_media(sample_flow_1: Flow, base: Base) -> Input:
 @pytest_asyncio.fixture
 async def location(sample_flow_1: Flow, base: Base) -> Location:
     location_node_data = sample_flow_1.get_node_by_id("location-1")
-    location_node = Location(location_node_data)
-    location_node.room = base.room
-    location_node.variables = base.variables
+    location_node = Location(
+        location_node_data, room=base.room, default_variables=base.default_variables
+    )
     location_node.matrix_client = Client(base_url="")
     return location_node

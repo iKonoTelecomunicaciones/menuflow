@@ -93,8 +93,9 @@ class Flow:
         if not middleware_data:
             return
 
-        middleware_initialized = HTTPMiddleware(http_middleware_data=middleware_data)
-        middleware_initialized.room = room
+        middleware_initialized = HTTPMiddleware(
+            http_middleware_data=middleware_data, room=room, default_variables=self.flow_variables
+        )
 
         return middleware_initialized
 
@@ -107,30 +108,42 @@ class Flow:
             return
 
         if node_data.get("type") == "message":
-            node_initialized = Message(message_node_data=node_data)
+            node_initialized = Message(
+                message_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
         elif node_data.get("type") == "media":
-            node_initialized = Media(media_node_data=node_data)
+            node_initialized = Media(
+                media_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
         elif node_data.get("type") == "email":
-            node_initialized = Email(email_node_data=node_data)
+            node_initialized = Email(
+                email_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
         elif node_data.get("type") == "location":
-            node_initialized = Location(location_node_data=node_data)
+            node_initialized = Location(
+                location_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
         elif node_data.get("type") == "switch":
-            node_initialized = Switch(switch_node_data=node_data)
+            node_initialized = Switch(
+                switch_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
         elif node_data.get("type") == "input":
-            node_initialized = Input(input_node_data=node_data)
+            node_initialized = Input(
+                input_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
         elif node_data.get("type") == "check_time":
-            node_initialized = CheckTime(check_time_node_data=node_data)
+            node_initialized = CheckTime(
+                check_time_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
         elif node_data.get("type") == "http_request":
-            node_initialized = HTTPRequest(http_request_node_data=node_data)
+            node_initialized = HTTPRequest(
+                http_request_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
 
             if node_data.get("middleware"):
                 middleware = self.middleware(node_data.get("middleware"), room)
                 node_initialized.middleware = middleware
         else:
             return
-
-        node_initialized.room = room
-        node_initialized.variables = self.flow_variables or {}
-        node_initialized.variables.update(room._variables)
 
         return node_initialized
