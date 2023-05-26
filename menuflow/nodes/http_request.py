@@ -134,6 +134,9 @@ class HTTPRequest(Switch):
             f"node: {self.id} method: {self.method} url: {self.url} status: {response.status}"
         )
 
+        if response.status == 401:
+            return response.status, None
+
         variables = {}
         o_connection = None
 
@@ -180,24 +183,32 @@ class HTTPRequest(Switch):
 
         return response.status, await response.text()
 
-    async def run_middleware(self, status: int, response: str):
-        """If the HTTP status code is not 200 or 201,
-        the function will log the response as an error. If the status code is 200 or 201,
-        the function will reset the HTTP_ATTEMPTS dictionary.
-        If the HTTP_ATTEMPTS dictionary has a key that matches the room ID,
-        and the last HTTP node is the current node,
-        and the number of attempts is greater than or equal to the number of attempts specified in
-        the middleware, the function will reset the HTTP_ATTEMPTS dictionary and set the default
-        connection as the active connection
+    async def run_middleware(self, status: int):
+        """This function check athentication attempts to avoid an infinite try_athentication cicle.
 
         Parameters
         ----------
         status : int
-            The HTTP status code returned by the server.
-        response : str
-            The response from the server.
+            Http status of the request.
 
         """
+
+        if status in [200, 201]:
+            self.HTTP_ATTEMPTS.update(
+                {self.room.room_id: {"last_http_node": None, "attempts_count": 0}}
+            )
+            return
+
+        if (
+            self.HTTP_ATTEMPTS.get(self.room.room_id)
+            and self.HTTP_ATTEMPTS[self.room.room_id]["last_http_node"] == self.id
+            and self.HTTP_ATTEMPTS[self.room.room_id]["attempts_count"] >= self.middleware.attempts
+        ):
+            self.log.debug("Attempts limit reached, o_connection set as `default`")
+            self.HTTP_ATTEMPTS.update(
+                {self.room.room_id: {"last_http_node": None, "attempts_count": 0}}
+            )
+            await self.room.update_menu(await self.get_case_by_id("default"), None)
 
         if status == 401:
             self.HTTP_ATTEMPTS.update(
@@ -218,24 +229,6 @@ class HTTPRequest(Switch):
                 f"{self.HTTP_ATTEMPTS[self.room.room_id]['attempts_count']}, trying again ..."
             )
 
-        if status not in [200, 201]:
-            self.log.error(response)
-        else:
-            self.HTTP_ATTEMPTS.update(
-                {self.room.room_id: {"last_http_node": None, "attempts_count": 0}}
-            )
-
-        if (
-            self.HTTP_ATTEMPTS.get(self.room.room_id)
-            and self.HTTP_ATTEMPTS[self.room.room_id]["last_http_node"] == self.id
-            and self.HTTP_ATTEMPTS[self.room.room_id]["attempts_count"] >= self.middleware.attempts
-        ):
-            self.log.debug("Attempts limit reached, o_connection set as `default`")
-            self.HTTP_ATTEMPTS.update(
-                {self.room.room_id: {"last_http_node": None, "attempts_count": 0}}
-            )
-            await self.room.update_menu(await self.get_case_by_id("default"), None)
-
     async def run(self):
         """It makes a request to the URL specified in the node's configuration,
         and then runs the middleware
@@ -247,4 +240,4 @@ class HTTPRequest(Switch):
             self.log.exception(e)
 
         if self.middleware:
-            await self.run_middleware(status=status, response=response)
+            await self.run_middleware(status=status)
