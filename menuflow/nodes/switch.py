@@ -8,6 +8,7 @@ from .base import Base, safe_data_convertion
 
 
 class Switch(Base):
+    # Keeps track of the number of validation attempts made in a switch node by room.
     VALIDATION_ATTEMPTS_BY_ROOM: Dict[str, int] = {}
 
     def __init__(self, switch_node_data: SwitchModel, room: Room, default_variables: Dict) -> None:
@@ -91,12 +92,12 @@ class Switch(Base):
                 f"The case [{case_o_connection}] has been obtained in the input node [{self.id}]"
             )
 
-            if self.validation_attempts:
+            if self.validation_attempts and self.room.room_id in self.VALIDATION_ATTEMPTS_BY_ROOM:
                 del self.VALIDATION_ATTEMPTS_BY_ROOM[self.room.room_id]
 
             return case_o_connection
         except KeyError:
-            default_case, o_connection = await self.manage_case_exeptions()
+            default_case, o_connection = await self.manage_case_exceptions()
             self.log.debug(f"Case [{id}] not found; the [{default_case} case] will be sought")
             return o_connection
 
@@ -121,7 +122,7 @@ class Switch(Base):
                 )
                 variables_recorded.append(variable)
 
-    async def manage_case_exeptions(self) -> tuple[str, str]:
+    async def manage_case_exceptions(self) -> tuple[str, str]:
         """
         This function handles exceptions when getting cases in the switch node,
         if the selected case can not be found it provides a default case.
@@ -139,7 +140,8 @@ class Switch(Base):
 
         room_validation_attempts = self.VALIDATION_ATTEMPTS_BY_ROOM.get(self.room.room_id, 1)
         if self.validation_attempts and room_validation_attempts >= self.validation_attempts:
-            del self.VALIDATION_ATTEMPTS_BY_ROOM[self.room.room_id]
+            if self.room.room_id in self.VALIDATION_ATTEMPTS_BY_ROOM:
+                del self.VALIDATION_ATTEMPTS_BY_ROOM[self.room.room_id]
             case_to_be_used = "attempt_exceeded"
         else:
             case_to_be_used = "default"
