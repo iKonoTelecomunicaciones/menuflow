@@ -27,6 +27,7 @@ class Switch(FlowObject):
     - id: switch-1
       type: switch
       validation: '{{ opt }}'
+      validation_attempts: 3
       cases:
       - id: 1
         o_connection: m1
@@ -38,4 +39,5 @@ class Switch(FlowObject):
     """
 
     validation: str = ib(default=None)
+    validation_attempts: int = ib(default=None)
     cases: List[Case] = ib(factory=list)
