@@ -47,6 +47,10 @@ class Input(Switch, Message):
           o_connection: m2
         - id: default
           o_connection: m3
+        - id: timeout
+          o_connection: m4
+        - id: attempt_exceeded
+          o_connection: m5
     ```
     """
 

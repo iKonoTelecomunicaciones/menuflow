@@ -96,11 +96,19 @@ class Switch(Base):
 
             return case_o_connection
         except KeyError:
-            default_case = await self.manage_case_exeptions()
+            default_case, o_connection = await self.manage_case_exeptions()
             self.log.debug(f"Case [{id}] not found; the [{default_case} case] will be sought")
-            return default_case
+            return o_connection
 
     async def load_variables(self, case: Dict) -> None:
+        """This function loads variables defined in switch cases into the room.
+
+        Parameters
+        ----------
+        case : Dict
+            `case` is the selected switch case.
+
+        """
         variables_recorded = []
         if case.get("variables") and self.room:
             for variable in case.get("variables", {}):
@@ -113,7 +121,20 @@ class Switch(Base):
                 )
                 variables_recorded.append(variable)
 
-    async def manage_case_exeptions(self) -> str:
+    async def manage_case_exeptions(self) -> tuple[str, str]:
+        """
+        This function handles exceptions when getting cases in the switch node,
+        if the selected case can not be found it provides a default case.
+
+        Returns
+        -------
+            A tuple containing two strings:
+            the first string is the name of the case being used
+            (either "attempt_exceeded" or "default"),
+            and the second string is the value of the "o_connection" key in the
+            default case dictionary (or "start" if the key is not present).
+
+        """
         cases = await self.load_cases()
 
         room_validation_attempts = self.VALIDATION_ATTEMPTS_BY_ROOM.get(self.room.room_id, 1)
@@ -136,4 +157,4 @@ class Switch(Base):
         # Load variables defined in the case into the room
         await self.load_variables(default_case)
 
-        return default_case.get("o_connection", "start")
+        return case_to_be_used, default_case.get("o_connection", "start")
