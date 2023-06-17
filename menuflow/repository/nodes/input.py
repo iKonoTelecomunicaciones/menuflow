@@ -34,6 +34,7 @@ class Input(Switch, Message):
       variable: opt
       validation: '{{ opt.isdigit() }}'
       input_type: 'm.text | m.image | m.video | m.audio | m.file | m.location'
+      validation_attempts: 3
       inactivity_options:
         chat_timeout: 20 #seconds
         warning_message: "Message"
@@ -46,6 +47,10 @@ class Input(Switch, Message):
           o_connection: m2
         - id: default
           o_connection: m3
+        - id: timeout
+          o_connection: m4
+        - id: attempt_exceeded
+          o_connection: m5
     ```
     """
 
