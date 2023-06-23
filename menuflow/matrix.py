@@ -21,10 +21,10 @@ from .db.room import RoomState
 from .flow import Flow
 from .nodes import Base, Input
 from .repository import Flow as FlowModel
+from .repository import FlowUtils
 from .room import Room
 from .user import User
 from .utils import Util
-from .repository import FlowUtils
 
 
 class MatrixHandler(MatrixClient):

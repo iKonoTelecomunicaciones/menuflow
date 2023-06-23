@@ -1,13 +1,10 @@
 import asyncio
 import sys
 from typing import Dict
-import yaml
 
+import yaml
 from mautrix.util.async_db import Database, DatabaseException
 from mautrix.util.program import Program
-
-from .repository.middlewares import EmailServer
-from .repository.flow_utils import FlowUtils as FlowUtilsModel
 
 from .api import client
 from .api import init as init_api
@@ -15,9 +12,11 @@ from .config import Config
 from .db import init as init_db
 from .db import upgrade_table
 from .email_client import EmailClient
-from .menu import MenuClient
-from .server import MenuFlowServer
 from .flow_utils import FlowUtils
+from .menu import MenuClient
+from .repository.flow_utils import FlowUtils as FlowUtilsModel
+from .repository.middlewares import EmailServer
+from .server import MenuFlowServer
 
 
 class MenuFlow(Program):

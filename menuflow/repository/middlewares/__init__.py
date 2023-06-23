@@ -1,2 +1,2 @@
-from .http import HTTPMiddleware
 from .email import EmailServer
+from .http import HTTPMiddleware

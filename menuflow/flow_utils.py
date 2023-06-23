@@ -1,9 +1,9 @@
 from typing import Dict
 
-from .repository.middlewares.http import HTTPMiddleware as HTTPMiddlewareModel
+from .middlewares.http import HTTPMiddleware
 from .repository import FlowUtils as FlowUtilsModel
 from .repository.middlewares.email import EmailServer
-from .middlewares.http import HTTPMiddleware
+from .repository.middlewares.http import HTTPMiddleware as HTTPMiddlewareModel
 
 
 class FlowUtils:
