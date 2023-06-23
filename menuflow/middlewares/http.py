@@ -14,24 +14,24 @@ class HTTPMiddleware(Base):
         self, http_middleware_data: HTTPMiddlewareModel, room: Room, default_variables: Dict
     ) -> None:
         Base.__init__(self, room=room, default_variables=default_variables)
-        self.log = self.log.getChild(http_middleware_data.get("id"))
-        self.content: Dict = http_middleware_data
+        self.log = self.log.getChild(http_middleware_data.id)
+        self.content: HTTPMiddleware = http_middleware_data
 
     @property
     def url(self) -> str:
-        return self.render_data(self.content.get("url", ""))
+        return self.render_data(self.content.url)
 
     @property
     def token_type(self) -> str:
-        return self.render_data(self.content.get("token_type", ""))
+        return self.render_data(self.content.token_type)
 
     @property
     def auth(self) -> Dict:
-        return self.render_data(self.content.get("auth", {}))
+        return self.render_data(self.content.auth)
 
     @property
     def general(self) -> Dict:
-        return self.render_data(self.content.get("general", {}))
+        return self.render_data(self.content.general)
 
     @property
     def token_url(self) -> str:

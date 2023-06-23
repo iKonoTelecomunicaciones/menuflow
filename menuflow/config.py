@@ -19,7 +19,6 @@ class Config(BaseFileConfig):
         copy("menuflow.sync.room_event_filter")
         copy("menuflow.timeouts.http_request")
         copy("menuflow.timeouts.middlewares")
-        copy("menuflow.email_servers")
         copy("menuflow.typing_notification")
         copy("server.hostname")
         copy("server.port")

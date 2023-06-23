@@ -1,0 +1,43 @@
+middlewares:
+  -   id: api_jwt
+      type: jwt
+      url: "https://webapinet.userfoo.com/api"
+      token_type: 'Bearer'
+      auth:
+          method: POST
+          token_path: /login/authenticate
+          headers:
+              content-type: application/json
+          data:
+              username: "foo"
+              password: "secretfoo"
+          variables:
+              token: token
+      general:
+          headers:
+              content-type: application/json
+
+  -   id: api_basic
+      url: "https://dev.foo.com.co/customers_list"
+      type: basic
+      auth:
+          basic_auth:
+              login: admin
+              password: secretfoo
+      general:
+          headers:
+              content-type: application/x-www-form-urlencoded
+              
+# E-mail servers that you can use in the e-mail nodes
+email_servers:
+    -   server_id: sample-server-1
+        host: smtp.server1.com
+        port: 587
+        start_tls: true
+        username: user1
+        password: pass1
+    -   server_id: sample-server-2
+        host: smtp.server2.com
+        port: 25
+        username: user2
+        password: pass2
