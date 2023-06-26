@@ -1,9 +1,14 @@
+import logging
 from typing import Dict
+
+from mautrix.util.logging import TraceLogger
 
 from .middlewares.http import HTTPMiddleware
 from .repository import FlowUtils as FlowUtilsModel
 from .repository.middlewares.email import EmailServer
 from .repository.middlewares.http import HTTPMiddleware as HTTPMiddlewareModel
+
+log: TraceLogger = logging.getLogger("menuflow.flow_utils")
 
 
 class FlowUtils:
@@ -11,8 +16,8 @@ class FlowUtils:
     middlewares_by_id: Dict[str, HTTPMiddlewareModel] = {}
     email_servers_by_id: Dict[str, EmailServer] = {}
 
-    def __init__(self, flow_utils_model: FlowUtilsModel) -> None:
-        self.data: FlowUtilsModel = flow_utils_model
+    def __init__(self) -> None:
+        self.data: FlowUtilsModel = FlowUtilsModel.load_flow_utils()
 
     def _add_middleware_to_cache(self, middleware_model: HTTPMiddlewareModel):
         self.middlewares_by_id[middleware_model.id] = middleware_model
@@ -37,15 +42,21 @@ class FlowUtils:
         except KeyError:
             pass
 
-        for middleware in self.data.middlewares:
-            if middleware_id == middleware.get("id", ""):
-                http_middleware = HTTPMiddlewareModel(**middleware)
-                self._add_middleware_to_cache(http_middleware)
-                return http_middleware
+        try:
+            for middleware in self.data.middlewares:
+                if middleware_id == middleware.get("id", ""):
+                    http_middleware = HTTPMiddlewareModel(**middleware)
+                    self._add_middleware_to_cache(http_middleware)
+                    return http_middleware
+        except AttributeError:
+            log.warning("No middlewares found in flow_utils.json")
 
     def get_email_servers(self) -> Dict[str, EmailServer]:
-        for email_server_data in self.data.email_servers:
-            email_server = EmailServer(**email_server_data)
-            self.email_servers_by_id[email_server.server_id] = email_server
+        try:
+            for email_server_data in self.data.email_servers:
+                email_server = EmailServer(**email_server_data)
+                self.email_servers_by_id[email_server.server_id] = email_server
+        except AttributeError:
+            log.warning("No email servers found in flow_utils.json")
 
         return self.email_servers_by_id

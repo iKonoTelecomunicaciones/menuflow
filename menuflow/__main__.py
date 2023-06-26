@@ -2,7 +2,6 @@ import asyncio
 import sys
 from typing import Dict
 
-import yaml
 from mautrix.util.async_db import Database, DatabaseException
 from mautrix.util.program import Program
 
@@ -52,17 +51,7 @@ class MenuFlow(Program):
         MenuClient.init_cls(self)
         management_api = init_api(self.config, self.loop)
         self.server = MenuFlowServer(management_api, self.config, self.loop)
-        self.load_flow_utils()
-
-    def load_flow_utils(self):
-        try:
-            path = f"/data/flow_utils.yaml"
-            with open(path, "r") as file:
-                flow: Dict = yaml.safe_load(file)
-            flow_utils_model = FlowUtilsModel(**flow)
-            self.flow_utils = FlowUtils(flow_utils_model)
-        except FileNotFoundError:
-            self.log.warning("File flow_utils.yaml not found")
+        self.flow_utils = FlowUtils()
 
     async def start_email_connections(self):
         self.log.debug("Starting email clients...")
