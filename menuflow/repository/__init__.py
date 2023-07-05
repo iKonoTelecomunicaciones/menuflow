@@ -11,4 +11,6 @@ from .nodes import (
     Media,
     Message,
     Switch,
+    InteractiveInput,
+    InteractiveMessage,
 )

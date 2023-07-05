@@ -6,3 +6,4 @@ from .location import Location
 from .media import Media
 from .message import Message
 from .switch import Case, Switch
+from .interactive_input import InteractiveInput, InteractiveMessage
