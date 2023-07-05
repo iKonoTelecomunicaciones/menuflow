@@ -7,10 +7,10 @@ from .nodes import (
     HTTPRequest,
     InactivityOptions,
     Input,
+    InteractiveInput,
+    InteractiveMessage,
     Location,
     Media,
     Message,
     Switch,
-    InteractiveInput,
-    InteractiveMessage,
 )

@@ -1,12 +1,13 @@
+from typing import Any, Dict, Optional
+
 from mautrix.types import MessageEvent
 
 from ..db.room import RoomState
-from .input import Input
 from ..repository import InteractiveInput as InteractiveInputModel
 from ..repository import InteractiveMessage
 from ..room import Room
-from typing import Dict, Any, Optional
 from ..utils import Util
+from .input import Input
 
 
 class InteractiveInput(Input):

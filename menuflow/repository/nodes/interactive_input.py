@@ -1,7 +1,9 @@
-from .input import Input
+from typing import Dict, List, Optional
+
 from attr import dataclass, ib
-from mautrix.types import SerializableAttrs, BaseMessageEventContent
-from typing import List, Dict, Optional
+from mautrix.types import BaseMessageEventContent, SerializableAttrs
+
+from .input import Input
 
 
 @dataclass

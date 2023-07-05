@@ -12,11 +12,11 @@ from .nodes import (
     Email,
     HTTPRequest,
     Input,
+    InteractiveInput,
     Location,
     Media,
     Message,
     Switch,
-    InteractiveInput,
 )
 from .repository import Flow as FlowModel
 from .room import Room
