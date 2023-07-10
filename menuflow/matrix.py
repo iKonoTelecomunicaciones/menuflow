@@ -21,6 +21,7 @@ from .db.room import RoomState
 from .flow import Flow
 from .nodes import Base, Input
 from .repository import Flow as FlowModel
+from .repository import FlowUtils
 from .room import Room
 from .user import User
 from .utils import Util
@@ -30,9 +31,12 @@ class MatrixHandler(MatrixClient):
     LAST_JOIN_EVENT: Dict[RoomID, int] = {}
     LOCKED_ROOMS = set()
 
-    def __init__(self, config: Config, *args, **kwargs) -> None:
+    def __init__(
+        self, config: Config, flow_utils: Optional[FlowUtils] = None, *args, **kwargs
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.config = config
+        self.flow_utils = flow_utils
         path = f"/data/flows/{self.mxid}.yaml"
         flow = Config(path=path, base_path="")
         try:
@@ -48,7 +52,7 @@ class MatrixHandler(MatrixClient):
             flow.load()
 
         self.util = Util(self.config)
-        self.flow = Flow(flow_data=FlowModel.deserialize(flow["menu"]))
+        self.flow = Flow(flow_data=FlowModel.deserialize(flow["menu"]), flow_utils=self.flow_utils)
         Base.init_cls(
             config=self.config,
             session=self.api.session,
