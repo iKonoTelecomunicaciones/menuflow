@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from typing import Dict, Optional
 
-
 from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
