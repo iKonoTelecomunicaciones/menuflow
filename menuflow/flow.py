@@ -8,7 +8,17 @@ from mautrix.util.logging import TraceLogger
 
 from .flow_utils import FlowUtils
 from .middlewares import HTTPMiddleware
-from .nodes import CheckTime, Email, HTTPRequest, Input, Location, Media, Message, Switch
+from .nodes import (
+    CheckTime,
+    Email,
+    HTTPRequest,
+    Input,
+    InteractiveInput,
+    Location,
+    Media,
+    Message,
+    Switch,
+)
 from .repository import Flow as FlowModel
 from .room import Room
 
@@ -117,6 +127,10 @@ class Flow:
             if node_data.get("middleware"):
                 middleware = self.middleware(node_data.get("middleware"), room)
                 node_initialized.middleware = middleware
+        elif node_data.get("type") == "interactive_input":
+            node_initialized = InteractiveInput(
+                interactive_input_data=node_data, room=room, default_variables=self.flow_variables
+            )
         else:
             return
 

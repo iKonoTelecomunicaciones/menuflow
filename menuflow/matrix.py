@@ -19,7 +19,7 @@ from mautrix.types import (
 from .config import Config
 from .db.room import RoomState
 from .flow import Flow
-from .nodes import Base, Input
+from .nodes import Base, Input, InteractiveInput
 from .repository import Flow as FlowModel
 from .repository import FlowUtils
 from .room import Room
@@ -231,7 +231,7 @@ class MatrixHandler(MatrixClient):
 
         self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.state}]")
 
-        if type(node) == Input:
+        if type(node) in (Input, InteractiveInput):
             await node.run(evt=evt)
             if room.state == RoomState.INPUT:
                 return
