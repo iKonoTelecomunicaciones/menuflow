@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, List
+from typing import Dict, Optional
+
 
 from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
+from .flow_utils import FlowUtils
 from .middlewares import HTTPMiddleware
 from .nodes import (
     CheckTime,
@@ -25,10 +27,10 @@ from .room import Room
 class Flow:
     log: TraceLogger = logging.getLogger("menuflow.flow")
 
-    nodes: List[Dict]
-    middlewares: List[Dict]
+    nodes: Dict[str, Dict]
+    middlewares: Dict[str, Dict]
 
-    def __init__(self, flow_data: FlowModel) -> None:
+    def __init__(self, flow_data: FlowModel, flow_utils: Optional[FlowUtils] = None) -> None:
         self.data: FlowModel = (
             flow_data.serialize() if isinstance(flow_data, SerializableAttrs) else flow_data
         )
@@ -36,12 +38,10 @@ class Flow:
         self.middlewares = self.data.get("middlewares", [])
         self.nodes_by_id: Dict[str, Dict] = {}
         self.middlewares_by_id: Dict[str, Dict] = {}
+        self.flow_utils = flow_utils
 
     def _add_node_to_cache(self, node_data: Dict):
         self.nodes_by_id[node_data.get("id")] = node_data
-
-    def _add_middleware_to_cache(self, middleware_data: Dict):
-        self.middlewares_by_id[middleware_data.get("id")] = middleware_data
 
     @property
     def flow_variables(self) -> Dict:
@@ -72,39 +72,14 @@ class Flow:
                 self._add_node_to_cache(node)
                 return node
 
-    def get_middleware_by_id(self, middleware_id: str) -> Dict | None:
-        """This function retrieves a middleware by its ID from a cache or a list of middlewares.
-
-        Parameters
-        ----------
-        middleware_id : str
-            A string representing the ID of the middleware that needs to be retrieved.
-
-        Returns
-        -------
-            This function returns a dictionary object representing a middleware in a graph, or `None`
-            if the node with the given ID is not found.
-
-        """
-
-        try:
-            return self.middlewares_by_id[middleware_id]
-        except KeyError:
-            pass
-
-        for middleware in self.middlewares:
-            if middleware_id == middleware.get("id", ""):
-                self._add_middleware_to_cache(middleware)
-                return middleware
-
     def middleware(self, middleware_id: str, room: Room) -> HTTPMiddleware:
-        middleware_data = self.get_middleware_by_id(middleware_id=middleware_id)
+        middleware_model = self.flow_utils.get_middleware_by_id(middleware_id=middleware_id)
 
-        if not middleware_data:
+        if not middleware_model:
             return
 
         middleware_initialized = HTTPMiddleware(
-            http_middleware_data=middleware_data, room=room, default_variables=self.flow_variables
+            http_middleware_data=middleware_model, room=room, default_variables=self.flow_variables
         )
 
         return middleware_initialized

@@ -72,6 +72,7 @@ class MenuClient(DBClient):
     ) -> MatrixHandler:
         return MatrixHandler(
             config=self.menuflow.config,
+            flow_utils=self.menuflow.flow_utils,
             mxid=self.id,
             base_url=homeserver or self.homeserver,
             token=token or self.access_token,

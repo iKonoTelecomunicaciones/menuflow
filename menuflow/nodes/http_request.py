@@ -135,6 +135,14 @@ class HTTPRequest(Switch):
         )
 
         if response.status == 401:
+            if not self.middleware:
+                if self.cases:
+                    o_connection = await self.get_case_by_id(id=response.status)
+
+                if o_connection:
+                    await self.room.update_menu(
+                        node_id=o_connection, state=RoomState.END if not self.cases else None
+                    )
             return response.status, None
 
         variables = {}
