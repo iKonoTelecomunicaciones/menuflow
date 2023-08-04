@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict
 
 from attr import dataclass, ib
 from mautrix.types import BaseMessageEventContent, SerializableAttrs
@@ -7,92 +7,10 @@ from .input import Input
 
 
 @dataclass
-class ContentQuickReplay(SerializableAttrs):
-    type: str = ib(default=None, metadata={"json": "type"})
-    header: str = ib(default=None, metadata={"json": "header"})
-    text: str = ib(default=None, metadata={"json": "text"})
-    caption: str = ib(default=None, metadata={"json": "caption"})
-    filename: str = ib(default=None, metadata={"json": "2"})
-    url: str = ib(default=None, metadata={"json": "url"})
-
-
-@dataclass
-class InteractiveMessageOption(SerializableAttrs):
-    type: str = ib(default=None, metadata={"json": "type"})
-    title: str = ib(default=None, metadata={"json": "title"})
-    description: str = ib(default=None, metadata={"json": "description"})
-    postback_text: str = ib(default=None, metadata={"json": "postback_text"})
-
-
-@dataclass
-class ItemListReplay(SerializableAttrs):
-    title: str = ib(default=None, metadata={"json": "title"})
-    subtitle: str = ib(default=None, metadata={"json": "subtitle"})
-    options: List[InteractiveMessageOption] = ib(metadata={"json": "options"}, factory=list)
-
-    @classmethod
-    def from_dict(cls, data: dict):
-        return cls(
-            title=data.get("title"),
-            subtitle=data.get("subtitle"),
-            options=[InteractiveMessageOption(**option) for option in data.get("options", [])],
-        )
-
-
-@dataclass
-class GlobalButtonsListReplay(SerializableAttrs):
-    type: str = ib(default=None, metadata={"json": "type"})
-    title: str = ib(default=None, metadata={"json": "title"})
-
-
-@dataclass
-class InteractiveMessageContent(SerializableAttrs):
-    type: str = ib(default=None, metadata={"json": "type"})
-    content: ContentQuickReplay = ib(default=None, metadata={"json": "content"})
-    options: List[InteractiveMessageOption] = ib(metadata={"json": "options"}, factory=list)
-    title: str = ib(default=None, metadata={"json": "title"})
-    body: str = ib(default=None, metadata={"json": "body"})
-    msgid: str = ib(default=None, metadata={"json": "msgid"})
-    global_buttons: List[GlobalButtonsListReplay] = ib(
-        metadata={"json": "global_buttons"}, factory=list
-    )
-    items: List[ItemListReplay] = ib(metadata={"json": "items"}, factory=list)
-
-    @classmethod
-    def from_dict(cls, data: Dict):
-        if data["type"] == "quick_reply":
-            return cls(
-                type=data["type"],
-                content=ContentQuickReplay(**data["content"]),
-                options=[InteractiveMessageOption(**option) for option in data["options"]],
-            )
-        elif data["type"] == "list":
-            return cls(
-                type=data["type"],
-                title=data["title"],
-                body=data["body"],
-                global_buttons=[
-                    GlobalButtonsListReplay(**item) for item in data["global_buttons"]
-                ],
-                items=[ItemListReplay.from_dict(item) for item in data["items"]],
-            )
-
-
-@dataclass
 class InteractiveMessage(SerializableAttrs, BaseMessageEventContent):
-    msgtype: str = ib(default="none", metadata={"json": "msgtype"})
-    body: str = ib(default=None, metadata={"json": "body"})
-    interactive_message: InteractiveMessageContent = ib(
-        factory=InteractiveMessageContent, metadata={"json": "interactive_message"}
-    )
-
-    @classmethod
-    def from_dict(cls, msgtype: str, interactive_message: Dict, body: Optional[str] = ""):
-        return cls(
-            msgtype=msgtype,
-            body=body,
-            interactive_message=InteractiveMessageContent.from_dict(interactive_message),
-        )
+    msgtype: str = ib(default=None, metadata={"json": "msgtype"})
+    body: str = ib(default="", metadata={"json": "body"})
+    interactive_message: Dict = ib(factory=Dict, metadata={"json": "interactive_message"})
 
 
 @dataclass
@@ -122,17 +40,17 @@ class InteractiveInput(Input):
                 content:
                     type: "image | text | video | document"
                     # If type = image | video | document set url parameter
-                    url: "https://images.unsplash.com/photo-1575936123452-b67c3203c357?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8aW1hZ2V8ZW58MHx8MHx8fDA%3D&w=1000&q=80"
+                    url: "https://images.com/image.png"
                     # If type = text set header parameter
                     header: "Gracias por comunicarte con iKono Telecomunicaciones."
                     text: "Para nosotros es un gusto poder ayudarte 😀"
                     caption: "Por favor selecciona una de las siguientes opciones:"
                 options:
-                  - type: "text",
+                  - type: "text"
                     title: "Sales"
-                  - type: "text",
+                  - type: "text"
                     title: "Support"
-                  - type: "text",
+                  - type: "text"
                     title: "Development"
           cases:
             - id: "sales"
@@ -207,4 +125,4 @@ class InteractiveInput(Input):
     ```
     """
 
-    interactive_message: InteractiveMessageContent = ib(factory=InteractiveMessageContent)
+    interactive_message: Dict = ib(factory=Dict)
