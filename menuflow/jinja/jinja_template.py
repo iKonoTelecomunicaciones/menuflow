@@ -42,11 +42,10 @@ e.g
 """
 
 jinja_env.globals.update(
-    compare_ratio=lambda result_text, text, ratio: fuzz.ratio(result_text.lower(), text.lower())
-    >= ratio
+    compare_ratio=lambda text, base_text: fuzz.ratio(text.lower(), base_text.lower())
 )
 """
 Validates if a text is similar to another text
 e.g
-{{ compare_ratio("Esteban Galvis", "Esteban Galvis Triana", 80) }}
+{{ compare_ratio("Esteban Galvis", "Esteban Galvis Triana") }}
 """
