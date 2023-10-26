@@ -30,16 +30,9 @@ class InteractiveInput(Input):
         return self.render_data(self.content.get("interactive_message", {}))
 
     @property
-    def interactive_message_type(self) -> str:
-        if self.interactive_message.get("type") == "list":
-            return "m.interactive.list_reply"
-        else:
-            return "m.interactive.quick_reply"
-
-    @property
     def interactive_message_content(self) -> InteractiveMessage:
-        interactive_message = InteractiveMessage.from_dict(
-            msgtype=self.interactive_message_type,
+        interactive_message = InteractiveMessage(
+            msgtype="m.interactive_message",
             interactive_message=self.interactive_message,
         )
         interactive_message.trim_reply_fallback()
