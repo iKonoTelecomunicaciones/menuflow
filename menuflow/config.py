@@ -12,6 +12,7 @@ class Config(BaseFileConfig):
     def do_update(self, helper: ConfigUpdateHelper) -> None:
         base = helper.base
         copy = helper.copy
+        copy_dict = helper.copy_dict
         copy("menuflow.ignore.messages_from")
         copy("menuflow.ignore.invitations_from")
         copy("menuflow.database")
@@ -24,6 +25,8 @@ class Config(BaseFileConfig):
         copy("server.port")
         copy("server.public_url")
         copy("server.base_path")
+        copy_dict("nats")
+        copy_dict("logging")
         shared_secret = self["server.unshared_secret"]
         if shared_secret is None or shared_secret == "generate":
             base["server.unshared_secret"] = self._new_token()

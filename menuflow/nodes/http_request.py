@@ -5,9 +5,12 @@ from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
 from ..db.room import RoomState
+from ..events import MenuflowNodeEvents
+from ..events.event_generator import send_node_event
 from ..repository import HTTPRequest as HTTPRequestModel
 from ..room import Room
 from .switch import Switch
+from .types import Nodes
 
 if TYPE_CHECKING:
     from ..middlewares import HTTPMiddleware
@@ -26,6 +29,7 @@ class HTTPRequest(Switch):
         )
         self.log = self.log.getChild(http_request_node_data.get("id"))
         self.content: Dict = http_request_node_data
+        self.o_connection = None
 
     @property
     def method(self) -> str:
@@ -126,8 +130,8 @@ class HTTPRequest(Switch):
             )
         except Exception as e:
             self.log.exception(f"Error in http_request node: {e}")
-            o_connection = await self.get_case_by_id(id=500)
-            await self.room.update_menu(node_id=o_connection, state=None)
+            self.o_connection = await self.get_case_by_id(id=500)
+            await self.room.update_menu(node_id=self.o_connection, state=None)
             return 500, e
 
         self.log.debug(
@@ -137,16 +141,16 @@ class HTTPRequest(Switch):
         if response.status == 401:
             if not self.middleware:
                 if self.cases:
-                    o_connection = await self.get_case_by_id(id=response.status)
+                    self.o_connection = await self.get_case_by_id(id=response.status)
 
-                if o_connection:
+                if self.o_connection:
                     await self.room.update_menu(
-                        node_id=o_connection, state=RoomState.END if not self.cases else None
+                        node_id=self.o_connection, state=RoomState.END if not self.cases else None
                     )
             return response.status, None
 
         variables = {}
-        o_connection = None
+        self.o_connection = None
 
         if self.cookies:
             for cookie in self.cookies:
@@ -179,11 +183,11 @@ class HTTPRequest(Switch):
                     break
 
         if self.cases:
-            o_connection = await self.get_case_by_id(id=response.status)
+            self.o_connection = await self.get_case_by_id(id=response.status)
 
-        if o_connection:
+        if self.o_connection:
             await self.room.update_menu(
-                node_id=o_connection, state=RoomState.END if not self.cases else None
+                node_id=self.o_connection, state=RoomState.END if not self.cases else None
             )
 
         if variables:
@@ -249,3 +253,12 @@ class HTTPRequest(Switch):
 
         if self.middleware:
             await self.run_middleware(status=status)
+
+        send_node_event(
+            event_type=MenuflowNodeEvents.NodeEntry,
+            sender=self.room.matrix_client.mxid,
+            node_type=Nodes.http_request,
+            node_id=self.id,
+            o_connection=self.o_connection,
+            variables={**self.room._variables, **self.default_variables},
+        )
