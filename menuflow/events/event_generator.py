@@ -2,14 +2,23 @@ from __future__ import annotations
 
 from datetime import datetime
 from logging import getLogger
+from typing import Optional
 
+from ..config import Config
 from .event_types import MenuflowEventTypes, MenuflowNodeEvents
 from .node_events import NodeEntry, NodeInputData, NodeInputTimeout
 
 log = getLogger()
 
 
-def send_node_event(event_type: MenuflowNodeEvents, **kwargs):
+def send_node_event(
+    event_type: MenuflowNodeEvents, config: Config, send_event: Optional[bool] = None, **kwargs
+):
+    general_send_event = config["menuflow.send_events"]
+    send_node_event = send_event if send_event is not None else general_send_event
+    if not send_node_event:
+        return
+
     if event_type == MenuflowNodeEvents.NodeEntry:
         event = NodeEntry(
             event_type=MenuflowEventTypes.NODE,

@@ -62,6 +62,8 @@ class InteractiveInput(Input):
                 await Util.cancel_task(task_name=self.room.room_id)
 
             send_node_event(
+                config=self.room.config,
+                send_event=self.content.get("send_event"),
                 event_type=MenuflowNodeEvents.NodeInputData,
                 sender=self.room.matrix_client.mxid,
                 node_id=self.id,
@@ -84,6 +86,8 @@ class InteractiveInput(Input):
                 await self.inactivity_task()
 
             send_node_event(
+                config=self.room.config,
+                send_event=self.content.get("send_event"),
                 event_type=MenuflowNodeEvents.NodeEntry,
                 sender=self.room.matrix_client.mxid,
                 node_type=Nodes.media,

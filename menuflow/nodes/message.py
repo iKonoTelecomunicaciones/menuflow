@@ -72,6 +72,8 @@ class Message(Base):
 
         if generate_event:
             send_node_event(
+                config=self.room.config,
+                send_event=self.content.get("send_event"),
                 event_type=MenuflowNodeEvents.NodeEntry,
                 sender=self.room.matrix_client.mxid,
                 node_type=Nodes.message,

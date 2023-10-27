@@ -35,6 +35,9 @@ menuflow:
         start: 1
         end: 3
 
+    # Do you want that nodes generate events when they are excecuted?
+    send_events: true
+
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0

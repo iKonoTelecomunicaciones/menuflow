@@ -126,6 +126,8 @@ class Input(Switch, Message):
                 await Util.cancel_task(task_name=self.room.room_id)
 
             send_node_event(
+                config=self.room.config,
+                send_event=self.content.get("send_event"),
                 event_type=MenuflowNodeEvents.NodeInputData,
                 sender=self.room.matrix_client.mxid,
                 node_id=self.id,
@@ -144,6 +146,8 @@ class Input(Switch, Message):
                 await self.inactivity_task()
 
             send_node_event(
+                config=self.room.config,
+                send_event=self.content.get("send_event"),
                 event_type=MenuflowNodeEvents.NodeEntry,
                 sender=self.room.matrix_client.mxid,
                 node_type=Nodes.input,
@@ -188,6 +192,8 @@ class Input(Switch, Message):
                 await self.room.update_menu(node_id=o_connection, state=None)
 
                 send_node_event(
+                    config=self.room.config,
+                    send_event=self.content.get("send_event"),
                     event_type=MenuflowNodeEvents.NodeInputTimeout,
                     sender=self.room.matrix_client.mxid,
                     node_id=self.id,
