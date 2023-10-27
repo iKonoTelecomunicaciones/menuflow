@@ -86,7 +86,7 @@ class Switch(Base):
             # Load variables defined in the case into the room
             await self.load_variables(case_result)
 
-            case_o_connection = case_result.get("o_connection")
+            case_o_connection = self.render_data(case_result.get("o_connection"))
 
             self.log.debug(
                 f"The case [{case_o_connection}] has been obtained in the input node [{self.id}]"
@@ -99,7 +99,7 @@ class Switch(Base):
         except KeyError:
             default_case, o_connection = await self.manage_case_exceptions()
             self.log.debug(f"Case [{id}] not found; the [{default_case} case] will be sought")
-            return o_connection
+            return self.render_data(o_connection)
 
     async def load_variables(self, case: Dict) -> None:
         """This function loads variables defined in switch cases into the room.
