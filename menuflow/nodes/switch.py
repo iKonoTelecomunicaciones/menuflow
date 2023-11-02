@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from typing import Dict, List
 
+from ..events import MenuflowNodeEvents
+from ..events.event_generator import send_node_event
 from ..repository import Switch as SwitchModel
 from ..room import Room
 from .base import Base, safe_data_convertion
+from .types import Nodes
 
 
 class Switch(Base):
@@ -73,8 +76,23 @@ class Switch(Base):
 
         return await self.get_case_by_id(result)
 
-    async def run(self) -> str:
-        await self.room.update_menu(await self._run())
+    async def run(self, generate_event: bool = True) -> str:
+        o_connection = await self._run()
+        await self.room.update_menu(o_connection)
+
+        if generate_event:
+            send_node_event(
+                config=self.room.config,
+                send_event=self.content.get("send_event"),
+                event_type=MenuflowNodeEvents.NodeEntry,
+                sender=self.room.matrix_client.mxid,
+                node_type=Nodes.switch,
+                node_id=self.id,
+                o_connection=o_connection,
+                variables={**self.room._variables, **self.default_variables},
+            )
+
+        return o_connection
 
     async def get_case_by_id(self, id: str | int) -> str:
         id = safe_data_convertion(id)

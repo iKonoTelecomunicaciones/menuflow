@@ -17,9 +17,12 @@ from mautrix.types import (
 from mautrix.util.magic import mimetype
 
 from ..db.room import RoomState
+from ..events import MenuflowNodeEvents
+from ..events.event_generator import send_node_event
 from ..repository import Media as MediaModel
 from ..room import Room
 from .message import Message
+from .types import Nodes
 
 try:
     from PIL import Image
@@ -134,4 +137,15 @@ class Media(Message):
         await self.room.update_menu(
             node_id=self.o_connection,
             state=RoomState.END if not self.o_connection else None,
+        )
+
+        send_node_event(
+            config=self.room.config,
+            send_event=self.content.get("send_event"),
+            event_type=MenuflowNodeEvents.NodeEntry,
+            sender=self.room.matrix_client.mxid,
+            node_type=Nodes.media,
+            node_id=self.id,
+            o_connection=self.o_connection,
+            variables={**self.room._variables, **self.default_variables},
         )

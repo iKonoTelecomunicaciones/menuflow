@@ -3,11 +3,14 @@ from typing import Any, Dict, Optional
 from mautrix.types import MessageEvent
 
 from ..db.room import RoomState
+from ..events import MenuflowNodeEvents
+from ..events.event_generator import send_node_event
 from ..repository import InteractiveInput as InteractiveInputModel
 from ..repository import InteractiveMessage
 from ..room import Room
 from ..utils import Util
 from .input import Input
+from .types import Nodes
 
 
 class InteractiveInput(Input):
@@ -53,10 +56,20 @@ class InteractiveInput(Input):
                 self.log.warning("A problem occurred to trying save the variable")
                 return
 
-            await self.input_text(content=evt.content)
+            o_connection = await self.input_text(content=evt.content)
 
             if self.inactivity_options:
                 await Util.cancel_task(task_name=self.room.room_id)
+
+            send_node_event(
+                config=self.room.config,
+                send_event=self.content.get("send_event"),
+                event_type=MenuflowNodeEvents.NodeInputData,
+                sender=self.room.matrix_client.mxid,
+                node_id=self.id,
+                o_connection=o_connection,
+                variables={**self.room._variables, **self.default_variables},
+            )
         else:
             # This is the case where the room is not in the input state
             # and the node is an input node.
@@ -71,3 +84,14 @@ class InteractiveInput(Input):
             await self.room.update_menu(node_id=self.id, state=RoomState.INPUT)
             if self.inactivity_options:
                 await self.inactivity_task()
+
+            send_node_event(
+                config=self.room.config,
+                send_event=self.content.get("send_event"),
+                event_type=MenuflowNodeEvents.NodeEntry,
+                sender=self.room.matrix_client.mxid,
+                node_type=Nodes.media,
+                node_id=self.id,
+                o_connection=None,
+                variables={**self.room._variables, **self.default_variables},
+            )

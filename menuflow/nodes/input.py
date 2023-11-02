@@ -13,11 +13,14 @@ from mautrix.types import (
 )
 
 from ..db.room import RoomState
+from ..events import MenuflowNodeEvents
+from ..events.event_generator import send_node_event
 from ..repository import Input as InputModel
 from ..room import Room
 from ..utils import Util
 from .message import Message
 from .switch import Switch
+from .types import Nodes
 
 
 class Input(Switch, Message):
@@ -61,10 +64,12 @@ class Input(Switch, Message):
     async def input_media(self, content: MediaMessageEventContent):
         o_connection = await self._set_input_content(content)
         await self.room.update_menu(o_connection or "default")
+        return o_connection
 
     async def input_location(self, content: LocationMessageEventContent):
         o_connection = await self._set_input_content(content)
         await self.room.update_menu(o_connection or "default")
+        return o_connection
 
     async def input_text(self, content: MessageEventContent):
         """It takes the input from the user and sets the variable to the input
@@ -85,7 +90,7 @@ class Input(Switch, Message):
 
         # If the node has an output connection, then update the menu to the output connection.
         # Otherwise, run the node and update the menu to the output connection.
-        await Switch.run(self)
+        return await Switch.run(self, generate_event=False)
 
     async def run(self, evt: Optional[MessageEvent]):
         """If the room is in input mode, then set the variable.
@@ -106,29 +111,50 @@ class Input(Switch, Message):
                 return
 
             if self.input_type == MessageType.TEXT:
-                await self.input_text(content=evt.content)
+                o_connection = await self.input_text(content=evt.content)
             elif self.input_type in [
                 MessageType.AUDIO,
                 MessageType.IMAGE,
                 MessageType.FILE,
                 MessageType.VIDEO,
             ]:
-                await self.input_media(content=evt.content)
+                o_connection = await self.input_media(content=evt.content)
             elif self.input_type == MessageType.LOCATION:
-                await self.input_location(content=evt.content)
+                o_connection = await self.input_location(content=evt.content)
 
             if self.inactivity_options:
                 await Util.cancel_task(task_name=self.room.room_id)
+
+            send_node_event(
+                config=self.room.config,
+                send_event=self.content.get("send_event"),
+                event_type=MenuflowNodeEvents.NodeInputData,
+                sender=self.room.matrix_client.mxid,
+                node_id=self.id,
+                o_connection=o_connection,
+                variables={**self.room._variables, **self.default_variables},
+            )
         else:
             # This is the case where the room is not in the input state
             # and the node is an input node.
             # In this case, the message is shown and the menu is updated to the node's id
             # and the room state is set to input.
             self.log.debug(f"Room {self.room.room_id} enters input node {self.id}")
-            await Message.run(self)
+            await Message.run(self, generate_event=False)
             await self.room.update_menu(node_id=self.id, state=RoomState.INPUT)
             if self.inactivity_options:
                 await self.inactivity_task()
+
+            send_node_event(
+                config=self.room.config,
+                send_event=self.content.get("send_event"),
+                event_type=MenuflowNodeEvents.NodeEntry,
+                sender=self.room.matrix_client.mxid,
+                node_type=Nodes.input,
+                node_id=self.id,
+                o_connection=None,
+                variables={**self.room._variables, **self.default_variables},
+            )
 
     async def inactivity_task(self):
         """It spawns a task to harass the client to enter information to input option
@@ -164,6 +190,17 @@ class Input(Switch, Message):
                 self.log.debug(f"INACTIVITY TRIES COMPLETED -> {self.room.room_id}")
                 o_connection = await self.get_case_by_id("timeout")
                 await self.room.update_menu(node_id=o_connection, state=None)
+
+                send_node_event(
+                    config=self.room.config,
+                    send_event=self.content.get("send_event"),
+                    event_type=MenuflowNodeEvents.NodeInputTimeout,
+                    sender=self.room.matrix_client.mxid,
+                    node_id=self.id,
+                    o_connection=o_connection,
+                    variables={**self.room._variables, **self.default_variables},
+                )
+
                 await self.room.matrix_client.algorithm(room=self.room)
                 break
 

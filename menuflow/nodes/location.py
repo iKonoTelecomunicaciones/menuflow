@@ -6,9 +6,12 @@ from typing import Dict
 from mautrix.types import LocationMessageEventContent, MessageType
 
 from ..db.room import RoomState
+from ..events import MenuflowNodeEvents
+from ..events.event_generator import send_node_event
 from ..repository import Location as LocationModel
 from ..room import Room
 from .message import Message
+from .types import Nodes
 
 
 class Location(Message):
@@ -37,4 +40,15 @@ class Location(Message):
         await self.room.update_menu(
             node_id=self.o_connection,
             state=RoomState.END if not self.o_connection else None,
+        )
+
+        send_node_event(
+            config=self.room.config,
+            send_event=self.content.get("send_event"),
+            event_type=MenuflowNodeEvents.NodeEntry,
+            sender=self.room.matrix_client.mxid,
+            node_type=Nodes.location,
+            node_id=self.id,
+            o_connection=self.o_connection,
+            variables={**self.room._variables, **self.default_variables},
         )
