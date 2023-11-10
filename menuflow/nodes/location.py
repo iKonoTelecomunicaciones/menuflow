@@ -46,6 +46,7 @@ class Location(Message):
             config=self.room.config,
             send_event=self.content.get("send_event"),
             event_type=MenuflowNodeEvents.NodeEntry,
+            room_id=self.room.room_id,
             sender=self.room.matrix_client.mxid,
             node_type=Nodes.location,
             node_id=self.id,
