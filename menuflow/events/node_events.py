@@ -9,6 +9,7 @@ from .base_event import BaseEvent
 
 @dataclass
 class NodeEntry(BaseEvent):
+    room_id: str = ib(factory=str)
     node_type: str = ib(factory=str)
     node_id: str = ib(factory=str)
     o_connection: str = ib(default=None)
@@ -17,6 +18,7 @@ class NodeEntry(BaseEvent):
 
 @dataclass
 class NodeInputData(BaseEvent):
+    room_id: str = ib(factory=str)
     node_id: str = ib(factory=str)
     o_connection: str = ib(factory=str)
     variables: Dict = ib(factory=dict)
@@ -24,6 +26,7 @@ class NodeInputData(BaseEvent):
 
 @dataclass
 class NodeInputTimeout(BaseEvent):
+    room_id: str = ib(factory=str)
     node_id: str = ib(factory=str)
     o_connection: str = ib(factory=str)
     variables: Dict = ib(factory=dict)
