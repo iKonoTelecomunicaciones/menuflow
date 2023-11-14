@@ -29,10 +29,8 @@ class Flow:
     nodes: Dict[str, Dict]
     middlewares: Dict[str, Dict]
 
-    def __init__(self, flow_data: FlowModel, flow_utils: Optional[FlowUtils] = None) -> None:
-        self.data: FlowModel = (
-            flow_data.serialize() if isinstance(flow_data, SerializableAttrs) else flow_data
-        )
+    def __init__(self, flow_mxid: str, flow_utils: Optional[FlowUtils] = None) -> None:
+        self.data = FlowModel.load_flow(flow_mxid=flow_mxid)
         self.nodes = self.data.get("nodes", [])
         self.middlewares = self.data.get("middlewares", [])
         self.nodes_by_id: Dict[str, Dict] = {}
