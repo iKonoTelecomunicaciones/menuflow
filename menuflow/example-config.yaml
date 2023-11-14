@@ -35,6 +35,9 @@ menuflow:
         start: 1
         end: 3
 
+    # Do you want that nodes generate events when they are excecuted?
+    send_events: true
+
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0
@@ -47,6 +50,18 @@ server:
     # The shared secret to sign API access tokens.
     # Set to "generate" to generate and save a new token at startup.
     unshared_secret: generate
+
+# Nats configuration
+nats:
+    enabled: false
+    # Nats server address
+    address: "nats://nats:4222"
+    # Nats user
+    user: "nats"
+    # Nats password
+    password: "nats"
+    # Subject to publish messages
+    subject: "menuflow.company_name"
 
 # Python logging configuration.
 #
@@ -77,6 +92,8 @@ logging:
             level: DEBUG
         aiohttp:
             level: INFO
+        report:
+            level: DEBUG
     root:
         level: DEBUG
         handlers: [file, console]

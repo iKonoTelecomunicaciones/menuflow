@@ -3,11 +3,14 @@ from typing import Any, Dict, Optional
 from mautrix.types import MessageEvent
 
 from ..db.room import RoomState
+from ..events import MenuflowNodeEvents
+from ..events.event_generator import send_node_event
 from ..repository import InteractiveInput as InteractiveInputModel
 from ..repository import InteractiveMessage
 from ..room import Room
 from ..utils import Util
 from .input import Input
+from .types import Nodes
 
 
 class InteractiveInput(Input):
@@ -27,16 +30,9 @@ class InteractiveInput(Input):
         return self.render_data(self.content.get("interactive_message", {}))
 
     @property
-    def interactive_message_type(self) -> str:
-        if self.interactive_message.get("type") == "list":
-            return "m.interactive.list_reply"
-        else:
-            return "m.interactive.quick_reply"
-
-    @property
     def interactive_message_content(self) -> InteractiveMessage:
-        interactive_message = InteractiveMessage.from_dict(
-            msgtype=self.interactive_message_type,
+        interactive_message = InteractiveMessage(
+            msgtype="m.interactive_message",
             interactive_message=self.interactive_message,
         )
         interactive_message.trim_reply_fallback()
@@ -60,10 +56,21 @@ class InteractiveInput(Input):
                 self.log.warning("A problem occurred to trying save the variable")
                 return
 
-            await self.input_text(content=evt.content)
+            o_connection = await self.input_text(content=evt.content)
 
             if self.inactivity_options:
                 await Util.cancel_task(task_name=self.room.room_id)
+
+            send_node_event(
+                config=self.room.config,
+                send_event=self.content.get("send_event"),
+                event_type=MenuflowNodeEvents.NodeInputData,
+                room_id=self.room.room_id,
+                sender=self.room.matrix_client.mxid,
+                node_id=self.id,
+                o_connection=o_connection,
+                variables={**self.room._variables, **self.default_variables},
+            )
         else:
             # This is the case where the room is not in the input state
             # and the node is an input node.
@@ -78,3 +85,15 @@ class InteractiveInput(Input):
             await self.room.update_menu(node_id=self.id, state=RoomState.INPUT)
             if self.inactivity_options:
                 await self.inactivity_task()
+
+            send_node_event(
+                config=self.room.config,
+                send_event=self.content.get("send_event"),
+                event_type=MenuflowNodeEvents.NodeEntry,
+                room_id=self.room.room_id,
+                sender=self.room.matrix_client.mxid,
+                node_type=Nodes.media,
+                node_id=self.id,
+                o_connection=None,
+                variables={**self.room._variables, **self.default_variables},
+            )
