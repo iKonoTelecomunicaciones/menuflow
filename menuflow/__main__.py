@@ -11,6 +11,7 @@ from .config import Config
 from .db import init as init_db
 from .db import upgrade_table
 from .email_client import EmailClient
+from .events import NatsPublisher
 from .flow_utils import FlowUtils
 from .menu import MenuClient
 from .repository.flow_utils import FlowUtils as FlowUtilsModel
@@ -49,6 +50,7 @@ class MenuFlow(Program):
         super().prepare()
         self.prepare_db()
         MenuClient.init_cls(self)
+        NatsPublisher.init_cls(self.config)
         management_api = init_api(self.config, self.loop)
         self.server = MenuFlowServer(management_api, self.config, self.loop)
         self.flow_utils = FlowUtils()
@@ -97,6 +99,7 @@ class MenuFlow(Program):
             asyncio.create_task(self.start_email_connections())
 
     async def stop(self) -> None:
+        await NatsPublisher.close_connection()
         self.add_shutdown_actions(*(menu.stop() for menu in MenuClient.cache.values()))
         await super().stop()
         self.log.debug("Stopping server")

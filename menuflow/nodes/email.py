@@ -3,9 +3,12 @@ from typing import Dict, List
 
 from ..email_client import Email as EmailMessage
 from ..email_client import EmailClient
+from ..events import MenuflowNodeEvents
+from ..events.event_generator import send_node_event
 from ..repository import Email as EmailModel
 from ..room import Room
 from .message import Message
+from .types import Nodes
 
 
 class Email(Message):
@@ -57,3 +60,15 @@ class Email(Message):
         asyncio.create_task(self.email_client.send_email(email=email))
 
         await self._update_node()
+
+        send_node_event(
+            config=self.room.config,
+            send_event=self.content.get("send_event"),
+            event_type=MenuflowNodeEvents.NodeEntry,
+            room_id=self.room.room_id,
+            sender=self.room.matrix_client.mxid,
+            node_type=Nodes.email,
+            node_id=self.id,
+            o_connection=self.o_connection,
+            variables={**self.room._variables, **self.default_variables},
+        )

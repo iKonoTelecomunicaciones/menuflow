@@ -4,9 +4,12 @@ from markdown import markdown
 from mautrix.types import Format, MessageType, TextMessageEventContent
 
 from ..db.room import RoomState
+from ..events import MenuflowNodeEvents
+from ..events.event_generator import send_node_event
 from ..repository import Message as MessageModel
 from ..room import Room
 from .base import Base
+from .types import Nodes
 
 
 class Message(Base):
@@ -50,7 +53,7 @@ class Message(Base):
             state=RoomState.END if not self.o_connection else None,
         )
 
-    async def run(self):
+    async def run(self, generate_event: bool = True):
         self.log.debug(f"Room {self.room.room_id} enters message node {self.id}")
 
         if not self.text:
@@ -66,3 +69,16 @@ class Message(Base):
             await self.send_message(room_id=self.room.room_id, content=msg_content)
 
         await self._update_node()
+
+        if generate_event:
+            send_node_event(
+                config=self.room.config,
+                send_event=self.content.get("send_event"),
+                event_type=MenuflowNodeEvents.NodeEntry,
+                room_id=self.room.room_id,
+                sender=self.room.matrix_client.mxid,
+                node_type=Nodes.message,
+                node_id=self.id,
+                o_connection=self.o_connection,
+                variables={**self.room._variables, **self.default_variables},
+            )

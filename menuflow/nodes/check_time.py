@@ -3,10 +3,13 @@ from typing import Any, Dict, List
 
 import pytz
 
+from ..events import MenuflowNodeEvents
+from ..events.event_generator import send_node_event
 from ..repository import CheckTime as CheckTimeModel
 from ..room import Room
 from ..utils import Util
 from .switch import Switch
+from .types import Nodes
 
 
 class CheckTime(Switch):
@@ -58,6 +61,18 @@ class CheckTime(Switch):
         )
 
         await self.room.update_menu(node_id=o_connection, state=None)
+
+        send_node_event(
+            config=self.room.config,
+            send_event=self.content.get("send_event"),
+            event_type=MenuflowNodeEvents.NodeEntry,
+            room_id=self.room.room_id,
+            sender=self.room.matrix_client.mxid,
+            node_type=Nodes.check_time,
+            node_id=self.id,
+            o_connection=o_connection,
+            variables={**self.room._variables, **self.default_variables},
+        )
 
     def check_month(self, month: int) -> bool:
         """If the month are set to "*" (all months), then return True.
