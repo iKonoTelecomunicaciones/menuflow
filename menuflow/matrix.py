@@ -37,22 +37,8 @@ class MatrixHandler(MatrixClient):
         super().__init__(*args, **kwargs)
         self.config = config
         self.flow_utils = flow_utils
-        path = f"/data/flows/{self.mxid}.yaml"
-        flow = Config(path=path, base_path="")
-        try:
-            flow.load()
-        except FileNotFoundError as e:
-            self.log.warning(e)
-            with open(path, "a") as yaml_file:
-                yaml.dump(Util.flow_example(), yaml_file)
-
-            self.log.warning(
-                f"Please configure your {self.mxid}.yaml file and restart the service"
-            )
-            flow.load()
-
         self.util = Util(self.config)
-        self.flow = Flow(flow_data=FlowModel.deserialize(flow["menu"]), flow_utils=self.flow_utils)
+        self.flow = Flow(flow_utils=flow_utils, flow_mxid=self.mxid)
         Base.init_cls(
             config=self.config,
             session=self.api.session,
