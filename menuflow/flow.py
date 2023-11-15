@@ -29,8 +29,13 @@ class Flow:
     nodes: Dict[str, Dict]
     middlewares: Dict[str, Dict]
 
-    def __init__(self, flow_mxid: str, flow_utils: Optional[FlowUtils] = None) -> None:
-        self.data = FlowModel.load_flow(flow_mxid=flow_mxid)
+    def __init__(
+        self,
+        flow_mxid: Optional[str] = None,
+        content: Optional[Dict] = None,
+        flow_utils: Optional[FlowUtils] = None,
+    ) -> None:
+        self.data = FlowModel.load_flow(flow_mxid=flow_mxid, content=content)
         self.nodes = self.data.get("nodes", [])
         self.middlewares = self.data.get("middlewares", [])
         self.nodes_by_id: Dict[str, Dict] = {}
