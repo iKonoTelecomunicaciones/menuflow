@@ -86,7 +86,7 @@ jobs:
           eval $(ssh-agent -s)
           ssh-add <(echo "${{ secrets.SSH_PRIVATE_KEY }}")
           mkdir -p ~/.ssh
-          echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+          [[ -e ~/.ssh ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
           echo "** Downloading updated Docker image ${{ vars.MENUFLOW_IMAGE }} **"
           ssh -tt ${{ secrets.HOST_TESTING }} "docker pull ${{ vars.MENUFLOW_IMAGE }}"
           echo "** Updating menuflow image in registered domains **"
