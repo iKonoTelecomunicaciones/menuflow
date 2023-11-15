@@ -74,7 +74,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ MENUFLOW_IMAGE }}
+          tags: ${{ vars.MENUFLOW_IMAGE }}
       
       - 
         name: Run Bash script
