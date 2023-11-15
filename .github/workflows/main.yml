@@ -80,7 +80,7 @@ jobs:
         name: Run Bash script
         # Download updated docker image to testing server
         run: |
-          echo "** Download updated docker image $MENUFLOW_IMAGE **"
+          echo "** Download updated docker image $vars.MENUFLOW_IMAGE **"
           ssh -tt $HOST_TESTING "docker pull $MENUFLOW_IMAGE"
           echo "** Update menuflow image in registered domains **"
           for domain in ${DOMAINS}; do
