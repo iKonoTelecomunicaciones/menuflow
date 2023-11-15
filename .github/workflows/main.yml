@@ -80,16 +80,16 @@ jobs:
         name: Run Bash script
         # Download updated docker image to testing server
         run: |
-          echo "** Download updated docker image ${vars.MENUFLOW_IMAGE} **"
-          ssh -tt ${vars.HOST_TESTING} "docker pull ${vars.MENUFLOW_IMAGE}"
+          echo "** Download updated docker image $MENUFLOW_IMAGE **"
+          ssh -tt $HOST_TESTING "docker pull $MENUFLOW_IMAGE"
           echo "** Update menuflow image in registered domains **"
-          for domain in ${vars.DOMAINS}; do
+          for domain in $DOMAINS; do
             echo " >> Setting service variables"
             stack_name=$(echo ${domain} | tr -d '.')
             service=$(echo ${domain} | cut -d '.' -f1)
             menuflow_service="${stack_name}_${service}-menuflow"
             echo " >> Remove the service if exists"
-            ssh -tt ${vars.HOST_TESTING} " \
+            ssh -tt $HOST_TESTING " \
               if docker service ps ${menuflow_service}; then \
                 docker service rm ${menuflow_service}; \
               else \
@@ -98,7 +98,7 @@ jobs:
             "
             echo " >> Deploy the service"
             docker_compose_file="/mnt/shared/matrix/${domain}/docker-compose.yml"
-            ssh -tt ${vars.HOST_TESTING} " \
+            ssh -tt $HOST_TESTING " \
               docker-compose -f ${docker_compose_file} config | \
                 docker stack deploy -c - ${stack_name};
             "
