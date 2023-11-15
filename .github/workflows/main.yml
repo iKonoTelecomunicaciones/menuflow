@@ -81,7 +81,6 @@ jobs:
         name: Connect to server and update docker image
         run: |-
           echo "** Connecting to testing server **"
-
           # Update the apt package index
           sudo apt-get update -qq
 
@@ -111,7 +110,6 @@ jobs:
             stack_name=$(echo ${domain} | tr -d '.')
             service=$(echo ${domain} | cut -d '.' -f1)
             menuflow_service="${stack_name}_${service}-menuflow"
-
             echo " >> Remove the service if exists"
             ssh -tt ${{ secrets.HOST_TESTING }} " \
               if docker service ps ${menuflow_service}; then \
