@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest_asyncio
 from mautrix.client import Client
 from pytest_mock import MockerFixture
@@ -19,7 +21,7 @@ async def config() -> Config:
 
 @pytest_asyncio.fixture
 async def sample_flow_1(config: Config) -> Flow:
-    flow = Flow(Util.flow_example(flow_index=0).get("menu"))
+    flow = Flow(content=Util.flow_example(flow_index=0))
     for node in [Input, Location, Message, Switch]:
         node.config = config
 
@@ -28,7 +30,7 @@ async def sample_flow_1(config: Config) -> Flow:
 
 @pytest_asyncio.fixture
 async def sample_flow_2(config: Config) -> Flow:
-    flow = Flow(Util.flow_example(flow_index=1).get("menu"))
+    flow = Flow(content=Util.flow_example(flow_index=1))
     for node in [Input, Location, Message, Switch]:
         node.config = config
 
@@ -36,12 +38,15 @@ async def sample_flow_2(config: Config) -> Flow:
 
 
 @pytest_asyncio.fixture
-async def room(mocker: MockerFixture) -> Room:
+async def room(mocker: MockerFixture, config: Config) -> Room:
+    Room.matrix_client = MagicMock()
     mocker.patch.object(
         Room,
         "update",
     )
-    return Room(room_id="!foo:foo.com", node_id="start")
+    room = Room(room_id="!foo:foo.com", node_id="start")
+    room.config = config
+    return room
 
 
 @pytest_asyncio.fixture
