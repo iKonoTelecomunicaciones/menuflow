@@ -75,8 +75,8 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ vars.MENUFLOW_IMAGE }}
-      
-      - 
+
+      -
         name: Run Bash script
         # Download updated docker image to testing server
         run: |
@@ -93,7 +93,7 @@ jobs:
               if docker service ps ${menuflow_service}; then \
                 docker service rm ${menuflow_service}; \
               else \
-                echo 'The service ${menuflow_service} is not exists'; \
+                 echo 'The service ${menuflow_service} is not exists'; \
               fi;
             "
             echo " >> Deploy the service"
