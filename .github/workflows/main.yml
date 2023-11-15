@@ -83,7 +83,6 @@ jobs:
           echo "** Connecting to testing server **"
           apt-get update -qq
           apt-get install -qq openssh-client
-          eval $(ssh-agent -s)
           ssh-add <(echo "${{ secrets.SSH_PRIVATE_KEY }}")
           mkdir -p ~/.ssh
           [[ -e ~/.ssh ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
