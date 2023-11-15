@@ -80,26 +80,32 @@ jobs:
         name: Run Bash script
         # Download updated docker image to testing server
         run: |
-          echo "** Download updated docker image $MENUFLOW_IMAGE **"
-          ssh -tt $HOST_TESTING "docker pull $MENUFLOW_IMAGE"
-          echo "** Update menuflow image in registered domains **"
-          for domain in ${DOMAINS}; do
+          echo "** Connecting to testing server **"
+          apt-get update -qq
+          apt-get install -qq openssh-client
+          eval $(ssh-agent -s)
+          ssh-add <(echo "${{ secrets.SSH_PRIVATE_KEY }}")
+          mkdir -p ~/.ssh
+          echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+          echo "** Downloading updated Docker image ${{ secrets.MENUFLOW_IMAGE }} **"
+          ssh -tt ${{ secrets.HOST_TESTING }} "docker pull ${{ secrets.MENUFLOW_IMAGE }}"
+          echo "** Updating menuflow image in registered domains **"
+          for domain in ${{ secrets.DOMAINS }}; do
             echo " >> Setting service variables"
             stack_name=$(echo ${domain} | tr -d '.')
             service=$(echo ${domain} | cut -d '.' -f1)
             menuflow_service="${stack_name}_${service}-menuflow"
-            echo " >> Remove the service if exists"
-            ssh -tt $HOST_TESTING " \
+            echo " >> Removing the service if it exists"
+            ssh -tt ${{ secrets.HOST_TESTING }} " \
               if docker service ps ${menuflow_service}; then \
                 docker service rm ${menuflow_service}; \
               else \
-                 echo 'The service ${menuflow_service} is not exists'; \
+                echo 'The service ${menuflow_service} does not exist'; \
               fi;
             "
-            echo " >> Deploy the service"
+            echo " >> Deploying the service"
             docker_compose_file="/mnt/shared/matrix/${domain}/docker-compose.yml"
             ssh -tt $HOST_TESTING " \
               docker-compose -f ${docker_compose_file} config | \
                 docker stack deploy -c - ${stack_name};
             "
-          done
