@@ -74,4 +74,32 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: bramenn/menuflow:latest
+          tags: ${{ variables.MENUFLOW_IMAGE }}
+      
+      - 
+        name: Run Bash script
+        # Download updated docker image to testing server
+        run: |
+          echo "** Download updated docker image **"
+          ssh -tt $secrets.HOST_TESTING "docker pull $variables.MENUFLOW_IMAGE"
+          echo "** Update menuflow image in registered domains **"
+          for domain in ${variables.DOMAINS}; do
+            echo " >> Setting service variables"
+            stack_name=$(echo ${domain} | tr -d '.')
+            service=$(echo ${domain} | cut -d '.' -f1)
+            menuflow_service="${stack_name}_${service}-menuflow"
+            echo " >> Remove the service if exists"
+            ssh -tt $secrets.HOST_TESTING " \
+              if docker service ps ${menuflow_service}; then \
+                docker service rm ${menuflow_service}; \
+              else \
+                echo 'The service ${menuflow_service} is not exists'; \
+              fi;
+            "
+            echo " >> Deploy the service"
+            docker_compose_file="/mnt/shared/matrix/${domain}/docker-compose.yml"
+            ssh -tt $secrets.HOST_TESTING " \
+              docker-compose -f ${docker_compose_file} config | \
+                docker stack deploy -c - ${stack_name};
+            "
+          done
