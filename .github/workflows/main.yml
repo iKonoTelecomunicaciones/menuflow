@@ -77,7 +77,6 @@ jobs:
           tags: ${{ vars.MENUFLOW_IMAGE }}
 
       -
-        name: Run Bash script
         # Download updated docker image to testing server
         name: Connect to server and update docker image
         run: |-
