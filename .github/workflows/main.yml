@@ -87,10 +87,10 @@ jobs:
           ssh-add <(echo "${{ secrets.SSH_PRIVATE_KEY }}")
           mkdir -p ~/.ssh
           echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
-          echo "** Downloading updated Docker image ${{ secrets.MENUFLOW_IMAGE }} **"
-          ssh -tt ${{ secrets.HOST_TESTING }} "docker pull ${{ secrets.MENUFLOW_IMAGE }}"
+          echo "** Downloading updated Docker image ${{ vars.MENUFLOW_IMAGE }} **"
+          ssh -tt ${{ secrets.HOST_TESTING }} "docker pull ${{ vars.MENUFLOW_IMAGE }}"
           echo "** Updating menuflow image in registered domains **"
-          for domain in ${{ secrets.DOMAINS }}; do
+          for domain in ${{ vars.DOMAINS }}; do
             echo " >> Setting service variables"
             stack_name=$(echo ${domain} | tr -d '.')
             service=$(echo ${domain} | cut -d '.' -f1)
@@ -105,7 +105,7 @@ jobs:
             "
             echo " >> Deploying the service"
             docker_compose_file="/mnt/shared/matrix/${domain}/docker-compose.yml"
-            ssh -tt $HOST_TESTING " \
+            ssh -tt ${{ secrets.HOST_TESTING }} " \
               docker-compose -f ${docker_compose_file} config | \
                 docker stack deploy -c - ${stack_name};
             "
