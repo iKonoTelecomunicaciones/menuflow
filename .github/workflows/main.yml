@@ -95,7 +95,7 @@ jobs:
             stack_name=$(echo ${domain} | tr -d '.')
             service=$(echo ${domain} | cut -d '.' -f1)
             menuflow_service="${stack_name}_${service}-menuflow"
-            echo " >> Removing the service if it exists"
+            echo " >> Remove the service if exists"
             ssh -tt ${{ secrets.HOST_TESTING }} " \
               if docker service ps ${menuflow_service}; then \
                 docker service rm ${menuflow_service}; \
