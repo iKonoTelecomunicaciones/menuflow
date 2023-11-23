@@ -14,7 +14,7 @@ log = getLogger()
 def send_node_event(
     event_type: MenuflowNodeEvents, config: Config, send_event: Optional[bool] = None, **kwargs
 ):
-    general_send_event = config["menuflow.send_events"]
+    general_send_event = config["events.send_events"]
     send_node_event = send_event if send_event is not None else general_send_event
     if not send_node_event:
         return
@@ -54,4 +54,4 @@ def send_node_event(
             variables=kwargs.get("variables"),
         )
 
-    event.send()
+    event.send(config=config)
