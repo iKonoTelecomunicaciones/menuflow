@@ -83,7 +83,7 @@ class Util:
         return False if not room_id else bool(match(f"^!{cls._main_matrix_regex}+$", room_id))
 
     @classmethod
-    async def get_tasks_by_name(self, task_name: str) -> Task:
+    def get_tasks_by_name(self, task_name: str) -> Task:
         """It returns a task object from the current event loop, given the task's name
         Parameters
         ----------
@@ -103,7 +103,7 @@ class Util:
     async def cancel_task(self, task_name: str):
         """It cancels the inactivity task that is running in the background"""
 
-        task = await self.get_tasks_by_name(task_name)
+        task = self.get_tasks_by_name(task_name)
         if task:
             task.cancel()
             self.log.debug(f"TASK CANCEL -> {task_name}")

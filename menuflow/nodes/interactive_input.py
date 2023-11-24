@@ -61,7 +61,7 @@ class InteractiveInput(Input):
             if self.inactivity_options:
                 await Util.cancel_task(task_name=self.room.room_id)
 
-            send_node_event(
+            await send_node_event(
                 config=self.room.config,
                 send_event=self.content.get("send_event"),
                 event_type=MenuflowNodeEvents.NodeInputData,
@@ -86,7 +86,7 @@ class InteractiveInput(Input):
             if self.inactivity_options:
                 await self.inactivity_task()
 
-            send_node_event(
+            await send_node_event(
                 config=self.room.config,
                 send_event=self.content.get("send_event"),
                 event_type=MenuflowNodeEvents.NodeEntry,

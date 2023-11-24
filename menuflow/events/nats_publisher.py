@@ -20,22 +20,22 @@ class NatsPublisher:
         cls.config = config
 
     @classmethod
-    async def get_connection(cls) -> JetStreamContext:
-        if not cls.config["nats.enabled"]:
-            return None, None
-
-        if not cls._nats_conn:
+    async def get_connection(cls) -> tuple[NATSClient, JetStreamContext]:
+        if not cls._nats_conn or cls._nats_conn and cls._nats_conn.is_closed:
             try:
                 cls._nats_conn, cls._jetstream_conn = await cls.nats_jetstream_connection()
             except Exception as e:
                 log.error(f"Error connecting to NATS: {e}")
+                return None, None
 
         return cls._nats_conn, cls._jetstream_conn
 
     @classmethod
     async def nats_jetstream_connection(cls) -> JetStreamContext:
         log.info("Connecting to NATS JetStream")
-        nc: NATSClient = await nats_connect(cls.config["nats.address"])
+        nc: NATSClient = await nats_connect(
+            cls.config["nats.address"], allow_reconnect=False, max_reconnect_attempts=1
+        )
         js = nc.jetstream()
         subject = f"{cls.config['nats.subject']}.*"
         await js.add_stream(name="menuflow", subjects=[subject])
