@@ -62,7 +62,7 @@ class CheckTime(Switch):
 
         await self.room.update_menu(node_id=o_connection, state=None)
 
-        send_node_event(
+        await send_node_event(
             config=self.room.config,
             send_event=self.content.get("send_event"),
             event_type=MenuflowNodeEvents.NodeEntry,

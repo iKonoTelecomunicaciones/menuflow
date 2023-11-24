@@ -125,7 +125,7 @@ class Input(Switch, Message):
             if self.inactivity_options:
                 await Util.cancel_task(task_name=self.room.room_id)
 
-            send_node_event(
+            await send_node_event(
                 config=self.room.config,
                 send_event=self.content.get("send_event"),
                 event_type=MenuflowNodeEvents.NodeInputData,
@@ -146,7 +146,7 @@ class Input(Switch, Message):
             if self.inactivity_options:
                 await self.inactivity_task()
 
-            send_node_event(
+            await send_node_event(
                 config=self.room.config,
                 send_event=self.content.get("send_event"),
                 event_type=MenuflowNodeEvents.NodeEntry,
@@ -193,7 +193,7 @@ class Input(Switch, Message):
                 o_connection = await self.get_case_by_id("timeout")
                 await self.room.update_menu(node_id=o_connection, state=None)
 
-                send_node_event(
+                await send_node_event(
                     config=self.room.config,
                     send_event=self.content.get("send_event"),
                     event_type=MenuflowNodeEvents.NodeInputTimeout,

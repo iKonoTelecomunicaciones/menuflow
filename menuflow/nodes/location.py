@@ -42,7 +42,7 @@ class Location(Message):
             state=RoomState.END if not self.o_connection else None,
         )
 
-        send_node_event(
+        await send_node_event(
             config=self.room.config,
             send_event=self.content.get("send_event"),
             event_type=MenuflowNodeEvents.NodeEntry,

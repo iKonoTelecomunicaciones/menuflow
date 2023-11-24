@@ -11,7 +11,7 @@ from .node_events import NodeEntry, NodeInputData, NodeInputTimeout
 log = getLogger()
 
 
-def send_node_event(
+async def send_node_event(
     event_type: MenuflowNodeEvents, config: Config, send_event: Optional[bool] = None, **kwargs
 ):
     general_send_event = config["events.send_events"]
@@ -54,4 +54,4 @@ def send_node_event(
             variables=kwargs.get("variables"),
         )
 
-    event.send(config=config)
+    await event.send(config=config)

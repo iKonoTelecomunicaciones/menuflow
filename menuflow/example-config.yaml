@@ -53,6 +53,11 @@ events:
     write_to_file: false
     # Do you want that nodes generate events when they are excecuted?
     send_events: true
+    # Sqlite database can be use to store all events or only save fail events to retry later
+    # - all: all events are stored in sqlite database
+    # - buffer: only fail events are stored in sqlite database
+    sqlite_action: "buffer"
+
 
 # Nats configuration
 nats:
@@ -97,6 +102,9 @@ logging:
             level: INFO
         report:
             level: DEBUG
+        nats:
+            level: DEBUG
+
     root:
         level: DEBUG
         handlers: [file, console]
