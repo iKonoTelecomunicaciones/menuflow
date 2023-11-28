@@ -14,6 +14,7 @@ from .nodes import (
     HTTPRequest,
     Input,
     InteractiveInput,
+    Leave,
     Location,
     Media,
     Message,
@@ -133,6 +134,10 @@ class Flow:
         elif node_data.get("type") == "interactive_input":
             node_initialized = InteractiveInput(
                 interactive_input_data=node_data, room=room, default_variables=self.flow_variables
+            )
+        elif node_data.get("type") == "leave":
+            node_initialized = Leave(
+                leave_node_data=node_data, room=room, default_variables=self.flow_variables
             )
         else:
             return
