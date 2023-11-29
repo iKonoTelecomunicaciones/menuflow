@@ -10,6 +10,7 @@ from .nodes import (
     Input,
     InteractiveInput,
     InteractiveMessage,
+    InviteUser,
     Leave,
     Location,
     Media,

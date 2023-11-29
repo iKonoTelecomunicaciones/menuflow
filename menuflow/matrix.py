@@ -4,7 +4,6 @@ import asyncio
 from copy import deepcopy
 from typing import Dict, Optional
 
-import yaml
 from mautrix.client import Client as MatrixClient
 from mautrix.types import (
     Membership,
@@ -20,7 +19,6 @@ from .config import Config
 from .db.room import RoomState
 from .flow import Flow
 from .nodes import Base, Input, InteractiveInput
-from .repository import Flow as FlowModel
 from .repository import FlowUtils
 from .room import Room
 from .user import User
@@ -73,15 +71,13 @@ class MatrixHandler(MatrixClient):
 
         if evt.state_key == self.mxid and evt.content.membership == Membership.INVITE:
             await self.handle_invite(evt)
-        elif (
-            evt.content.membership == Membership.JOIN
-            and prev_membership != Membership.JOIN
-            and evt.state_key == self.mxid
-        ):
+        elif evt.content.membership == Membership.JOIN and prev_membership != Membership.JOIN:
             await self.handle_join(evt)
         elif evt.content.membership == Membership.LEAVE:
             if prev_membership == Membership.JOIN:
                 await self.handle_leave(evt)
+            elif prev_membership == Membership.INVITE:
+                await self.handle_reject_invite(evt)
 
     async def handle_invite(self, evt: StrippedStateEvent):
         if self.util.ignore_user(mxid=evt.sender, origin="invite") or evt.sender == self.mxid:
@@ -90,6 +86,11 @@ class MatrixHandler(MatrixClient):
             return
 
         await self.join_room(evt.room_id)
+
+    async def handle_reject_invite(self, evt: StrippedStateEvent):
+        if evt.room_id in Room.pending_invites:
+            if not Room.pending_invites[evt.room_id].done():
+                Room.pending_invites[evt.room_id].set_result(False)
 
     def unlock_room(self, room_id: RoomID):
         self.log.debug(f"UNLOCKING ROOM... {room_id}")
@@ -145,6 +146,14 @@ class MatrixHandler(MatrixClient):
             await room.set_variable("customer_mxid", await room.creator)
 
     async def handle_join(self, evt: StrippedStateEvent):
+        if evt.room_id in Room.pending_invites:
+            if not Room.pending_invites[evt.room_id].done():
+                Room.pending_invites[evt.room_id].set_result(True)
+
+        # Ignore all events that are not from the bot
+        if not evt.state_key == self.mxid:
+            return
+
         if evt.room_id in self.LOCKED_ROOMS:
             self.log.debug(f"Ignoring menu request in {evt.room_id} Menu locked")
             return
@@ -194,6 +203,10 @@ class MatrixHandler(MatrixClient):
         if not room:
             return
 
+        if room.room_id in Room.pending_invites:
+            self.log.warning(f"Ignoring message in {room.room_id} pending invite")
+            return
+
         await self.algorithm(room=room, evt=message)
 
     async def algorithm(self, room: Room, evt: Optional[MessageEvent] = None) -> None:
@@ -223,6 +236,8 @@ class MatrixHandler(MatrixClient):
                 return
         else:
             await node.run()
+            if room.state == RoomState.INVITE:
+                return
 
         if room.state == RoomState.END:
             self.log.debug(f"The room {room.room_id} has terminated the flow")

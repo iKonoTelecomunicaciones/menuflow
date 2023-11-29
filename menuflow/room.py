@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from asyncio import Future
 from logging import getLogger
 from typing import Any, Dict, cast
 
@@ -16,6 +17,7 @@ from .utils import Util
 
 class Room(DBRoom):
     by_room_id: Dict[RoomID, "Room"] = {}
+    pending_invites: Dict[RoomID, Future] = {}
 
     config: Config
     log: TraceLogger = getLogger("menuflow.room")
