@@ -80,6 +80,10 @@ class _Response:
             status=HTTPStatus.CONFLICT,
         )
 
+    @property
+    def ok(self) -> web.Response:
+        return web.json_response({}, status=HTTPStatus.OK)
+
     @staticmethod
     def created(data: dict) -> web.Response:
         return web.json_response(data, status=HTTPStatus.CREATED)

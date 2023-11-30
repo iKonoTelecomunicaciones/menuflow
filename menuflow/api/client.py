@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from json import JSONDecodeError
+from typing import Dict
 
 from aiohttp import web
 from mautrix.client import Client as MatrixClient
@@ -8,6 +9,7 @@ from mautrix.errors import MatrixConnectionError, MatrixInvalidToken, MatrixRequ
 from mautrix.types import UserID
 
 from ..menu import MenuClient
+from ..room import Room
 from .base import routes
 from .responses import resp
 
@@ -55,3 +57,18 @@ async def create_client(request: web.Request) -> web.Response:
     except JSONDecodeError:
         return resp.body_not_json
     return await _create_client(None, data)
+
+
+@routes.post("/room/{room_id}/set_variables")
+async def set_variables(request: web.Request) -> web.Response:
+    try:
+        data: Dict = await request.json()
+    except JSONDecodeError:
+        return resp.body_not_json
+    room_id = request.match_info["room_id"]
+    room = await Room.get_by_room_id(room_id)
+    variables = data.get("variables", {})
+
+    await room.set_variables(variables=variables)
+
+    return resp.ok
