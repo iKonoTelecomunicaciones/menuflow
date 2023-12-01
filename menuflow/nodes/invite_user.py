@@ -2,10 +2,11 @@ from asyncio import Future, create_task, get_running_loop, sleep
 from datetime import datetime
 from typing import Dict
 
-from menuflow.room import Room
+import mautrix.errors.request
 
 from ..db.room import RoomState
 from ..repository import InviteUser as InviteUserModel
+from ..room import Room
 from .switch import Switch
 
 
@@ -31,7 +32,13 @@ class InviteUser(Switch):
 
     async def run(self):
         # Invite users to a room.
-        await self.room.matrix_client.invite_user(self.room.room_id, self.invitee)
+        try:
+            await self.room.matrix_client.invite_user(self.room.room_id, self.invitee)
+        except mautrix.errors.request.MForbidden as e:
+            self.log.error(e)
+            await self._update_menu("join")
+            return
+
         await self.room.update_menu(self.id, RoomState.INVITE)
 
         loop = get_running_loop()
