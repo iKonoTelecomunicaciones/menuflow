@@ -168,8 +168,10 @@ class MatrixHandler(MatrixClient):
         await self.algorithm(room=room)
 
     async def handle_leave(self, evt: StrippedStateEvent):
-        room = await Room.get_by_room_id(room_id=evt.room_id, create=False)
+        if evt.state_key == self.mxid:
+            return
 
+        room = await Room.get_by_room_id(room_id=evt.room_id, create=False)
         if not room:
             return
 
