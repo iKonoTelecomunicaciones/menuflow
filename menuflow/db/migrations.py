@@ -36,3 +36,27 @@ async def upgrade_v1(conn: Connection) -> None:
     )
 
     await conn.execute("ALTER TABLE room ADD CONSTRAINT idx_unique_room_id UNIQUE (room_id)")
+
+
+@upgrade_table.register(description="Add new table route")
+async def upgrade_v2(conn: Connection) -> None:
+    await conn.execute(
+        """CREATE TABLE route (
+            id          SERIAL PRIMARY KEY,
+            room        INT NOT NULL,
+            client      TEXT NOT NULL,
+            node_id     TEXT,
+            state       TEXT,
+            variables   JSON
+        )"""
+    )
+    await conn.execute(
+        "ALTER TABLE route ADD CONSTRAINT FK_room_route FOREIGN KEY (room) references room (id)"
+    )
+    await conn.execute(
+        "ALTER TABLE route ADD CONSTRAINT FK_client_route FOREIGN KEY (client) references client (id)"
+    )
+
+    # Drop old columns from room table
+    await conn.execute("ALTER TABLE room DROP COLUMN node_id")
+    await conn.execute("ALTER TABLE room DROP COLUMN state")

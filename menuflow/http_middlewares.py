@@ -51,7 +51,9 @@ async def start_auth_middleware(
     params.headers.update(middleware.general.get("headers"))
 
     if middleware.type == "jwt":
-        room: Room = await Room.get_by_room_id(room_id=context_params.get("customer_room_id"))
+        room: Room = await Room.get_by_room_id(
+            room_id=context_params.get("customer_room_id"), bot_id=context_params.get("bot_mxid")
+        )
         room_variables: Dict = middleware.auth.get("variables", {})
         token_key: str = list(room_variables.keys())[0]
 

@@ -12,7 +12,7 @@ from mautrix.types import (
     MessageType,
 )
 
-from ..db.room import RoomState
+from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Input as InputModel
@@ -105,7 +105,7 @@ class Input(Switch, Message):
 
         """
 
-        if self.room.state == RoomState.INPUT:
+        if self.room.route.state == RouteState.INPUT:
             if not evt or not self.variable:
                 self.log.warning("A problem occurred to trying save the variable")
                 return
@@ -142,7 +142,7 @@ class Input(Switch, Message):
             # and the room state is set to input.
             self.log.debug(f"Room {self.room.room_id} enters input node {self.id}")
             await Message.run(self, generate_event=False)
-            await self.room.update_menu(node_id=self.id, state=RoomState.INPUT)
+            await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
             if self.inactivity_options:
                 await self.inactivity_task()
 

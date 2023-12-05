@@ -16,7 +16,7 @@ from mautrix.types import (
 )
 from mautrix.util.magic import mimetype
 
-from ..db.room import RoomState
+from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Media as MediaModel
@@ -128,7 +128,7 @@ class Media(Message):
             if media_message is None:
                 await self.room.update_menu(
                     node_id=self.o_connection,
-                    state=RoomState.END if not self.o_connection else None,
+                    state=RouteState.END if not self.o_connection else None,
                 )
             self.media_cache[self.url] = media_message
 
@@ -136,7 +136,7 @@ class Media(Message):
 
         await self.room.update_menu(
             node_id=self.o_connection,
-            state=RoomState.END if not self.o_connection else None,
+            state=RouteState.END if not self.o_connection else None,
         )
 
         await send_node_event(

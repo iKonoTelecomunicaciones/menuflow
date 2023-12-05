@@ -2,7 +2,7 @@ from typing import Any, Dict, Optional
 
 from mautrix.types import MessageEvent
 
-from ..db.room import RoomState
+from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import InteractiveInput as InteractiveInputModel
@@ -51,7 +51,7 @@ class InteractiveInput(Input):
 
         """
 
-        if self.room.state == RoomState.INPUT:
+        if self.room.route.state == RouteState.INPUT:
             if not evt or not self.variable:
                 self.log.warning("A problem occurred to trying save the variable")
                 return
@@ -82,7 +82,7 @@ class InteractiveInput(Input):
                 event_type="m.room.message",
                 content=self.interactive_message_content,
             )
-            await self.room.update_menu(node_id=self.id, state=RoomState.INPUT)
+            await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
             if self.inactivity_options:
                 await self.inactivity_task()
 

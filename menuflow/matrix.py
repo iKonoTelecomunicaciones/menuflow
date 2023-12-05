@@ -4,7 +4,6 @@ import asyncio
 from copy import deepcopy
 from typing import Dict, Optional
 
-import yaml
 from mautrix.client import Client as MatrixClient
 from mautrix.types import (
     Membership,
@@ -17,10 +16,9 @@ from mautrix.types import (
 )
 
 from .config import Config
-from .db.room import RoomState
+from .db.route import RouteState
 from .flow import Flow
 from .nodes import Base, Input, InteractiveInput
-from .repository import Flow as FlowModel
 from .repository import FlowUtils
 from .room import Room
 from .user import User
@@ -29,12 +27,12 @@ from .utils import Util
 
 class MatrixHandler(MatrixClient):
     LAST_JOIN_EVENT: Dict[RoomID, int] = {}
-    LOCKED_ROOMS = set()
 
     def __init__(
         self, config: Config, flow_utils: Optional[FlowUtils] = None, *args, **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
+        self.LOCKED_ROOMS = set()
         self.config = config
         self.flow_utils = flow_utils
         self.util = Util(self.config)
@@ -67,6 +65,7 @@ class MatrixHandler(MatrixClient):
         return super().handle_sync(data)
 
     async def handle_member(self, evt: StrippedStateEvent) -> None:
+        self.log.debug(f"MEMBER EVENT ... {evt.room_id}")
         unsigned = evt.unsigned or StateUnsigned()
         prev_content = unsigned.prev_content or MemberStateEventContent()
         prev_membership = prev_content.membership if prev_content else None
@@ -80,7 +79,9 @@ class MatrixHandler(MatrixClient):
         ):
             await self.handle_join(evt)
         elif evt.content.membership == Membership.LEAVE:
+            self.log.debug(f"{evt.state_key} LEFT -- EVENT LEAVE ... {evt.room_id}")
             if prev_membership == Membership.JOIN:
+                self.log.debug(f"{evt.state_key} LEFT -- EVENT LEAVE ... {evt.room_id}")
                 await self.handle_leave(evt)
 
     async def handle_invite(self, evt: StrippedStateEvent):
@@ -129,7 +130,7 @@ class MatrixHandler(MatrixClient):
 
         """
 
-        room = await Room.get_by_room_id(room_id=room_id)
+        room: Room = await Room.get_by_room_id(room_id=room_id, bot_id=self.mxid)
 
         room.config = self.config
         room.matrix_client = self
@@ -152,14 +153,15 @@ class MatrixHandler(MatrixClient):
         self.log.debug(f"{evt.state_key} ACCEPTED -- EVENT JOIN ... {evt.room_id}")
         self.lock_room(evt.room_id)
 
-        room = await Room.get_by_room_id(room_id=evt.room_id)
+        room = await Room.get_by_room_id(room_id=evt.room_id, bot_id=self.mxid)
 
         await self.load_room_constants(evt.room_id)
 
         await self.algorithm(room=room)
 
     async def handle_leave(self, evt: StrippedStateEvent):
-        room = await Room.get_by_room_id(room_id=evt.room_id, create=False)
+        self.log.debug(f"{evt.state_key} LEFT -- EVENT LEAVE ... {evt.room_id}")
+        room = await Room.get_by_room_id(room_id=evt.room_id, bot_id=self.mxid, create=False)
 
         if not room:
             return
@@ -187,7 +189,7 @@ class MatrixHandler(MatrixClient):
             )
             return
 
-        room = await Room.get_by_room_id(room_id=message.room_id)
+        room = await Room.get_by_room_id(room_id=message.room_id, bot_id=self.mxid)
         room.config = self.config = self.config
         room.matrix_client = self
 
@@ -212,21 +214,21 @@ class MatrixHandler(MatrixClient):
 
         if node is None:
             self.log.debug(f"Room {room.room_id} does not have a node")
-            await room.update_menu(node_id=RoomState.START)
+            await room.update_menu(node_id="start")
             return
 
-        self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.state}]")
+        self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.route.state}]")
 
         if type(node) in (Input, InteractiveInput):
             await node.run(evt=evt)
-            if room.state == RoomState.INPUT:
+            if room.route.state == RouteState.INPUT:
                 return
         else:
             await node.run()
 
-        if room.state == RoomState.END:
+        if room.route.state == RouteState.END:
             self.log.debug(f"The room {room.room_id} has terminated the flow")
-            await room.update_menu(node_id=RoomState.START)
+            await room.update_menu(node_id="start")
             return
 
         await self.algorithm(room=room, evt=evt)

@@ -3,7 +3,7 @@ from typing import Any, Dict
 from markdown import markdown
 from mautrix.types import Format, MessageType, TextMessageEventContent
 
-from ..db.room import RoomState
+from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Message as MessageModel
@@ -50,7 +50,7 @@ class Message(Base):
     async def _update_node(self):
         await self.room.update_menu(
             node_id=self.o_connection,
-            state=RoomState.END if not self.o_connection else None,
+            state=RouteState.END if not self.o_connection else None,
         )
 
     async def run(self, generate_event: bool = True):
