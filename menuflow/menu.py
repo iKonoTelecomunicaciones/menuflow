@@ -171,23 +171,22 @@ class MenuClient(DBClient):
             self.enabled = False
             await self.update()
             return
-        if not self.filter_id:
-            self.filter_id = await self.matrix_handler.create_filter(
-                Filter(
-                    room=RoomFilter(
-                        timeline=RoomEventFilter(
-                            **self.menuflow.config["menuflow.sync.room_event_filter"]
-                        ),
-                        state=StateFilter(
-                            lazy_load_members=True,
-                        ),
+        self.filter_id = await self.matrix_handler.create_filter(
+            Filter(
+                room=RoomFilter(
+                    timeline=RoomEventFilter(
+                        **self.menuflow.config["menuflow.sync.room_event_filter"]
                     ),
-                    presence=EventFilter(
-                        not_types=[EventType.PRESENCE],
+                    state=StateFilter(
+                        lazy_load_members=True,
                     ),
-                )
+                ),
+                presence=EventFilter(
+                    not_types=[EventType.PRESENCE],
+                ),
             )
-            await self.update()
+        )
+        await self.update()
         # if self.crypto:
         #     await self._start_crypto()
         self.start_sync()

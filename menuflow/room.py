@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+from asyncio import Future, Lock
+from collections import defaultdict
 from logging import getLogger
 from typing import Any, Dict, cast
 
 from mautrix.client import Client as MatrixClient
 from mautrix.types import EventType, RoomID, StateEventContent
+from mautrix.util.async_getter_lock import async_getter_lock
 from mautrix.util.logging import TraceLogger
 
 from .config import Config
@@ -16,6 +19,8 @@ from .utils import Util
 
 class Room(DBRoom):
     by_room_id: Dict[RoomID, "Room"] = {}
+    pending_invites: Dict[RoomID, Future] = {}
+    _async_get_locks: dict[Any, Lock] = defaultdict(lambda: Lock())
 
     config: Config
     log: TraceLogger = getLogger("menuflow.room")
@@ -41,6 +46,7 @@ class Room(DBRoom):
             self.by_room_id[self.room_id] = self
 
     async def clean_up(self):
+        self.log.info(f"Cleaning up room {self.room_id}")
         await Util.cancel_task(task_name=self.room_id)
         del self.by_room_id[self.room_id]
         self.variables = "{}"
@@ -64,6 +70,7 @@ class Room(DBRoom):
         return created_room_event.get("creator")
 
     @classmethod
+    @async_getter_lock
     async def get_by_room_id(cls, room_id: RoomID, create: bool = True) -> "Room" | None:
         """It gets a room from the database, or creates one if it doesn't exist
 

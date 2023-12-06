@@ -15,6 +15,7 @@ class RoomState(Enum):
     START = "start"
     END = "end"
     INPUT = "input"
+    INVITE = "invite_user"
 
 
 @dataclass
