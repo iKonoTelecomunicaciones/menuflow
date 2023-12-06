@@ -3,6 +3,7 @@ from .email import Email
 from .http_request import HTTPRequest
 from .input import InactivityOptions, Input
 from .interactive_input import InteractiveInput, InteractiveMessage
+from .invite_user import InviteUser
 from .leave import Leave
 from .location import Location
 from .media import Media

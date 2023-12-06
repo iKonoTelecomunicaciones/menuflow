@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+from asyncio import Future, Lock
+from collections import defaultdict
 from logging import getLogger
 from typing import Any, Dict, Optional, cast
 
 from mautrix.client import Client as MatrixClient
 from mautrix.types import EventType, RoomID, StateEventContent, UserID
+from mautrix.util.async_getter_lock import async_getter_lock
 from mautrix.util.logging import TraceLogger
 
 from .config import Config
@@ -16,6 +19,8 @@ from .utils import Util
 
 class Room(DBRoom):
     by_room_id: Dict[RoomID, "Room"] = {}
+    pending_invites: Dict[RoomID, Future] = {}
+    _async_get_locks: dict[Any, Lock] = defaultdict(lambda: Lock())
 
     config: Config
     log: TraceLogger = getLogger("menuflow.room")
@@ -52,6 +57,7 @@ class Room(DBRoom):
         return self._variables | self.route._variables
 
     @classmethod
+    @async_getter_lock
     async def get_by_room_id(
         cls, room_id: RoomID, bot_id: UserID, create: bool = True
     ) -> "Room" | None:

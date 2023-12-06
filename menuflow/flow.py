@@ -13,6 +13,7 @@ from .nodes import (
     HTTPRequest,
     Input,
     InteractiveInput,
+    InviteUser,
     Leave,
     Location,
     Media,
@@ -137,6 +138,10 @@ class Flow:
         elif node_data.get("type") == "leave":
             node_initialized = Leave(
                 leave_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
+        elif node_data.get("type") == "invite_user":
+            node_initialized = InviteUser(
+                invite_node_data=node_data, room=room, default_variables=self.flow_variables
             )
         else:
             return
