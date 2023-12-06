@@ -83,7 +83,7 @@ class Route:
         await self.db.execute(q, *self.values)
 
     async def clean_up(self) -> None:
-        log.info(f"Cleaning up route {self.room} {self.client}")
+        log.info(f"Cleaning up route {self.client}")
         self.state = RouteState.START
         self.node_id = "start"
         self.variables = "{}"
