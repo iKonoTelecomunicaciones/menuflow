@@ -87,7 +87,7 @@ class Room(DBRoom):
             return room
 
         if create:
-            room = cls(room_id=room_id, node_id="start")
+            room = cls(room_id=room_id)
             await room.insert()
             room = cast(cls, await super().get_by_room_id(room_id))
             route = await Route.get_by_room_and_client(room=room.id, client=bot_id)
