@@ -8,7 +8,6 @@ from random import randrange
 from typing import Any, Dict, List
 
 from aiohttp import ClientSession
-from mautrix.client import Client as MatrixClient
 from mautrix.types import MessageEventContent, RoomID
 from mautrix.util.logging import TraceLogger
 

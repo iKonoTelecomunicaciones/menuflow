@@ -86,5 +86,5 @@ class Route:
         log.info(f"Cleaning up route {self.client}")
         self.state = RouteState.START
         self.node_id = "start"
-        self.variables = "{}"
+        self.variables = json.dumps({"external": self._variables.pop("external", {})})
         await self.update()

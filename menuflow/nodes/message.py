@@ -53,7 +53,7 @@ class Message(Base):
             state=RouteState.END if not self.o_connection else None,
         )
 
-    async def run(self, generate_event: bool = True):
+    async def run(self, update_state: bool = True, generate_event: bool = True):
         self.log.debug(f"Room {self.room.room_id} enters message node {self.id}")
 
         if not self.text:
@@ -68,7 +68,8 @@ class Message(Base):
 
             await self.send_message(room_id=self.room.room_id, content=msg_content)
 
-        await self._update_node()
+        if update_state:
+            await self._update_node()
 
         if generate_event:
             await send_node_event(

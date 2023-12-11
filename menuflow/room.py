@@ -18,14 +18,12 @@ from .utils import Util
 
 
 class Room(DBRoom):
-    by_room_id: Dict[RoomID, "Room"] = {}
+    by_room_id: Dict[(RoomID, UserID), "Room"] = {}
     pending_invites: Dict[RoomID, Future] = {}
     _async_get_locks: dict[Any, Lock] = defaultdict(lambda: Lock())
 
     config: Config
     log: TraceLogger = getLogger("menuflow.room")
-
-    matrix_client: MatrixClient
 
     def __init__(
         self,
@@ -36,7 +34,9 @@ class Room(DBRoom):
         self._variables: Dict = json.loads(variables)
         super().__init__(id=id, room_id=room_id, variables=f"{variables}")
         self.log = self.log.getChild(self.room_id)
+        self.bot_mxid: UserID = None
         self.route: Route = None
+        self.matrix_client: MatrixClient = None
 
     @property
     async def creator(self) -> Dict:
@@ -59,7 +59,7 @@ class Room(DBRoom):
     @classmethod
     @async_getter_lock
     async def get_by_room_id(
-        cls, room_id: RoomID, bot_id: UserID, create: bool = True
+        cls, room_id: RoomID, bot_mxid: UserID, create: bool = True
     ) -> "Room" | None:
         """It gets a room from the database, or creates one if it doesn't exist
 
@@ -67,6 +67,8 @@ class Room(DBRoom):
         ----------
         room_id : RoomID
             The room's ID.
+        bot_mxid : UserID
+            The bot's Mxid.
         create : bool, optional
             If True, the room will be created if it doesn't exist.
 
@@ -77,9 +79,9 @@ class Room(DBRoom):
         """
 
         try:
-            room = cls.by_room_id[room_id]
-            route = await Route.get_by_room_and_client(room=room.id, client=bot_id)
-            room.route = route
+            room = cls.by_room_id[(bot_mxid, room_id)]
+            room.bot_mxid = bot_mxid
+            room.route = await Route.get_by_room_and_client(room=room.id, client=bot_mxid)
             return room
         except KeyError:
             pass
@@ -87,30 +89,27 @@ class Room(DBRoom):
         room = cast(cls, await super().get_by_room_id(room_id))
 
         if room is not None:
-            route = await Route.get_by_room_and_client(room=room.id, client=bot_id)
-            room.route = route
-            room._add_to_cache()
+            room.bot_mxid = bot_mxid
+            room.route = await Route.get_by_room_and_client(room=room.id, client=bot_mxid)
+            room._add_to_cache(bot_mxid=bot_mxid)
             return room
 
         if create:
             room = cls(room_id=room_id)
             await room.insert()
             room = cast(cls, await super().get_by_room_id(room_id))
-            route = await Route.get_by_room_and_client(room=room.id, client=bot_id)
-            room.route = route
-            room._add_to_cache()
+            room.bot_mxid = bot_mxid
+            room.route = await Route.get_by_room_and_client(room=room.id, client=bot_mxid)
+            room._add_to_cache(bot_mxid=bot_mxid)
             return room
 
-    def _add_to_cache(self) -> None:
+    def _add_to_cache(self, bot_mxid: UserID) -> None:
         if self.room_id:
-            self.by_room_id[self.room_id] = self
+            self.by_room_id[(bot_mxid, self.room_id)] = self
 
     async def clean_up(self):
         await Util.cancel_task(task_name=self.room_id)
-        del self.by_room_id[self.room_id]
         await self.route.clean_up()
-        self.route = None
-        await self.update()
 
     async def get_variable(self, variable_id: str) -> Any | None:
         """This function returns the value of a variable with the given ID
@@ -156,14 +155,13 @@ class Room(DBRoom):
             f":: content [{value}]"
         )
 
+        new_variables = self._variables if scope == "room" else self.route._variables
+        new_variables[key] = value
         if scope == "room":
-            self.variables = json.dumps(self._variables)
-            await self.update()
+            self._variables = json.dumps(new_variables)
         else:
-            new_variables = self.route._variables
-            new_variables[key] = value
             self.route.variables = json.dumps(new_variables)
-            await self.route.update()
+        await self.update() if scope == "room" else await self.route.update()
 
     async def set_variables(self, variables: Dict) -> None:
         """It takes a dictionary of variable IDs and values, and sets the variables to the values
@@ -188,8 +186,8 @@ class Room(DBRoom):
             The state of the menu.
         """
         self.log.debug(
-            f"The [room: {self.room_id}] will update his [node: {self.route.node_id}] to [{node_id}] "
-            f"and his [state: {self.route.state}] to [{state}]"
+            f"The [room: {self.room_id}] with route [{self.bot_mxid}] will update his [node: "
+            f"{self.route.node_id}] to [{node_id}] and his [state: {self.route.state}] to [{state}]"
         )
         self.route.node_id = node_id
         self.route.state = state

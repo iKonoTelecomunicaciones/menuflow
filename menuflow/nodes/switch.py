@@ -76,9 +76,10 @@ class Switch(Base):
 
         return await self.get_case_by_id(result)
 
-    async def run(self, generate_event: bool = True) -> str:
+    async def run(self, update_state: bool = True, generate_event: bool = True) -> str:
         o_connection = await self._run()
-        await self.room.update_menu(o_connection)
+        if update_state:
+            await self.room.update_menu(o_connection)
 
         if generate_event:
             await send_node_event(

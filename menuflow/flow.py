@@ -97,35 +97,51 @@ class Flow:
 
         if node_data.get("type") == "message":
             node_initialized = Message(
-                message_node_data=node_data, room=room, default_variables=self.flow_variables
+                message_node_data=node_data,
+                room=room,
+                default_variables=self.flow_variables,
             )
         elif node_data.get("type") == "media":
             node_initialized = Media(
-                media_node_data=node_data, room=room, default_variables=self.flow_variables
+                media_node_data=node_data,
+                room=room,
+                default_variables=self.flow_variables,
             )
         elif node_data.get("type") == "email":
             node_initialized = Email(
-                email_node_data=node_data, room=room, default_variables=self.flow_variables
+                email_node_data=node_data,
+                room=room,
+                default_variables=self.flow_variables,
             )
         elif node_data.get("type") == "location":
             node_initialized = Location(
-                location_node_data=node_data, room=room, default_variables=self.flow_variables
+                location_node_data=node_data,
+                room=room,
+                default_variables=self.flow_variables,
             )
         elif node_data.get("type") == "switch":
             node_initialized = Switch(
-                switch_node_data=node_data, room=room, default_variables=self.flow_variables
+                switch_node_data=node_data,
+                room=room,
+                default_variables=self.flow_variables,
             )
         elif node_data.get("type") == "input":
             node_initialized = Input(
-                input_node_data=node_data, room=room, default_variables=self.flow_variables
+                input_node_data=node_data,
+                room=room,
+                default_variables=self.flow_variables,
             )
         elif node_data.get("type") == "check_time":
             node_initialized = CheckTime(
-                check_time_node_data=node_data, room=room, default_variables=self.flow_variables
+                check_time_node_data=node_data,
+                room=room,
+                default_variables=self.flow_variables,
             )
         elif node_data.get("type") == "http_request":
             node_initialized = HTTPRequest(
-                http_request_node_data=node_data, room=room, default_variables=self.flow_variables
+                http_request_node_data=node_data,
+                room=room,
+                default_variables=self.flow_variables,
             )
 
             if node_data.get("middleware"):
@@ -133,15 +149,21 @@ class Flow:
                 node_initialized.middleware = middleware
         elif node_data.get("type") == "interactive_input":
             node_initialized = InteractiveInput(
-                interactive_input_data=node_data, room=room, default_variables=self.flow_variables
+                interactive_input_data=node_data,
+                room=room,
+                default_variables=self.flow_variables,
             )
         elif node_data.get("type") == "leave":
             node_initialized = Leave(
-                leave_node_data=node_data, room=room, default_variables=self.flow_variables
+                leave_node_data=node_data,
+                room=room,
+                default_variables=self.flow_variables,
             )
         elif node_data.get("type") == "invite_user":
             node_initialized = InviteUser(
-                invite_node_data=node_data, room=room, default_variables=self.flow_variables
+                invite_node_data=node_data,
+                room=room,
+                default_variables=self.flow_variables,
             )
         else:
             return

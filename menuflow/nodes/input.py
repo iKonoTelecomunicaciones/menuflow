@@ -141,7 +141,7 @@ class Input(Switch, Message):
             # In this case, the message is shown and the menu is updated to the node's id
             # and the room state is set to input.
             self.log.debug(f"Room {self.room.room_id} enters input node {self.id}")
-            await Message.run(self, generate_event=False)
+            await Message.run(self, update_state=False, generate_event=False)
             await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
             if self.inactivity_options:
                 await self.inactivity_task()
