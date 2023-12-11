@@ -56,10 +56,10 @@ class TestSwitchNode:
     async def test_run(self, switch: Switch):
         await switch.room.set_variable("cat_age", "5")
         await switch.run()
-        assert switch.room.node_id == "request-1"
+        assert switch.room.route.node_id == "request-1"
         await switch.room.set_variable("cat_age", "12")
         await switch.run()
-        assert switch.room.node_id == "request-1"
+        assert switch.room.route.node_id == "request-1"
 
     @pytest.mark.asyncio
     async def test_get_case_by_id(self, switch: Switch):

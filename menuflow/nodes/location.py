@@ -51,5 +51,5 @@ class Location(Message):
             node_type=Nodes.location,
             node_id=self.id,
             o_connection=self.o_connection,
-            variables={**self.room._variables, **self.default_variables},
+            variables=self.room.all_variables | self.default_variables,
         )

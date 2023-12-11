@@ -91,7 +91,7 @@ class Switch(Base):
                 node_type=Nodes.switch,
                 node_id=self.id,
                 o_connection=o_connection,
-                variables={**self.room._variables, **self.default_variables},
+                variables=self.room.all_variables | self.default_variables,
             )
 
         return o_connection

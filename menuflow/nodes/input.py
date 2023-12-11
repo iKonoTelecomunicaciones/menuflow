@@ -133,7 +133,7 @@ class Input(Switch, Message):
                 sender=self.room.matrix_client.mxid,
                 node_id=self.id,
                 o_connection=o_connection,
-                variables={**self.room._variables, **self.default_variables},
+                variables=self.room.all_variables | self.default_variables,
             )
         else:
             # This is the case where the room is not in the input state
@@ -155,7 +155,7 @@ class Input(Switch, Message):
                 node_type=Nodes.input,
                 node_id=self.id,
                 o_connection=None,
-                variables={**self.room._variables, **self.default_variables},
+                variables=self.room.all_variables | self.default_variables,
             )
 
     async def inactivity_task(self):
@@ -201,7 +201,7 @@ class Input(Switch, Message):
                     sender=self.room.matrix_client.mxid,
                     node_id=self.id,
                     o_connection=o_connection,
-                    variables={**self.room._variables, **self.default_variables},
+                    variables=self.room.all_variables | self.default_variables,
                 )
 
                 await self.room.matrix_client.algorithm(room=self.room)
