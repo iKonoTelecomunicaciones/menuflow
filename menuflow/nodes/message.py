@@ -3,7 +3,7 @@ from typing import Any, Dict
 from markdown import markdown
 from mautrix.types import Format, MessageType, TextMessageEventContent
 
-from ..db.room import RoomState
+from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Message as MessageModel
@@ -50,10 +50,19 @@ class Message(Base):
     async def _update_node(self):
         await self.room.update_menu(
             node_id=self.o_connection,
-            state=RoomState.END if not self.o_connection else None,
+            state=RouteState.END if not self.o_connection else None,
         )
 
-    async def run(self, generate_event: bool = True):
+    async def run(self, update_state: bool = True, generate_event: bool = True):
+        """This function runs the message node.
+
+        Parameters
+        ----------
+        update_state : bool
+            If true, the state of the room will be updated.
+        generate_event : bool
+            If true, the event will be generated.
+        """
         self.log.debug(f"Room {self.room.room_id} enters message node {self.id}")
 
         if not self.text:
@@ -68,7 +77,8 @@ class Message(Base):
 
             await self.send_message(room_id=self.room.room_id, content=msg_content)
 
-        await self._update_node()
+        if update_state:
+            await self._update_node()
 
         if generate_event:
             await send_node_event(
@@ -80,5 +90,5 @@ class Message(Base):
                 node_type=Nodes.message,
                 node_id=self.id,
                 o_connection=self.o_connection,
-                variables={**self.room._variables, **self.default_variables},
+                variables=self.room.all_variables | self.default_variables,
             )

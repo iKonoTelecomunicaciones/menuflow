@@ -51,16 +51,17 @@ async def start_auth_middleware(
     params.headers.update(middleware.general.get("headers"))
 
     if middleware.type == "jwt":
-        room: Room = await Room.get_by_room_id(room_id=context_params.get("customer_room_id"))
+        room: Room = await Room.get_by_room_id(
+            room_id=context_params.get("customer_room_id"), bot_mxid=context_params.get("bot_mxid")
+        )
         room_variables: Dict = middleware.auth.get("variables", {})
         token_key: str = list(room_variables.keys())[0]
 
         if not await room.get_variable(token_key):
             await middleware.auth_request()
 
-        params.headers.update(
-            {"Authorization": f"{middleware.token_type} {await room.get_variable(token_key)}"}
-        )
+        token = f"{middleware.token_type} {await room.get_variable(variable_id=token_key)}"
+        params.headers.update({"Authorization": token})
     elif middleware.type == "basic":
         log.info(f"middleware: {middleware.id} type: {middleware.type} executing ...")
         auth_str = f"{middleware.basic_auth['login']}:{middleware.basic_auth['password']}".encode(

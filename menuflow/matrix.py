@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import asyncio
-from copy import deepcopy
-from typing import Dict, Optional
+from typing import Optional
 
 from mautrix.client import Client as MatrixClient
 from mautrix.types import (
@@ -16,7 +14,7 @@ from mautrix.types import (
 )
 
 from .config import Config
-from .db.room import RoomState
+from .db.route import RouteState
 from .flow import Flow
 from .nodes import Base, Input, InteractiveInput
 from .repository import FlowUtils
@@ -26,9 +24,6 @@ from .utils import Util
 
 
 class MatrixHandler(MatrixClient):
-    LAST_JOIN_EVENT: Dict[RoomID, int] = {}
-    LOCKED_ROOMS = set()
-
     def __init__(
         self, config: Config, flow_utils: Optional[FlowUtils] = None, *args, **kwargs
     ) -> None:
@@ -41,28 +36,6 @@ class MatrixHandler(MatrixClient):
             config=self.config,
             session=self.api.session,
         )
-
-    def handle_sync(self, data: Dict) -> list[asyncio.Task]:
-        # This is a way to remove duplicate events from the sync
-        aux_data = deepcopy(data)
-        for room_id, room_data in aux_data.get("rooms", {}).get("join", {}).items():
-            for i in range(len(room_data.get("timeline", {}).get("events", [])) - 1, -1, -1):
-                evt = room_data.get("timeline", {}).get("events", [])[i]
-                if (
-                    self.LAST_JOIN_EVENT.get(room_id)
-                    and evt.get("origin_server_ts") <= self.LAST_JOIN_EVENT[room_id]
-                ):
-                    del data["rooms"]["join"][room_id]["timeline"]["events"][i]
-                    continue
-
-                if (
-                    evt.get("type", "") == "m.room.member"
-                    and evt.get("state_key", "") == self.mxid
-                ):
-                    if evt.get("content", {}).get("membership") == "join":
-                        self.LAST_JOIN_EVENT[room_id] = evt.get("origin_server_ts")
-
-        return super().handle_sync(data)
 
     async def handle_member(self, evt: StrippedStateEvent) -> None:
         unsigned = evt.unsigned or StateUnsigned()
@@ -91,14 +64,6 @@ class MatrixHandler(MatrixClient):
         if evt.room_id in Room.pending_invites:
             if not Room.pending_invites[evt.room_id].done():
                 Room.pending_invites[evt.room_id].set_result(False)
-
-    def unlock_room(self, room_id: RoomID):
-        self.log.debug(f"UNLOCKING ROOM... {room_id}")
-        self.LOCKED_ROOMS.discard(room_id)
-
-    def lock_room(self, room_id: RoomID):
-        self.log.debug(f"LOCKING ROOM... {room_id}")
-        self.LOCKED_ROOMS.add(room_id)
 
     async def load_all_room_constants(self):
         """This function loads room constants for joined rooms in a Matrix chat using Python.
@@ -130,18 +95,18 @@ class MatrixHandler(MatrixClient):
 
         """
 
-        room = await Room.get_by_room_id(room_id=room_id)
+        room: Room = await Room.get_by_room_id(room_id=room_id, bot_mxid=self.mxid)
 
         room.config = self.config
         room.matrix_client = self
 
-        if not await room.get_variable("customer_room_id"):
+        if not await room.get_variable(variable_id="customer_room_id"):
             await room.set_variable("customer_room_id", room_id)
 
-        if not await room.get_variable("bot_mxid"):
+        if not await room.get_variable(variable_id="bot_mxid"):
             await room.set_variable("bot_mxid", self.mxid)
 
-        if not await room.get_variable("customer_mxid"):
+        if not await room.get_variable(variable_id="customer_mxid"):
             await User.get_by_mxid(mxid=await room.creator)
             await room.set_variable("customer_mxid", await room.creator)
 
@@ -154,29 +119,19 @@ class MatrixHandler(MatrixClient):
         if not evt.state_key == self.mxid:
             return
 
-        if evt.room_id in self.LOCKED_ROOMS:
-            self.log.debug(f"Ignoring menu request in {evt.room_id} Menu locked")
-            return
+        self.log.info(f"{evt.state_key} ACCEPTED -- EVENT JOIN ... {evt.room_id}")
+        room: Room = await Room.get_by_room_id(room_id=evt.room_id, bot_mxid=self.mxid)
+        room.config = self.config
+        room.matrix_client = self
 
-        self.log.debug(f"{evt.state_key} ACCEPTED -- EVENT JOIN ... {evt.room_id}")
-        self.lock_room(evt.room_id)
-
-        room = await Room.get_by_room_id(room_id=evt.room_id)
+        await room.clean_up()
 
         await self.load_room_constants(evt.room_id)
 
         await self.algorithm(room=room)
 
     async def handle_leave(self, evt: StrippedStateEvent):
-        if evt.state_key == self.mxid:
-            return
-
-        room = await Room.get_by_room_id(room_id=evt.room_id, create=False)
-        if not room:
-            return
-
-        await room.clean_up()
-        self.unlock_room(evt.room_id)
+        pass
 
     async def handle_message(self, message: MessageEvent) -> None:
         self.log.debug(
@@ -198,7 +153,7 @@ class MatrixHandler(MatrixClient):
             )
             return
 
-        room = await Room.get_by_room_id(room_id=message.room_id)
+        room: Room = await Room.get_by_room_id(room_id=message.room_id, bot_mxid=self.mxid)
         room.config = self.config = self.config
         room.matrix_client = self
 
@@ -227,23 +182,23 @@ class MatrixHandler(MatrixClient):
 
         if node is None:
             self.log.debug(f"Room {room.room_id} does not have a node")
-            await room.update_menu(node_id=RoomState.START)
+            await room.update_menu(node_id="start")
             return
 
-        self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.state}]")
+        self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.route.state}]")
 
         if type(node) in (Input, InteractiveInput):
             await node.run(evt=evt)
-            if room.state == RoomState.INPUT:
+            if room.route.state == RouteState.INPUT:
                 return
         else:
             await node.run()
-            if room.state == RoomState.INVITE:
+            if room.route.state == RouteState.INVITE:
                 return
 
-        if room.state == RoomState.END:
+        if room.route.state == RouteState.END:
             self.log.debug(f"The room {room.room_id} has terminated the flow")
-            await room.update_menu(node_id=RoomState.START)
+            await room.update_menu(node_id="start")
             return
 
         await self.algorithm(room=room, evt=evt)

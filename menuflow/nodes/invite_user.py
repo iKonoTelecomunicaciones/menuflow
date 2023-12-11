@@ -4,7 +4,7 @@ from typing import Dict
 
 import mautrix.errors.request
 
-from ..db.room import RoomState
+from ..db.route import RouteState
 from ..repository import InviteUser as InviteUserModel
 from ..room import Room
 from .switch import Switch
@@ -39,7 +39,7 @@ class InviteUser(Switch):
             await self._update_menu("join")
             return
 
-        await self.room.update_menu(self.id, RoomState.INVITE)
+        await self.room.update_menu(self.id, RouteState.INVITE)
 
         loop = get_running_loop()
         pending_invite = loop.create_future()

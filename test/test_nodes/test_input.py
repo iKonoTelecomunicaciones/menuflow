@@ -27,15 +27,15 @@ class TestInputNode:
         await input_text.input_text(
             content=TextMessageEventContent(msgtype=MessageType.TEXT, body="y")
         )
-        assert input_text.room.node_id == "input-2"
+        assert input_text.room.route.node_id == "input-2"
         await input_text.input_text(
             content=TextMessageEventContent(msgtype=MessageType.TEXT, body="n")
         )
-        assert input_text.room.node_id == "last-message"
+        assert input_text.room.route.node_id == "last-message"
         await input_text.input_text(
             content=TextMessageEventContent(msgtype=MessageType.TEXT, body="foo")
         )
-        assert input_text.room.node_id == "last-message"
+        assert input_text.room.route.node_id == "last-message"
 
     @pytest.mark.asyncio
     async def test_input_media_in_text_input_node(self, input_text: Input):
@@ -46,7 +46,7 @@ class TestInputNode:
             info=ImageInfo(mimetype="image/jpeg", size=29651, height=500, width=333),
         )
         await input_text.input_media(content=media_content)
-        assert input_text.room.node_id == "last-message"
+        assert input_text.room.route.node_id == "last-message"
 
     @pytest.mark.asyncio
     async def test_input_media_in_media_input_node(self, input_media: Input):
@@ -57,6 +57,6 @@ class TestInputNode:
             info=ImageInfo(mimetype="image/jpeg", size=29651, height=500, width=333),
         )
         await input_media.input_media(content=media_content)
-        assert input_media.room.node_id == "last-message"
+        assert input_media.room.route.node_id == "last-message"
         await input_media.input_media(content=MediaMessageEventContent())
-        assert input_media.room.node_id == "input-3"
+        assert input_media.room.route.node_id == "input-3"

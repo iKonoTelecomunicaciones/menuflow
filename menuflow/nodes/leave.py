@@ -1,6 +1,6 @@
 from typing import Dict
 
-from ..db.room import RoomState
+from ..db.route import RouteState
 from ..repository import Leave as LeaveModel
 from ..room import Room
 from .base import Base
@@ -19,4 +19,4 @@ class Leave(Base):
     async def run(self):
         self.log.debug(f"Room {self.room.room_id} enters leave node {self.id}")
         await self.room.matrix_client.leave_room(self.room.room_id, self.reason)
-        await self.room.update_menu(node_id=None, state=RoomState.END)
+        await self.room.update_menu(node_id=None, state=RouteState.END)

@@ -5,7 +5,7 @@ from typing import Dict
 
 from mautrix.types import LocationMessageEventContent, MessageType
 
-from ..db.room import RoomState
+from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Location as LocationModel
@@ -39,7 +39,7 @@ class Location(Message):
         await self.send_message(room_id=self.room.room_id, content=location_message)
         await self.room.update_menu(
             node_id=self.o_connection,
-            state=RoomState.END if not self.o_connection else None,
+            state=RouteState.END if not self.o_connection else None,
         )
 
         await send_node_event(
@@ -51,5 +51,5 @@ class Location(Message):
             node_type=Nodes.location,
             node_id=self.id,
             o_connection=self.o_connection,
-            variables={**self.room._variables, **self.default_variables},
+            variables=self.room.all_variables | self.default_variables,
         )

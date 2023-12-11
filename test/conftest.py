@@ -6,6 +6,7 @@ from pytest_mock import MockerFixture
 
 from menuflow import Flow, Room, Util
 from menuflow.config import Config
+from menuflow.db import Route
 from menuflow.nodes import Base, Input, Location, Message, Switch
 
 
@@ -38,13 +39,28 @@ async def sample_flow_2(config: Config) -> Flow:
 
 
 @pytest_asyncio.fixture
-async def room(mocker: MockerFixture, config: Config) -> Room:
-    Room.matrix_client = MagicMock()
+async def route(mocker: MockerFixture) -> Route:
+    mocker.patch.object(
+        Route,
+        "update",
+    )
+    return Route(
+        room=1,
+        node_id="start",
+        client="@foo:foo.com",
+    )
+
+
+@pytest_asyncio.fixture
+async def room(mocker: MockerFixture, config: Config, route: Route) -> Room:
     mocker.patch.object(
         Room,
         "update",
     )
-    room = Room(room_id="!foo:foo.com", node_id="start")
+    room = Room(room_id="!foo:foo.com")
+    room.matrix_client = MagicMock()
+    room.bot_mxid = "@foo:foo.com"
+    room.route = route
     room.config = config
     return room
 
@@ -65,7 +81,6 @@ async def message(sample_flow_1: Flow, base: Base) -> Message:
     message_node = Message(
         message_node_data, room=base.room, default_variables=base.default_variables
     )
-    message_node.matrix_client = Client(base_url="")
     return message_node
 
 
@@ -75,7 +90,6 @@ async def switch(sample_flow_1: Flow, base: Base) -> Switch:
     switch_node = Switch(
         switch_node_data, room=base.room, default_variables=base.default_variables
     )
-    switch_node.matrix_client = Client(base_url="")
     return switch_node
 
 
@@ -83,7 +97,6 @@ async def switch(sample_flow_1: Flow, base: Base) -> Switch:
 async def input_text(sample_flow_1: Flow, base: Base) -> Input:
     input_node_data = sample_flow_1.get_node_by_id("input-1")
     input_node = Input(input_node_data, room=base.room, default_variables=base.default_variables)
-    input_node.matrix_client = Client(base_url="")
     return input_node
 
 
@@ -91,7 +104,6 @@ async def input_text(sample_flow_1: Flow, base: Base) -> Input:
 async def input_media(sample_flow_1: Flow, base: Base) -> Input:
     input_node_data = sample_flow_1.get_node_by_id("input-4")
     input_node = Input(input_node_data, room=base.room, default_variables=base.default_variables)
-    input_node.matrix_client = Client(base_url="")
     return input_node
 
 
@@ -101,5 +113,4 @@ async def location(sample_flow_1: Flow, base: Base) -> Location:
     location_node = Location(
         location_node_data, room=base.room, default_variables=base.default_variables
     )
-    location_node.matrix_client = Client(base_url="")
     return location_node

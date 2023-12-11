@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from enum import Enum
 from typing import TYPE_CHECKING, ClassVar, Dict
 
 from asyncpg import Record
@@ -11,13 +10,6 @@ from mautrix.util.async_db import Database
 fake_db = Database.create("") if TYPE_CHECKING else None
 
 
-class RoomState(Enum):
-    START = "start"
-    END = "end"
-    INPUT = "input"
-    INVITE = "invite_user"
-
-
 @dataclass
 class Room:
     db: ClassVar[Database] = fake_db
@@ -25,36 +17,26 @@ class Room:
     id: int | None
     room_id: RoomID
     variables: Dict | None
-    node_id: str | RoomState
-    state: RoomState | str | None = None
 
     @classmethod
     def _from_row(cls, row: Record) -> Room | None:
-        data = {**row}
-        try:
-            state = RoomState(data.pop("state"))
-        except ValueError:
-            state = ""
-
-        return cls(state=state, **data)
+        return cls(**row)
 
     @property
     def values(self) -> tuple:
         return (
             self.room_id,
             self.variables,
-            self.node_id,
-            self.state.value if isinstance(self.state, RoomState) else self.state,
         )
 
-    _columns = "room_id, variables, node_id, state"
+    _columns = "room_id, variables"
 
     async def insert(self) -> str:
-        q = f"INSERT INTO room ({self._columns}) VALUES ($1, $2, $3, $4)"
+        q = f"INSERT INTO room ({self._columns}) VALUES ($1, $2)"
         await self.db.execute(q, *self.values)
 
     async def update(self) -> None:
-        q = "UPDATE room SET variables = $2, node_id = $3, state = $4 WHERE room_id = $1"
+        q = "UPDATE room SET variables = $2 WHERE room_id = $1"
         await self.db.execute(q, *self.values)
 
     @classmethod

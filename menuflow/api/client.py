@@ -66,9 +66,10 @@ async def set_variables(request: web.Request) -> web.Response:
     except JSONDecodeError:
         return resp.body_not_json
     room_id = request.match_info["room_id"]
-    room = await Room.get_by_room_id(room_id)
     variables = data.get("variables", {})
+    bot_mxid = data.get("bot_mxid", None)
+    room: Room = await Room.get_by_room_id(room_id, bot_mxid)
 
-    await room.set_variables(variables=variables)
+    await room.set_variable(variable_id="external", value=variables)
 
     return resp.ok

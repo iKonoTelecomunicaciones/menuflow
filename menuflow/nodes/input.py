@@ -12,7 +12,7 @@ from mautrix.types import (
     MessageType,
 )
 
-from ..db.room import RoomState
+from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Input as InputModel
@@ -105,7 +105,7 @@ class Input(Switch, Message):
 
         """
 
-        if self.room.state == RoomState.INPUT:
+        if self.room.route.state == RouteState.INPUT:
             if not evt or not self.variable:
                 self.log.warning("A problem occurred to trying save the variable")
                 return
@@ -133,7 +133,7 @@ class Input(Switch, Message):
                 sender=self.room.matrix_client.mxid,
                 node_id=self.id,
                 o_connection=o_connection,
-                variables={**self.room._variables, **self.default_variables},
+                variables=self.room.all_variables | self.default_variables,
             )
         else:
             # This is the case where the room is not in the input state
@@ -141,8 +141,8 @@ class Input(Switch, Message):
             # In this case, the message is shown and the menu is updated to the node's id
             # and the room state is set to input.
             self.log.debug(f"Room {self.room.room_id} enters input node {self.id}")
-            await Message.run(self, generate_event=False)
-            await self.room.update_menu(node_id=self.id, state=RoomState.INPUT)
+            await Message.run(self, update_state=False, generate_event=False)
+            await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
             if self.inactivity_options:
                 await self.inactivity_task()
 
@@ -155,7 +155,7 @@ class Input(Switch, Message):
                 node_type=Nodes.input,
                 node_id=self.id,
                 o_connection=None,
-                variables={**self.room._variables, **self.default_variables},
+                variables=self.room.all_variables | self.default_variables,
             )
 
     async def inactivity_task(self):
@@ -201,7 +201,7 @@ class Input(Switch, Message):
                     sender=self.room.matrix_client.mxid,
                     node_id=self.id,
                     o_connection=o_connection,
-                    variables={**self.room._variables, **self.default_variables},
+                    variables=self.room.all_variables | self.default_variables,
                 )
 
                 await self.room.matrix_client.algorithm(room=self.room)

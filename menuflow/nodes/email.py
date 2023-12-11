@@ -1,6 +1,8 @@
 import asyncio
 from typing import Dict, List
 
+from mautrix.types import UserID
+
 from ..email_client import Email as EmailMessage
 from ..email_client import EmailClient
 from ..events import MenuflowNodeEvents
@@ -70,5 +72,5 @@ class Email(Message):
             node_type=Nodes.email,
             node_id=self.id,
             o_connection=self.o_connection,
-            variables={**self.room._variables, **self.default_variables},
+            variables=self.room.all_variables | self.default_variables,
         )

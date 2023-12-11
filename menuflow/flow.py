@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 from typing import Dict, Optional
 
-from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
 from .flow_utils import FlowUtils
@@ -91,7 +90,7 @@ class Flow:
     def node(
         self, room: Room
     ) -> Message | Input | HTTPRequest | Switch | CheckTime | Media | Email | Location | None:
-        node_data = self.get_node_by_id(node_id=room.node_id)
+        node_data = self.get_node_by_id(node_id=room.route.node_id)
 
         if not node_data:
             return

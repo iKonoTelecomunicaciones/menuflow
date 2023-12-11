@@ -5,8 +5,8 @@ import pytest
 from mautrix.types import MessageType
 from pytest_mock import MockerFixture
 
+from menuflow.db.route import RouteState
 from menuflow.nodes import Message
-from menuflow.room import RoomState
 
 nest_asyncio.apply()
 
@@ -28,16 +28,16 @@ class TestMessageNode:
 
     @pytest.mark.asyncio
     async def test_update_node(self, message: Message):
-        assert message.room.node_id == message.id
+        assert message.room.route.node_id == message.id
         await message._update_node()
-        assert message.room.node_id == message.o_connection
+        assert message.room.route.node_id == message.o_connection
 
     @pytest.mark.asyncio
     async def test_update_node_to_end(self, message: Message):
         del message.content["o_connection"]
         await message._update_node()
-        assert message.room.node_id == ""
-        assert message.room.state == RoomState.END
+        assert message.room.route.node_id == ""
+        assert message.room.route.state == RouteState.END
 
     @pytest.mark.asyncio()
     async def test_run(self, message: Message, mocker: MockerFixture):

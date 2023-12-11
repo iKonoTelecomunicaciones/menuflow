@@ -4,7 +4,7 @@ from aiohttp import BasicAuth, ClientTimeout, ContentTypeError
 from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
-from ..db.room import RoomState
+from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import HTTPRequest as HTTPRequestModel
@@ -145,7 +145,7 @@ class HTTPRequest(Switch):
 
                 if self.o_connection:
                     await self.room.update_menu(
-                        node_id=self.o_connection, state=RoomState.END if not self.cases else None
+                        node_id=self.o_connection, state=RouteState.END if not self.cases else None
                     )
             return response.status, None
 
@@ -187,7 +187,7 @@ class HTTPRequest(Switch):
 
         if self.o_connection:
             await self.room.update_menu(
-                node_id=self.o_connection, state=RoomState.END if not self.cases else None
+                node_id=self.o_connection, state=RouteState.END if not self.cases else None
             )
 
         if variables:
@@ -263,5 +263,5 @@ class HTTPRequest(Switch):
             node_type=Nodes.http_request,
             node_id=self.id,
             o_connection=self.o_connection,
-            variables={**self.room._variables, **self.default_variables},
+            variables=self.room.all_variables | self.default_variables,
         )

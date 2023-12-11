@@ -8,7 +8,6 @@ from random import randrange
 from typing import Any, Dict, List
 
 from aiohttp import ClientSession
-from mautrix.client import Client as MatrixClient
 from mautrix.types import MessageEventContent, RoomID
 from mautrix.util.logging import TraceLogger
 
@@ -62,7 +61,6 @@ class Base:
     log: TraceLogger = getLogger("menuflow.node")
 
     config: Config
-    matrix_client: MatrixClient
     session: ClientSession
 
     content: Dict
@@ -115,18 +113,10 @@ class Base:
 
         """
 
-        # async def send():
-        #     if self.config["menuflow.typing_notification.enable"]:
-        #         await self.set_typing(room_id=room_id)
-
-        #     await self.room.matrix_client.send_message(room_id=room_id, content=content)
-
         if self.config["menuflow.typing_notification.enable"]:
             await self.set_typing(room_id=room_id)
 
         await self.room.matrix_client.send_message(room_id=room_id, content=content)
-
-        # create_task(send())
 
     def render_data(self, data: Dict | List | str) -> Dict | List | str:
         """It takes a dictionary or list, converts it to a string,
@@ -152,7 +142,7 @@ class Base:
                 self.log.exception(e)
                 return
 
-        copy_variables = {**self.default_variables, **self.room._variables}
+        copy_variables = self.default_variables | self.room.all_variables
 
         try:
             data = loads(data_template.render(**copy_variables))
