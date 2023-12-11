@@ -54,6 +54,15 @@ class Message(Base):
         )
 
     async def run(self, update_state: bool = True, generate_event: bool = True):
+        """This function runs the message node.
+
+        Parameters
+        ----------
+        update_state : bool
+            If true, the state of the room will be updated.
+        generate_event : bool
+            If true, the event will be generated.
+        """
         self.log.debug(f"Room {self.room.room_id} enters message node {self.id}")
 
         if not self.text:

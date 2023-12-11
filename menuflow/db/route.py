@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, ClassVar, Dict, Tuple
 
 from asyncpg import Record
 from attr import dataclass, ib
-from mautrix.types import SerializableEnum
+from mautrix.types import SerializableEnum, UserID
 from mautrix.util.async_db import Database
 from mautrix.util.logging import TraceLogger
 
@@ -61,7 +61,7 @@ class Route:
         return json.loads(self.variables)
 
     @classmethod
-    async def get_by_room_and_client(cls, room: int, client: int) -> Route | None:
+    async def get_by_room_and_client(cls, room: int, client: UserID) -> Route | None:
         q = f"SELECT id, {cls._columns} FROM route WHERE room=$1 and client=$2"
         row = await cls.db.fetchrow(q, room, client)
 

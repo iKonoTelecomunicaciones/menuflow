@@ -50,6 +50,7 @@ async def upgrade_v2(conn: Connection) -> None:
             variables   JSON
         )"""
     )
+    await conn.execute("CREATE INDEX ind_route_room_client ON route (room, client)")
     await conn.execute(
         "ALTER TABLE route ADD CONSTRAINT FK_room_route FOREIGN KEY (room) references room (id)"
     )

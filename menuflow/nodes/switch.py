@@ -77,6 +77,15 @@ class Switch(Base):
         return await self.get_case_by_id(result)
 
     async def run(self, update_state: bool = True, generate_event: bool = True) -> str:
+        """This function runs the switch node.
+
+        Parameters
+        ----------
+        update_state : bool
+            If true, the state of the room will be updated.
+        generate_event : bool
+            If true, the event will be generated.
+        """
         o_connection = await self._run()
         if update_state:
             await self.room.update_menu(o_connection)
