@@ -48,7 +48,8 @@ async def start_auth_middleware(
         log.info(f"The request url do not match with the middleware url")
         return
 
-    params.headers.update(middleware.general.get("headers"))
+    if middleware.general:
+        params.headers.update(middleware.general.get("headers"))
 
     if middleware.type == "jwt":
         room: Room = await Room.get_by_room_id(
