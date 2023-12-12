@@ -7,7 +7,7 @@
             {
                 "id": "start-2",
                 "type": "message",
-                "text": "Hello, this a flow sample. {{foo}}",
+                "text": "Hello, this a flow sample. {{ route.foo }}",
                 "o_connection": "input-1"
             },
             {
@@ -15,7 +15,7 @@
                 "type": "input",
                 "text": "Do you have 1 or more dogs?, please enter (y/n)",
                 "variable": "has_dogs",
-                "validation": "{{ has_dogs }}",
+                "validation": "{{ route.has_dogs }}",
                 "inactivity_options": {
                     "chat_timeout": 20,
                     "warning_message": "Please enter an option, or the menu will end.",
@@ -31,7 +31,7 @@
                         "id": "n",
                         "o_connection": "last-message",
                         "variable": {
-                            "no_dogs": "You are a user without dogs, without life, without happiness ..."
+                            "route.no_dogs": "You are a user without dogs, without life, without happiness ..."
                         }
                     },
                     {
@@ -48,8 +48,8 @@
                 "id": "input-2",
                 "type": "input",
                 "text": "Enter your dog's name:",
-                "variable": "dog_name",
-                "validation": "{{ dog_name }}",
+                "variable": "route.dog_name",
+                "validation": "{{ route.dog_name }}",
                 "cases": [
                     {
                         "id": "default",
@@ -61,8 +61,8 @@
                 "id": "input-3",
                 "type": "input",
                 "text": "Enter your dog's age in months:",
-                "variable": "dog_age",
-                "validation": "{% set aux = dog_age | string %}{% if aux.isdigit() %}True{%else%}False{% endif %}",
+                "variable": "route.dog_age",
+                "validation": "{% set aux = route.dog_age | string %}{% if aux.isdigit() %}True{%else%}False{% endif %}",
                 "cases": [
                     {
                         "id": "True",
@@ -77,20 +77,20 @@
             {
                 "id": "switch-1",
                 "type": "switch",
-                "validation": "{% set aux = dog_age %}{% set aux = aux | int %}{% if aux < 12 %}ok{%elif not dog_age.isdigit() %}{% else %}ko{% endif %}",
+                "validation": "{% set aux = route.dog_age %}{% set aux = aux | int %}{% if aux < 12 %}ok{%elif not route.dog_age.isdigit() %}{% else %}ko{% endif %}",
                 "cases": [
                     {
                         "id": "ok",
                         "o_connection": "request-1",
                         "variables": {
-                            "dog_message": "Your dog is a puppy"
+                            "route.dog_message": "Your dog is a puppy"
                         }
                     },
                     {
                         "id": "ko",
                         "o_connection": "request-1",
                         "variables": {
-                            "dog_message": "Your dog is an adult"
+                            "route.dog_message": "Your dog is an adult"
                         }
                     }
                 ]
@@ -99,9 +99,9 @@
                 "id": "request-1",
                 "type": "http_request",
                 "method": "GET",
-                "url": "{{dog_fatc_url}}",
+                "url": "{{ flow.dog_fatc_url }}",
                 "variables": {
-                    "dog_fact": "fact"
+                    "route.dog_fact": "fact"
                 },
                 "cases": [
                     {
@@ -117,7 +117,7 @@
             {
                 "id": "message-2",
                 "type": "message",
-                "text": "{{dog_message}}, also let me give you an interesting fact about dogs. Did you know that dogs: **{{ dog_fact }}**",
+                "text": "{{ route.dog_message }}, also let me give you an interesting fact about dogs. Did you know that dogs: **{{ route.dog_fact }}**",
                 "o_connection": "message-3"
             },
             {
@@ -146,7 +146,7 @@
                 "type": "input",
                 "text": "Now you enter the image of your dog:",
                 "input_type": "m.image",
-                "variable": "user_dog_image",
+                "variable": "route.user_dog_image",
                 "cases": [
                     {
                         "id": true,
@@ -161,7 +161,7 @@
             {
                 "id": "last-message",
                 "type": "message",
-                "text": "Bye bye! ... {{no_dogs}}"
+                "text": "Bye bye! ... {{ route.no_dogs }}"
             },
             {
                 "id": "error-message-1",

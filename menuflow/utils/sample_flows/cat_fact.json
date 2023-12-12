@@ -7,15 +7,15 @@
             {
                 "id": "start",
                 "type": "message",
-                "text": "Hello, this a flow sample. {{foo}}",
+                "text": "Hello, this a flow sample. {{ route.foo }}",
                 "o_connection": "input-1"
             },
             {
                 "id": "input-1",
                 "type": "input",
                 "text": "Do you have 1 or more cats?, please enter (y/n)",
-                "variable": "has_cats",
-                "validation": "{{ has_cats }}",
+                "variable": "route.has_cats",
+                "validation": "{{ route.has_cats }}",
                 "inactivity_options": {
                     "chat_timeout": 20,
                     "warning_message": "Please enter an option, or the menu will end.",
@@ -31,7 +31,7 @@
                         "id": "n",
                         "o_connection": "last-message",
                         "variable": {
-                            "no_cats": "You are a user without cats, without life, without happiness ..."
+                            "route.no_cats": "You are a user without cats, without life, without happiness ..."
                         }
                     },
                     {
@@ -48,8 +48,8 @@
                 "id": "input-2",
                 "type": "input",
                 "text": "Enter your cat's name:",
-                "variable": "cat_name",
-                "validation": "{{ cat_name }}",
+                "variable": "route.cat_name",
+                "validation": "{{ route.cat_name }}",
                 "cases": [
                     {
                         "id": "default",
@@ -61,8 +61,8 @@
                 "id": "input-3",
                 "type": "input",
                 "text": "Enter your cat's age in months:",
-                "variable": "cat_age",
-                "validation": "{% set aux = cat_age | string %}{% if aux.isdigit() %}True{%else%}False{% endif %}",
+                "variable": "route.cat_age",
+                "validation": "{% set aux = route.cat_age | string %}{% if aux.isdigit() %}True{%else%}False{% endif %}",
                 "cases": [
                     {
                         "id": "True",
@@ -77,20 +77,20 @@
             {
                 "id": "switch-1",
                 "type": "switch",
-                "validation": "{% set aux = cat_age %}{% set aux = aux | int %}{% if aux < 12 %}ok{%elif not cat_age.isdigit() %}{% else %}ko{% endif %}",
+                "validation": "{% set aux = route.cat_age %}{% set aux = aux | int %}{% if aux < 12 %}ok{%elif not route.cat_age.isdigit() %}{% else %}ko{% endif %}",
                 "cases": [
                     {
                         "id": "ok",
                         "o_connection": "request-1",
                         "variables": {
-                            "cat_message": "Your cat is a puppy"
+                            "route.cat_message": "Your cat is a puppy"
                         }
                     },
                     {
                         "id": "ko",
                         "o_connection": "request-1",
                         "variables": {
-                            "cat_message": "Your cat is an adult"
+                            "route.cat_message": "Your cat is an adult"
                         }
                     }
                 ]
@@ -99,9 +99,9 @@
                 "id": "request-1",
                 "type": "http_request",
                 "method": "GET",
-                "url": "{{cat_fatc_url}}",
+                "url": "{{ flow.cat_fatc_url }}",
                 "variables": {
-                    "cat_fact": "fact"
+                    "route.cat_fact": "fact"
                 },
                 "cases": [
                     {
@@ -117,7 +117,7 @@
             {
                 "id": "message-2",
                 "type": "message",
-                "text": "{{cat_message}}, also let me give you an interesting fact about cats. Did you know that cats: **{{ cat_fact }}**",
+                "text": "{{ route.cat_message }}, also let me give you an interesting fact about cats. Did you know that cats: **{{ route.cat_fact }}**",
                 "o_connection": "message-3"
             },
             {
@@ -146,7 +146,7 @@
                 "type": "input",
                 "text": "Now you enter the image of your cat:",
                 "input_type": "m.image",
-                "variable": "user_cat_image",
+                "variable": "route.user_cat_image",
                 "cases": [
                     {
                         "id": true,
@@ -161,7 +161,7 @@
             {
                 "id": "last-message",
                 "type": "message",
-                "text": "Bye bye! ... {{no_cats}}"
+                "text": "Bye bye! ... {{ route.no_cats }}"
             },
             {
                 "id": "error-message-1",

@@ -9,7 +9,7 @@ nest_asyncio.apply()
 
 class TestInputNode:
     def test_variable(self, input_text: Input):
-        assert input_text.variable == "has_cats"
+        assert input_text.variable == "route.has_cats"
 
     def test_input_type(self, input_text: Input):
         assert input_text.input_type == MessageType.TEXT

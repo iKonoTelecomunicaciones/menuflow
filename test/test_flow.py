@@ -23,7 +23,9 @@ class TestFlow:
         assert node.id == "start"
 
     def test_flow_variables(self, sample_flow_1: Flow):
-        assert sample_flow_1.flow_variables == {"cat_fatc_url": "https://catfact.ninja/fact"}
+        assert sample_flow_1.flow_variables == {
+            "flow": {"cat_fatc_url": "https://catfact.ninja/fact"}
+        }
 
     def test_dont_repeat_nodes(self, sample_flow_1: Flow, sample_flow_2: Flow):
         assert sample_flow_1.nodes != sample_flow_2.nodes

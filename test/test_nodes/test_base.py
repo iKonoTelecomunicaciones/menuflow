@@ -25,14 +25,18 @@ class TestBase:
         """It takes a string, list, or dictionary and replaces any string that matches a key in
         the `base.data` dictionary with the value of that key
         """
-        assert "https://catfact.ninja/fact" == base.render_data("{{cat_fatc_url}}")
+        assert "https://catfact.ninja/fact" == base.render_data("{{ flow.cat_fatc_url }}")
         assert ["https://catfact.ninja/fact", "", "Foo"] == base.render_data(
-            ["{{cat_fatc_url}}", "{{foo}}", "Foo"]
+            ["{{ flow.cat_fatc_url }}", "{{ foo }}", "Foo"]
         )
         assert {
             "foo": "https://catfact.ninja/fact",
             "https://catfact.ninja/fact": "foo",
             "bar": "",
         } == base.render_data(
-            {"foo": "{{cat_fatc_url}}", "{{cat_fatc_url}}": "foo", "bar": "{{foo}}"}
+            {
+                "foo": "{{ flow.cat_fatc_url }}",
+                "{{ flow.cat_fatc_url }}": "foo",
+                "bar": "{{ foo }}",
+            }
         )

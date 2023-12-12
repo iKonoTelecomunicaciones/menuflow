@@ -23,12 +23,12 @@ class TestSwitchNode:
             {
                 "id": "ok",
                 "o_connection": "request-1",
-                "variables": {"cat_message": "Your cat is a puppy"},
+                "variables": {"route.cat_message": "Your cat is a puppy"},
             },
             {
                 "id": "ko",
                 "o_connection": "request-1",
-                "variables": {"cat_message": "Your cat is an adult"},
+                "variables": {"route.cat_message": "Your cat is an adult"},
             },
         ]
 
@@ -37,11 +37,11 @@ class TestSwitchNode:
         assert await switch.load_cases() == {
             "ok": {
                 "o_connection": "request-1",
-                "variables": {"cat_message": "Your cat is a puppy"},
+                "variables": {"route.cat_message": "Your cat is a puppy"},
             },
             "ko": {
                 "o_connection": "request-1",
-                "variables": {"cat_message": "Your cat is an adult"},
+                "variables": {"route.cat_message": "Your cat is an adult"},
             },
         }
 
