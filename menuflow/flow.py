@@ -48,7 +48,7 @@ class Flow:
 
     @property
     def flow_variables(self) -> Dict:
-        return self.data.get("flow_variables", {})
+        return {"flow": self.data.get("flow_variables", {})}
 
     def get_node_by_id(self, node_id: str) -> Dict | None:
         """This function returns a node from a cache or a list of nodes based on its ID.

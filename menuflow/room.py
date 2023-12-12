@@ -54,7 +54,7 @@ class Room(DBRoom):
 
     @property
     def all_variables(self) -> Dict:
-        return self._variables | self.route._variables
+        return {"room": self._variables, "route": self.route._variables}
 
     @classmethod
     @async_getter_lock
