@@ -124,7 +124,13 @@ class Room(DBRoom):
             The value of the variable with the given id.
 
         """
-        return self.all_variables.get(variable_id)
+        try:
+            scope, key = variable_id.split(".", 1)
+        except ValueError:
+            scope = "route"
+            key = variable_id
+
+        return self.all_variables.get(scope, {}).get(key, None)
 
     async def set_variable(self, variable_id: str, value: Any) -> None:
         """The function sets a variable value in either the room or route scope
