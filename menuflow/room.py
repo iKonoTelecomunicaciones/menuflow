@@ -201,24 +201,24 @@ class Room(DBRoom):
             scope = "route"
             key = variable_id
 
-        new_variables: Dict = self._variables if scope == "room" else self.route._variables
-        if not new_variables:
+        variables: Dict = self._variables if scope == "room" else self.route._variables
+        if not variables:
             self.log.debug(f"Variables in the room {self.room_id} are empty")
             return
 
-        if new_variables and not new_variables.get(key):
+        if variables and not variables.get(key):
             self.log.debug(f"Variable [{variable_id}] does not exists in the room {self.room_id}")
             return
 
         self.log.debug(
             f"Removing variable [{key}] to room [{self.room_id}] in scope {scope}"
-            f":: content [{new_variables.get(key)}]"
+            f":: content [{variables.get(key)}]"
         )
-        new_variables.pop(key, None)
+        variables.pop(key, None)
         if scope == "room":
-            self.variables = json.dumps(new_variables)
+            self.variables = json.dumps(variables)
         else:
-            self.route.variables = json.dumps(new_variables)
+            self.route.variables = json.dumps(variables)
         await self.update() if scope == "room" else await self.route.update()
 
     async def del_variables(self, variables: List = []) -> None:
