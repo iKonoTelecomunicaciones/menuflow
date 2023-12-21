@@ -15,5 +15,6 @@ from .nodes import (
     Location,
     Media,
     Message,
+    SetVars,
     Switch,
 )
