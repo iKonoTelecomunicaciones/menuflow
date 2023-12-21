@@ -11,3 +11,4 @@ class Nodes(SerializableEnum):
     interactive_input = "interactive_input"
     location = "location"
     media = "media"
+    set_vars = "set_vars"

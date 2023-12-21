@@ -18,6 +18,7 @@ from .nodes import (
     Location,
     Media,
     Message,
+    SetVars,
     Switch,
 )
 from .repository import Flow as FlowModel
@@ -138,6 +139,10 @@ class Flow:
         elif node_data.get("type") == "leave":
             node_initialized = Leave(
                 leave_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
+        elif node_data.get("type") == "set_vars":
+            node_initialized = SetVars(
+                set_vars_node_data=node_data, room=room, default_variables=self.flow_variables
             )
         elif node_data.get("type") == "invite_user":
             node_initialized = InviteUser(

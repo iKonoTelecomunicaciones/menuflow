@@ -4,7 +4,7 @@ import json
 from asyncio import Future, Lock
 from collections import defaultdict
 from logging import getLogger
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 
 from mautrix.client import Client as MatrixClient
 from mautrix.types import EventType, RoomID, StateEventContent, UserID
@@ -164,7 +164,7 @@ class Room(DBRoom):
         new_variables = self._variables if scope == "room" else self.route._variables
         new_variables[key] = value
         if scope == "room":
-            self._variables = json.dumps(new_variables)
+            self.variables = json.dumps(new_variables)
         else:
             self.route.variables = json.dumps(new_variables)
         await self.update() if scope == "room" else await self.route.update()
@@ -180,6 +180,57 @@ class Room(DBRoom):
         """
         for variable in variables:
             await self.set_variable(variable_id=variable, value=variables[variable])
+
+    async def del_variable(self, variable_id: str) -> None:
+        """The function delete a variable in either the room or route scope
+        and updates the corresponding JSON data.
+
+        Parameters
+        ----------
+        variable_id : str
+            The `variable_id` parameter is a string that represents the identifier of the variable you want to set.
+            It can be in the format "scope.key" or just "key".
+            The "scope" indicates the scope of the variable (e.g., "room" or "route")."
+        """
+        if not variable_id:
+            return
+
+        try:
+            scope, key = variable_id.split(".")
+        except ValueError:
+            scope = "route"
+            key = variable_id
+
+        new_variables: Dict = self._variables if scope == "room" else self.route._variables
+        if not new_variables:
+            self.log.debug(f"Variables in the room {self.room_id} are empty")
+            return
+
+        if new_variables and not new_variables.get(key):
+            self.log.debug(f"Variable [{variable_id}] does not exists in the room {self.room_id}")
+            return
+
+        self.log.debug(
+            f"Removing variable [{key}] to room [{self.room_id}] in scope {scope}"
+            f":: content [{new_variables.get(key)}]"
+        )
+        new_variables.pop(key, None)
+        if scope == "room":
+            self.variables = json.dumps(new_variables)
+        else:
+            self.route.variables = json.dumps(new_variables)
+        await self.update() if scope == "room" else await self.route.update()
+
+    async def del_variables(self, variables: List = []) -> None:
+        """This function delete the variables in the room.
+
+        Parameters
+        ----------
+            variables: List
+                The variables to delete.
+        """
+        for variable in variables:
+            await self.del_variable(variable_id=variable)
 
     async def update_menu(self, node_id: str, state: Optional[RouteState] = None):
         """Updates the menu's node_id and state.
