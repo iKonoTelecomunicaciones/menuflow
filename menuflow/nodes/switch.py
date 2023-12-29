@@ -63,16 +63,18 @@ class Switch(Base):
             The str object
 
         """
-
-        self.log.debug(f"Executing validation of input [{self.id}] for room [{self.room.room_id}]")
-
         result = None
 
         try:
+            self.log.info(f"Get validation of input [{self.id}] for room [{self.room.room_id}]")
             result = self.validation
         except Exception as e:
             self.log.warning(f"An exception has occurred in the pipeline [{self.id} ]:: {e}")
             result = "except"
+
+        if not result:
+            self.log.debug(f"Validation value is not found, validate case by case in [{self.id}]")
+            return await self.validate_cases()
 
         return await self.get_case_by_id(result)
 
@@ -128,6 +130,49 @@ class Switch(Base):
         except KeyError:
             default_case, o_connection = await self.manage_case_exceptions()
             self.log.debug(f"Case [{id}] not found; the [{default_case} case] will be sought")
+            return self.render_data(o_connection)
+
+    async def validate_cases(self) -> str:
+        case_o_connection = None
+
+        for case in self.cases:
+            if not case.get("case") and case.get("id"):
+                self.log.warning(
+                    f"You should use the 'validation' field to use case by ID in [{self.id}]"
+                )
+                continue
+
+            case_validation = self.render_data(case.get("case", False))
+            if not case_validation:
+                continue
+
+            if case_validation and not isinstance(case_validation, bool):
+                self.log.warning(
+                    f"Case validation [{case_validation}] in [{self.id}] should be boolean"
+                )
+                continue
+
+            # Load variables defined in the case into the room
+            await self.load_variables(case.get("variables", {}))
+
+            # Get the o_connection of the case
+            case_o_connection = self.render_data(case.get("o_connection"))
+            self.log.debug(
+                f"The case [{case_o_connection}] has been obtained in the input node [{self.id}]"
+            )
+
+            # Delete the validation attempts of the room
+            if self.validation_attempts and self.room.room_id in self.VALIDATION_ATTEMPTS_BY_ROOM:
+                del self.VALIDATION_ATTEMPTS_BY_ROOM[self.room.room_id]
+
+            return case_o_connection
+
+        if not case_o_connection:
+            default_case, o_connection = await self.manage_case_exceptions()
+            self.log.debug(
+                f"Case validations in [{self.id}] do not match; "
+                f"the [{default_case}] case will be sought"
+            )
             return self.render_data(o_connection)
 
     async def load_variables(self, case: Dict) -> None:
