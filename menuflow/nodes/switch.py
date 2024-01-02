@@ -133,6 +133,14 @@ class Switch(Base):
             return self.render_data(o_connection)
 
     async def validate_cases(self) -> str:
+        """Used to validate case by case and return the o_connection value
+        for the first valid case.
+
+        Returns
+        -------
+            the value of the variable `case_o_connection`.
+
+        """
         case_o_connection = None
 
         for case in self.cases:

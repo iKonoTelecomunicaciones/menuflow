@@ -19,7 +19,10 @@ class Switch(FlowObject):
     ## Switch
 
     A switch type node allows to validate the content of a jinja variable,
-    and from the result to transit to another node.
+    and from the result to transit to another node. Example: switch-1
+
+    You can also validate on a case-by-case basis to determine which node to transit to.
+    Example: switch-2
 
     content:
 
@@ -37,6 +40,24 @@ class Switch(FlowObject):
         o_connection: m3
       - id: attempt_exceeded
         o_connection: m4
+
+    - id: switch-2
+      type: switch
+      variable: route.opt
+      cases:
+      - case: "{% if route.opt == 1 %}True{% else %}False{% endif %}"
+        o_connection: m1
+      - case: "{% if compare_ratio(route.opt|string, 'hello world')|int >= 80 %}True{% else %}False{% endif %}"
+        o_connection: m_hello
+      - case: "{% if route.opt|int >= 18 %}True{% else %}False{% endif %}"
+        o_connection: m_adult_only
+        variables:
+          route.active: True
+          route.foo: "bar"
+      - case: '{% if match("^(0[1-9]|[12][0-9]|3[01])\s(0[1-9]|1[012])\s(19[0-9][0-9]|20[0-9][0-9])$", route.opt) %}True{% else %}False{% endif %}'
+        o_connection: m_schedule
+      - case: "{% if route.opt == 5 %}True{% else %}False{% endif %}"
+        o_connection: m5
     ```
     """
 
