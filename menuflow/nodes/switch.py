@@ -77,7 +77,7 @@ class Switch(Base):
             result = "except"
 
         if result is None:
-            self.log.debug(f"Validation value is not found, validate case by case in [{self.id}]")
+            self.log.debug(f"Validation value not found, validating case by case in [{self.id}]")
             return await self.validate_cases()
 
         return await self.get_case_by_id(result)
