@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Optional
+import asyncio
+from copy import deepcopy
+from typing import Dict, Optional
 
 from mautrix.client import Client as MatrixClient
 from mautrix.types import (
@@ -32,10 +34,42 @@ class MatrixHandler(MatrixClient):
         self.flow_utils = flow_utils
         self.util = Util(self.config)
         self.flow = Flow(flow_utils=flow_utils, flow_mxid=self.mxid)
+        self.LOCKED_ROOMS = set()
+        self.LAST_JOIN_EVENT: Dict[RoomID, int] = {}
         Base.init_cls(
             config=self.config,
             session=self.api.session,
         )
+
+    def handle_sync(self, data: Dict) -> list[asyncio.Task]:
+        # This is a way to remove duplicate events from the sync
+        aux_data = deepcopy(data)
+        for room_id, room_data in aux_data.get("rooms", {}).get("join", {}).items():
+            for i in range(len(room_data.get("timeline", {}).get("events", [])) - 1, -1, -1):
+                evt = room_data.get("timeline", {}).get("events", [])[i]
+                if (
+                    self.LAST_JOIN_EVENT.get(room_id)
+                    and evt.get("origin_server_ts") <= self.LAST_JOIN_EVENT[room_id]
+                ):
+                    del data["rooms"]["join"][room_id]["timeline"]["events"][i]
+                    continue
+
+                if (
+                    evt.get("type", "") == "m.room.member"
+                    and evt.get("state_key", "") == self.mxid
+                ):
+                    if evt.get("content", {}).get("membership") == "join":
+                        self.LAST_JOIN_EVENT[room_id] = evt.get("origin_server_ts")
+
+        return super().handle_sync(data)
+
+    def unlock_room(self, room_id: RoomID):
+        self.log.debug(f"UNLOCKING ROOM... {room_id}")
+        self.LOCKED_ROOMS.discard(room_id)
+
+    def lock_room(self, room_id: RoomID):
+        self.log.debug(f"LOCKING ROOM... {room_id}")
+        self.LOCKED_ROOMS.add(room_id)
 
     async def handle_member(self, evt: StrippedStateEvent) -> None:
         unsigned = evt.unsigned or StateUnsigned()
@@ -119,19 +153,23 @@ class MatrixHandler(MatrixClient):
         if not evt.state_key == self.mxid:
             return
 
+        if evt.room_id in self.LOCKED_ROOMS:
+            self.log.warning(f"Ignoring menu request in {evt.room_id} Menu locked")
+            return
+
+        self.lock_room(evt.room_id)
+
         self.log.info(f"{evt.state_key} ACCEPTED -- EVENT JOIN ... {evt.room_id}")
         room: Room = await Room.get_by_room_id(room_id=evt.room_id, bot_mxid=self.mxid)
         room.config = self.config
         room.matrix_client = self
 
         await room.clean_up()
-
         await self.load_room_constants(evt.room_id)
-
         await self.algorithm(room=room)
 
     async def handle_leave(self, evt: StrippedStateEvent):
-        pass
+        self.unlock_room(evt.room_id)
 
     async def handle_message(self, message: MessageEvent) -> None:
         self.log.debug(
