@@ -8,7 +8,7 @@ menuflow:
         # You can use of the fields defined in RoomEventFilter, for more information:
         # https://github.com/mautrix/python/blob/master/mautrix/types/filter.py#L57
         room_event_filter:
-            limit: 0
+            limit: 5
             lazy_load_members: true
 
     # Ignore messages or invitations from this users, it accepts user_ids and regex
