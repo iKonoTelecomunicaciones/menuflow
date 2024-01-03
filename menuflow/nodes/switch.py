@@ -21,7 +21,11 @@ class Switch(Base):
 
     @property
     def validation(self) -> str:
-        return self.render_data(data=self.content.get("validation"))
+        return (
+            self.render_data(data=self.content.get("validation"))
+            if self.content.get("validation")
+            else None
+        )
 
     @property
     def validation_attempts(self) -> int | None:
@@ -72,8 +76,8 @@ class Switch(Base):
             self.log.warning(f"An exception has occurred in the pipeline [{self.id} ]:: {e}")
             result = "except"
 
-        if not result:
-            self.log.debug(f"Validation value is not found, validate case by case in [{self.id}]")
+        if result is None:
+            self.log.debug(f"Validation value not found, validating case by case in [{self.id}]")
             return await self.validate_cases()
 
         return await self.get_case_by_id(result)
