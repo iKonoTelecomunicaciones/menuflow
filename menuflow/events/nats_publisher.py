@@ -34,7 +34,11 @@ class NatsPublisher:
     async def nats_jetstream_connection(cls) -> JetStreamContext:
         log.info("Connecting to NATS JetStream")
         nc: NATSClient = await nats_connect(
-            cls.config["nats.address"], allow_reconnect=False, max_reconnect_attempts=1
+            cls.config["nats.address"],
+            allow_reconnect=False,
+            max_reconnect_attempts=1,
+            user=cls.config["nats.user"],
+            password=cls.config["nats.password"],
         )
         js = nc.jetstream()
         subject = f"{cls.config['nats.subject']}.*"
