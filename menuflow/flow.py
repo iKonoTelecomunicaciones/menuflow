@@ -19,6 +19,7 @@ from .nodes import (
     Media,
     Message,
     SetVars,
+    Subroutine,
     Switch,
 )
 from .repository import Flow as FlowModel
@@ -147,6 +148,10 @@ class Flow:
         elif node_data.get("type") == "invite_user":
             node_initialized = InviteUser(
                 invite_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
+        elif node_data.get("type") == "subroutine":
+            node_initialized = Subroutine(
+                subroutine_node_data=node_data, room=room, default_variables=self.flow_variables
             )
         else:
             return
