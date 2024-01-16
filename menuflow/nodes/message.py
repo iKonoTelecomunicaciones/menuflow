@@ -43,14 +43,10 @@ class Message(Base):
     def text(self) -> str:
         return self.render_data(data=self.content.get("text", ""))
 
-    @property
-    def o_connection(self) -> str:
-        return self.render_data(self.content.get("o_connection", ""))
-
-    async def _update_node(self):
+    async def _update_node(self, o_connection: str):
         await self.room.update_menu(
-            node_id=self.o_connection,
-            state=RouteState.END if not self.o_connection else None,
+            node_id=o_connection,
+            state=RouteState.END if not o_connection else None,
         )
 
     async def run(self, update_state: bool = True, generate_event: bool = True):
@@ -77,8 +73,9 @@ class Message(Base):
 
             await self.send_message(room_id=self.room.room_id, content=msg_content)
 
+        o_connection = await self.get_o_connection()
         if update_state:
-            await self._update_node()
+            await self._update_node(o_connection)
 
         if generate_event:
             await send_node_event(
@@ -89,6 +86,6 @@ class Message(Base):
                 sender=self.room.matrix_client.mxid,
                 node_type=Nodes.message,
                 node_id=self.id,
-                o_connection=self.o_connection,
+                o_connection=o_connection,
                 variables=self.room.all_variables | self.default_variables,
             )

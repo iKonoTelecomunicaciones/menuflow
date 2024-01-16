@@ -93,6 +93,10 @@ class Switch(Base):
             If true, the event will be generated.
         """
         o_connection = await self._run()
+
+        if o_connection is None or o_connection in ["finish", ""]:
+            o_connection = await self.get_o_connection()
+
         if update_state:
             await self.room.update_menu(o_connection)
 
@@ -182,7 +186,7 @@ class Switch(Base):
         if not case_o_connection:
             default_case, o_connection = await self.manage_case_exceptions()
             self.log.debug(
-                f"Case validations in [{self.id}] do not match; "
+                f"Case validations in [{self.id}] do not match with [{o_connection}]; "
                 f"the [{default_case}] case will be sought"
             )
             return self.render_data(o_connection)

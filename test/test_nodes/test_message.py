@@ -23,19 +23,21 @@ class TestMessageNode:
         await message.room.set_variable("foo", "The foo message")
         assert message.text == "Hello, this a flow sample. The foo message"
 
-    def test_o_connection(self, message: Message):
-        assert message.o_connection == "input-1"
+    @pytest.mark.asyncio
+    async def test_o_connection(self, message: Message):
+        assert await message.get_o_connection() == "input-1"
 
     @pytest.mark.asyncio
     async def test_update_node(self, message: Message):
+        o_connection = await message.get_o_connection()
         assert message.room.route.node_id == message.id
-        await message._update_node()
-        assert message.room.route.node_id == message.o_connection
+        await message._update_node(o_connection)
+        assert message.room.route.node_id == o_connection
 
     @pytest.mark.asyncio
     async def test_update_node_to_end(self, message: Message):
         del message.content["o_connection"]
-        await message._update_node()
+        await message._update_node("")
         assert message.room.route.node_id == ""
         assert message.room.route.state == RouteState.END
 

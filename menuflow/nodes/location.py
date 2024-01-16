@@ -37,9 +37,11 @@ class Location(Message):
             geo_uri=f"geo:{self.longitude},{self.latitude}",
         )
         await self.send_message(room_id=self.room.room_id, content=location_message)
+
+        o_connection = self.get_o_connection()
         await self.room.update_menu(
-            node_id=self.o_connection,
-            state=RouteState.END if not self.o_connection else None,
+            node_id=o_connection,
+            state=RouteState.END if not o_connection else None,
         )
 
         await send_node_event(
@@ -50,6 +52,6 @@ class Location(Message):
             sender=self.room.matrix_client.mxid,
             node_type=Nodes.location,
             node_id=self.id,
-            o_connection=self.o_connection,
+            o_connection=o_connection,
             variables=self.room.all_variables | self.default_variables,
         )

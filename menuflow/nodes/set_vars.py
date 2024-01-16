@@ -18,10 +18,6 @@ class SetVars(Base):
     def variables(self) -> SetVarsModel:
         return self.render_data(data=self.content.get("variables", ""))
 
-    @property
-    def o_connection(self) -> str:
-        return self.render_data(self.content.get("o_connection", ""))
-
     async def run(self):
         """This function runs the set_var node."""
         self.log.debug(f"Room {self.room.room_id} enters set_var node {self.id}")
@@ -44,7 +40,8 @@ class SetVars(Base):
         except ValueError as e:
             self.log.warning(e)
 
+        o_connection = self.get_o_connection()
         await self.room.update_menu(
-            node_id=self.o_connection,
-            state=RouteState.END if not self.o_connection else None,
+            node_id=o_connection,
+            state=RouteState.END if not o_connection else None,
         )

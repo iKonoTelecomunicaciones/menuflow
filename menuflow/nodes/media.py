@@ -121,22 +121,23 @@ class Media(Message):
         """It sends a message to the room with the media attached"""
         self.log.debug(f"Room {self.room.room_id} enters media node {self.id}")
 
+        o_connection = self.get_o_connection()
         try:
             media_message = self.media_cache[self.url]
         except KeyError:
             media_message = await self.load_media()
             if media_message is None:
                 await self.room.update_menu(
-                    node_id=self.o_connection,
-                    state=RouteState.END if not self.o_connection else None,
+                    node_id=o_connection,
+                    state=RouteState.END if not o_connection else None,
                 )
             self.media_cache[self.url] = media_message
 
         await self.send_message(room_id=self.room.room_id, content=media_message)
 
         await self.room.update_menu(
-            node_id=self.o_connection,
-            state=RouteState.END if not self.o_connection else None,
+            node_id=o_connection,
+            state=RouteState.END if not o_connection else None,
         )
 
         await send_node_event(
@@ -147,6 +148,6 @@ class Media(Message):
             sender=self.room.matrix_client.mxid,
             node_type=Nodes.media,
             node_id=self.id,
-            o_connection=self.o_connection,
+            o_connection=o_connection,
             variables=self.room.all_variables | self.default_variables,
         )

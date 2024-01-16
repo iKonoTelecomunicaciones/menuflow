@@ -29,7 +29,6 @@ class HTTPRequest(Switch):
         )
         self.log = self.log.getChild(http_request_node_data.get("id"))
         self.content: Dict = http_request_node_data
-        self.o_connection = None
 
     @property
     def method(self) -> str:
@@ -130,8 +129,8 @@ class HTTPRequest(Switch):
             )
         except Exception as e:
             self.log.exception(f"Error in http_request node: {e}")
-            self.o_connection = await self.get_case_by_id(id=500)
-            await self.room.update_menu(node_id=self.o_connection, state=None)
+            o_connection = await self.get_case_by_id(id=500)
+            await self.room.update_menu(node_id=o_connection, state=None)
             return 500, e
 
         self.log.debug(
@@ -141,16 +140,16 @@ class HTTPRequest(Switch):
         if response.status == 401:
             if not self.middleware:
                 if self.cases:
-                    self.o_connection = await self.get_case_by_id(id=response.status)
+                    o_connection = await self.get_case_by_id(id=response.status)
 
-                if self.o_connection:
+                if o_connection:
                     await self.room.update_menu(
-                        node_id=self.o_connection, state=RouteState.END if not self.cases else None
+                        node_id=o_connection, state=RouteState.END if not self.cases else None
                     )
             return response.status, None
 
         variables = {}
-        self.o_connection = None
+        o_connection = None
 
         if self.cookies:
             for cookie in self.cookies:
@@ -183,17 +182,20 @@ class HTTPRequest(Switch):
                     break
 
         if self.cases:
-            self.o_connection = await self.get_case_by_id(id=response.status)
+            o_connection = await self.get_case_by_id(id=response.status)
 
-        if self.o_connection:
+        if o_connection:
             await self.room.update_menu(
-                node_id=self.o_connection, state=RouteState.END if not self.cases else None
+                node_id=o_connection, state=RouteState.END if not self.cases else None
             )
 
         if variables:
             await self.room.set_variables(variables=variables)
 
-        return response.status, await response.text()
+        if o_connection is None:
+            o_connection = await self.get_o_connection()
+
+        return response.status, await response.text(), o_connection
 
     async def run_middleware(self, status: int):
         """This function check athentication attempts to avoid an infinite try_athentication cicle.
@@ -246,7 +248,7 @@ class HTTPRequest(Switch):
         and then runs the middleware
         """
         try:
-            status, response = await self.make_request()
+            status, response, o_connection = await self.make_request()
             self.log.info(f"http_request node {self.id} had a status of {status}")
         except Exception as e:
             self.log.exception(e)
@@ -262,6 +264,6 @@ class HTTPRequest(Switch):
             sender=self.room.matrix_client.mxid,
             node_type=Nodes.http_request,
             node_id=self.id,
-            o_connection=self.o_connection,
+            o_connection=o_connection,
             variables=self.room.all_variables | self.default_variables,
         )
