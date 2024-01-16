@@ -42,7 +42,7 @@ class NatsPublisher:
         )
         js = nc.jetstream()
         subject = f"{cls.config['nats.subject']}.*"
-        await js.add_stream(name="menuflow", subjects=[subject])
+        await js.add_stream(name=cls.config["nats.stream"], subjects=[subject])
         return nc, js
 
     @classmethod
