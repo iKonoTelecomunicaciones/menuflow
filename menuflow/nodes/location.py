@@ -38,7 +38,7 @@ class Location(Message):
         )
         await self.send_message(room_id=self.room.room_id, content=location_message)
 
-        o_connection = self.get_o_connection()
+        o_connection = await self.get_o_connection()
         await self.room.update_menu(
             node_id=o_connection,
             state=RouteState.END if not o_connection else None,

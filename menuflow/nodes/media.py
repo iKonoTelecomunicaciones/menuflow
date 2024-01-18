@@ -121,7 +121,7 @@ class Media(Message):
         """It sends a message to the room with the media attached"""
         self.log.debug(f"Room {self.room.room_id} enters media node {self.id}")
 
-        o_connection = self.get_o_connection()
+        o_connection = await self.get_o_connection()
         try:
             media_message = self.media_cache[self.url]
         except KeyError:

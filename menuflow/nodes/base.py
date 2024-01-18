@@ -166,7 +166,6 @@ class Base:
 
         """
         o_connection = self.render_data(self.content.get("o_connection", ""))
-        self.log.info(f"The o_connection value in {self.id} is: [{o_connection}]")
 
         # if o_connection is None or o_connection in ["finish", ""]:
         if o_connection is None or o_connection in ["finish", ""]:
@@ -179,5 +178,7 @@ class Base:
                 self.log.debug(f"Getting o_connection from route stack: '{_stack.queue}'")
                 o_connection = _stack.get(timeout=3)
 
-        self.log.debug(f"Go to o_connection [{o_connection}] node")
+        if o_connection:
+            self.log.info(f"Go to o_connection node in '{self.id}': [{o_connection}]")
+
         return o_connection

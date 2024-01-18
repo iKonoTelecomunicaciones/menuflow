@@ -131,7 +131,7 @@ class HTTPRequest(Switch):
             self.log.exception(f"Error in http_request node: {e}")
             o_connection = await self.get_case_by_id(id=500)
             await self.room.update_menu(node_id=o_connection, state=None)
-            return 500, e
+            return 500, e, o_connection
 
         self.log.debug(
             f"node: {self.id} method: {self.method} url: {self.url} status: {response.status}"
@@ -146,7 +146,7 @@ class HTTPRequest(Switch):
                     await self.room.update_menu(
                         node_id=o_connection, state=RouteState.END if not self.cases else None
                     )
-            return response.status, None
+            return response.status, None, o_connection
 
         variables = {}
         o_connection = None

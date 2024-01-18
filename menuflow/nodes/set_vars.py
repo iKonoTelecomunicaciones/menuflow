@@ -40,7 +40,7 @@ class SetVars(Base):
         except ValueError as e:
             self.log.warning(e)
 
-        o_connection = self.get_o_connection()
+        o_connection = await self.get_o_connection()
         await self.room.update_menu(
             node_id=o_connection,
             state=RouteState.END if not o_connection else None,
