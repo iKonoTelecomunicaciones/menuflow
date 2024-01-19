@@ -138,6 +138,7 @@ class HTTPRequest(Switch):
         )
 
         if response.status == 401:
+            o_connection = None
             if not self.middleware:
                 if self.cases:
                     o_connection = await self.get_case_by_id(id=response.status)
