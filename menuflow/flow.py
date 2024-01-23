@@ -6,7 +6,7 @@ from typing import Dict, Optional
 from mautrix.util.logging import TraceLogger
 
 from .flow_utils import FlowUtils
-from .middlewares import HTTPMiddleware
+from .middlewares import HTTPMiddleware, ASRMiddleware
 from .nodes import (
     CheckTime,
     Email,
@@ -23,6 +23,7 @@ from .nodes import (
 )
 from .repository import Flow as FlowModel
 from .room import Room
+from .types import MiddlewareType
 
 
 class Flow:
@@ -76,15 +77,29 @@ class Flow:
                 self._add_node_to_cache(node)
                 return node
 
-    def middleware(self, middleware_id: str, room: Room) -> HTTPMiddleware:
+    def middleware(self, middleware_id: str, room: Room) -> HTTPMiddleware | MiddlewareType:
         middleware_model = self.flow_utils.get_middleware_by_id(middleware_id=middleware_id)
+        self.log.critical(f"middleware_model: {middleware_model}")
 
         if not middleware_model:
             return
 
-        middleware_initialized = HTTPMiddleware(
-            http_middleware_data=middleware_model, room=room, default_variables=self.flow_variables
-        )
+        if middleware_model.type == MiddlewareType.asr:
+            self.log.critical("Initializing ASR middleware")
+            middleware_initialized = ASRMiddleware(
+                asr_middleware_content=middleware_model,
+                room=room,
+                default_variables=self.flow_variables,
+            )
+            self.log.critical(f"middleware_initialized: {middleware_initialized}")
+
+        else:
+            self.log.critical("Initializing HTTPMiddleware")
+            middleware_initialized = HTTPMiddleware(
+                http_middleware_data=middleware_model,
+                room=room,
+                default_variables=self.flow_variables,
+            )
 
         return middleware_initialized
 
@@ -120,6 +135,11 @@ class Flow:
             node_initialized = Input(
                 input_node_data=node_data, room=room, default_variables=self.flow_variables
             )
+
+            if node_data.get("middleware"):
+                self.log.critical(f"node_data: {node_data}")
+                middleware = self.middleware(node_data.get("middleware"), room)
+                node_initialized.middleware = middleware
         elif node_data.get("type") == "check_time":
             node_initialized = CheckTime(
                 check_time_node_data=node_data, room=room, default_variables=self.flow_variables

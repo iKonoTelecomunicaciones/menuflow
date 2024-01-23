@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 from mautrix.types import (
     LocationMessageEventContent,
@@ -22,8 +22,13 @@ from .message import Message
 from .switch import Switch
 from .types import Nodes
 
+if TYPE_CHECKING:
+    from ..middlewares import ASRMiddleware
+
 
 class Input(Switch, Message):
+    middleware: "ASRMiddleware" = None
+
     def __init__(self, input_node_data: InputModel, room: Room, default_variables: Dict) -> None:
         Switch.__init__(self, input_node_data, room=room, default_variables=default_variables)
         Message.__init__(self, input_node_data, room=room, default_variables=default_variables)
@@ -109,7 +114,7 @@ class Input(Switch, Message):
             if not evt or not self.variable:
                 self.log.warning("A problem occurred to trying save the variable")
                 return
-
+            self.log.critical(f"Validating the data {self.input_type}")
             if self.input_type == MessageType.TEXT:
                 o_connection = await self.input_text(content=evt.content)
             elif self.input_type in [
@@ -124,6 +129,11 @@ class Input(Switch, Message):
 
             if self.inactivity_options:
                 await Util.cancel_task(task_name=self.room.room_id)
+
+            self.log.critical(f"Middleware Input: {self.middleware}")
+            self.log.critical(f"evt.content: {evt.content}")
+            if self.middleware:
+                await self.middleware.run(self, audio_url=evt.content.url)
 
             await send_node_event(
                 config=self.room.config,
