@@ -19,10 +19,6 @@ class Subroutine(Base):
         self.content: Dict = subroutine_node_data
 
     @property
-    def variables(self) -> SubroutineModel:
-        return self.render_data(data=self.content.get("variables", ""))
-
-    @property
     def go_sub(self) -> str:
         return self.render_data(self.content.get("go_sub", ""))
 

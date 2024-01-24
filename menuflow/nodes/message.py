@@ -49,6 +49,10 @@ class Message(Base):
             state=RouteState.END if not o_connection else None,
         )
 
+    @property
+    async def o_connection(self) -> str:
+        return await self.get_o_connection()
+
     async def run(self, update_state: bool = True, generate_event: bool = True):
         """This function runs the message node.
 
@@ -73,7 +77,7 @@ class Message(Base):
 
             await self.send_message(room_id=self.room.room_id, content=msg_content)
 
-        o_connection = await self.get_o_connection()
+        o_connection = await self.o_connection
         if update_state:
             await self._update_node(o_connection)
 

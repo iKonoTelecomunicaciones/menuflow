@@ -165,16 +165,17 @@ class Base:
             The ID of the next node to be executed.
 
         """
+        # Get the next node from the content of node
         o_connection = self.render_data(self.content.get("o_connection", ""))
 
-        # if o_connection is None or o_connection in ["finish", ""]:
+        # If the o_connection is None or empty, get the o_connection from the stack
         if o_connection is None or o_connection in ["finish", ""]:
             # Get stack from db
             _stack: LifoQueue = await Route._stack(
                 room=self.room.id, client=self.room.route.client
             )
             # If the stack is not empty, get the last node from the stack
-            if not _stack.empty() and self.content.get("type") != "subroutine":
+            if not _stack.empty() and self.type != "subroutine":
                 self.log.debug(f"Getting o_connection from route stack: '{_stack.queue}'")
                 o_connection = _stack.get(timeout=3)
 
