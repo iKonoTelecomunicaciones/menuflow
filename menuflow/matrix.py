@@ -77,7 +77,6 @@ class MatrixHandler(MatrixClient):
         prev_membership = prev_content.membership if prev_content else None
 
         if evt.state_key == self.mxid and evt.content.membership == Membership.INVITE:
-            self.unlock_room(room_id=evt.room_id)
             await self.handle_invite(evt)
         elif evt.content.membership == Membership.JOIN and prev_membership != Membership.JOIN:
             await self.handle_join(evt)
@@ -94,6 +93,7 @@ class MatrixHandler(MatrixClient):
             await self.leave_room(evt.room_id)
             return
 
+        self.unlock_room(room_id=evt.room_id)
         await self.join_room(evt.room_id)
 
     async def handle_reject_invite(self, evt: StrippedStateEvent):
