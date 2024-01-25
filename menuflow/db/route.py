@@ -19,7 +19,6 @@ class RouteState(SerializableEnum):
     END = "end"
     INPUT = "input"
     INVITE = "invite_user"
-    SUBROUTINE = "subroutine"
 
 
 log: TraceLogger = getLogger("menuflow.db.route")

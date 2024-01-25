@@ -43,15 +43,15 @@ class Message(Base):
     def text(self) -> str:
         return self.render_data(data=self.content.get("text", ""))
 
+    @property
+    async def o_connection(self) -> str:
+        return await self.get_o_connection()
+
     async def _update_node(self, o_connection: str):
         await self.room.update_menu(
             node_id=o_connection,
             state=RouteState.END if not o_connection else None,
         )
-
-    @property
-    async def o_connection(self) -> str:
-        return await self.get_o_connection()
 
     async def run(self, update_state: bool = True, generate_event: bool = True):
         """This function runs the message node.
