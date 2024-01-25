@@ -93,6 +93,7 @@ class Switch(Base):
             If true, the event will be generated.
         """
         o_connection = await self._run()
+
         if update_state:
             await self.room.update_menu(o_connection)
 
@@ -130,11 +131,14 @@ class Switch(Base):
             if self.validation_attempts and self.room.room_id in self.VALIDATION_ATTEMPTS_BY_ROOM:
                 del self.VALIDATION_ATTEMPTS_BY_ROOM[self.room.room_id]
 
-            return case_o_connection
         except KeyError:
-            default_case, o_connection = await self.manage_case_exceptions()
+            default_case, case_o_connection = await self.manage_case_exceptions()
             self.log.debug(f"Case [{id}] not found; the [{default_case} case] will be sought")
-            return self.render_data(o_connection)
+
+        if case_o_connection is None or case_o_connection in ["finish", ""]:
+            case_o_connection = await self.get_o_connection()
+
+        return case_o_connection
 
     async def validate_cases(self) -> str:
         """Used to validate case by case and return the o_connection value
@@ -177,15 +181,17 @@ class Switch(Base):
             if self.validation_attempts and self.room.room_id in self.VALIDATION_ATTEMPTS_BY_ROOM:
                 del self.VALIDATION_ATTEMPTS_BY_ROOM[self.room.room_id]
 
-            return case_o_connection
-
         if not case_o_connection:
-            default_case, o_connection = await self.manage_case_exceptions()
+            default_case, case_o_connection = await self.manage_case_exceptions()
             self.log.debug(
-                f"Case validations in [{self.id}] do not match; "
+                f"Case validations in [{self.id}] do not match with [{case_o_connection}]; "
                 f"the [{default_case}] case will be sought"
             )
-            return self.render_data(o_connection)
+
+        if case_o_connection is None or case_o_connection in ["finish", ""]:
+            case_o_connection = await self.get_o_connection()
+
+        return case_o_connection
 
     async def load_variables(self, case: Dict) -> None:
         """This function loads variables defined in switch cases into the room.
@@ -245,4 +251,7 @@ class Switch(Base):
         # Load variables defined in the case into the room
         await self.load_variables(default_case)
 
-        return case_to_be_used, default_case.get("o_connection", "start")
+        # Getting the o_connection of the default case
+        default_o_connection = self.render_data(default_case.get("o_connection", "start"))
+
+        return case_to_be_used, default_o_connection

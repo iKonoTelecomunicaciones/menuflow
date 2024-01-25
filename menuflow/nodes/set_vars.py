@@ -19,8 +19,8 @@ class SetVars(Base):
         return self.render_data(data=self.content.get("variables", ""))
 
     @property
-    def o_connection(self) -> str:
-        return self.render_data(self.content.get("o_connection", ""))
+    async def o_connection(self) -> str:
+        return await self.get_o_connection()
 
     async def run(self):
         """This function runs the set_var node."""
@@ -44,7 +44,8 @@ class SetVars(Base):
         except ValueError as e:
             self.log.warning(e)
 
+        o_connection = await self.o_connection
         await self.room.update_menu(
-            node_id=self.o_connection,
-            state=RouteState.END if not self.o_connection else None,
+            node_id=o_connection,
+            state=RouteState.END if not o_connection else None,
         )

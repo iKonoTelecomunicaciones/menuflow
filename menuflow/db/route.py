@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from logging import getLogger
+from queue import LifoQueue
 from typing import TYPE_CHECKING, ClassVar, Dict, Tuple
 
 from asyncpg import Record
@@ -33,6 +34,7 @@ class Route:
     node_id: int = ib(default="start")
     state: RouteState = ib(default=RouteState.START)
     variables: str = ib(default="{}")
+    stack: str = ib(default="{}")
 
     @classmethod
     def _from_row(cls, row: Record) -> Route | None:
@@ -52,13 +54,25 @@ class Route:
             self.node_id,
             self.state.value if self.state else None,
             self.variables,
+            self.stack,
         )
 
-    _columns = "room, client, node_id, state, variables"
+    _columns = "room, client, node_id, state, variables, stack"
 
     @property
     def _variables(self) -> Dict:
         return json.loads(self.variables)
+
+    @property
+    def _stack(self) -> LifoQueue | None:
+        stack: LifoQueue = LifoQueue(maxsize=255)
+        if self.stack:
+            try:
+                stack_dict = json.loads(self.stack)
+                stack.queue = stack_dict[self.client] if stack_dict else []
+            except KeyError:
+                stack.queue = []
+        return stack
 
     @classmethod
     async def get_by_room_and_client(cls, room: int, client: UserID) -> Route | None:
@@ -72,12 +86,12 @@ class Route:
         return cls._from_row(row) if row else route
 
     async def insert(self) -> str:
-        q = f"INSERT INTO route ({self._columns}) VALUES ($1, $2, $3, $4, $5)"
+        q = f"INSERT INTO route ({self._columns}) VALUES ($1, $2, $3, $4, $5, $6)"
         await self.db.execute(q, *self.values)
 
     async def update(self) -> None:
         q = """
-            UPDATE route SET node_id = $3, state = $4, variables = $5
+            UPDATE route SET node_id = $3, state = $4, variables = $5, stack = $6
             WHERE room = $1 and client = $2
         """
         await self.db.execute(q, *self.values)

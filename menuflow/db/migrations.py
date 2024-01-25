@@ -61,3 +61,9 @@ async def upgrade_v2(conn: Connection) -> None:
     # Drop old columns from room table
     await conn.execute("ALTER TABLE room DROP COLUMN node_id")
     await conn.execute("ALTER TABLE room DROP COLUMN state")
+
+
+@upgrade_table.register(description="Add stack field to route table")
+async def upgrade_v3(conn: Connection) -> None:
+    # Add stack column to route table
+    await conn.execute("ALTER TABLE route ADD COLUMN stack JSONB NOT NULL DEFAULT '{}'::jsonb")

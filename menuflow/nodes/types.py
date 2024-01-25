@@ -12,3 +12,4 @@ class Nodes(SerializableEnum):
     location = "location"
     media = "media"
     set_vars = "set_vars"
+    subroutine = "subroutine"

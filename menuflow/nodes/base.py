@@ -4,6 +4,7 @@ from abc import abstractmethod
 from asyncio import sleep
 from json import JSONDecodeError, dumps, loads
 from logging import getLogger
+from queue import LifoQueue
 from random import randrange
 from typing import Any, Dict, List
 
@@ -13,7 +14,7 @@ from mautrix.util.logging import TraceLogger
 
 from ..config import Config
 from ..jinja.jinja_template import jinja_env
-from ..room import Room
+from ..room import Room, Route
 
 
 def convert_to_bool(item) -> Dict | List | str:
@@ -155,3 +156,28 @@ class Base:
             data = loads(data_template.render())
             data = convert_to_bool(data)
             return data
+
+    async def get_o_connection(self) -> str:
+        """It returns the ID of the next node to be executed.
+
+        Returns
+        -------
+            The ID of the next node to be executed.
+
+        """
+        # Get the next node from the content of node
+        o_connection = self.render_data(self.content.get("o_connection", ""))
+
+        # If the o_connection is None or empty, get the o_connection from the stack
+        if o_connection is None or o_connection in ["finish", ""]:
+            # If the stack is not empty, get the last node from the stack
+            if not self.room.route._stack.empty() and self.type != "subroutine":
+                self.log.debug(
+                    f"Getting o_connection from route stack: {self.room.route._stack.queue}"
+                )
+                o_connection = self.room.route._stack.get(timeout=3)
+
+        if o_connection:
+            self.log.info(f"Go to o_connection node in [{self.id}]: '{o_connection}'")
+
+        return o_connection

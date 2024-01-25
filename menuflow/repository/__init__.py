@@ -16,5 +16,6 @@ from .nodes import (
     Media,
     Message,
     SetVars,
+    Subroutine,
     Switch,
 )

@@ -219,7 +219,7 @@ class MatrixHandler(MatrixClient):
         node = self.flow.node(room=room)
 
         if node is None:
-            self.log.debug(f"Room {room.room_id} does not have a node")
+            self.log.debug(f"Room {room.room_id} does not have a node [{node}]")
             await room.update_menu(node_id="start")
             return
 

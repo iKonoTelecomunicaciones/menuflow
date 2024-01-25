@@ -61,7 +61,8 @@ class Email(Message):
 
         asyncio.create_task(self.email_client.send_email(email=email))
 
-        await self._update_node()
+        o_connection = await self.get_o_connection()
+        await self._update_node(o_connection)
 
         await send_node_event(
             config=self.room.config,
@@ -71,6 +72,6 @@ class Email(Message):
             sender=self.room.matrix_client.mxid,
             node_type=Nodes.email,
             node_id=self.id,
-            o_connection=self.o_connection,
+            o_connection=o_connection,
             variables=self.room.all_variables | self.default_variables,
         )
