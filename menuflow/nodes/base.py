@@ -170,16 +170,14 @@ class Base:
 
         # If the o_connection is None or empty, get the o_connection from the stack
         if o_connection is None or o_connection in ["finish", ""]:
-            # Get stack from db
-            _stack: LifoQueue = await Route._stack(
-                room=self.room.id, client=self.room.route.client
-            )
             # If the stack is not empty, get the last node from the stack
-            if not _stack.empty() and self.type != "subroutine":
-                self.log.debug(f"Getting o_connection from route stack: '{_stack.queue}'")
-                o_connection = _stack.get(timeout=3)
+            if not self.room.route._stack.empty() and self.type != "subroutine":
+                self.log.debug(
+                    f"Getting o_connection from route stack: {self.room.route._stack.queue}"
+                )
+                o_connection = self.room.route._stack.get(timeout=3)
 
         if o_connection:
-            self.log.info(f"Go to o_connection node in '{self.id}': [{o_connection}]")
+            self.log.info(f"Go to o_connection node in [{self.id}]: '{o_connection}'")
 
         return o_connection

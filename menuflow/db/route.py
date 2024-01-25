@@ -64,14 +64,13 @@ class Route:
     def _variables(self) -> Dict:
         return json.loads(self.variables)
 
-    @classmethod
-    async def _stack(cls, room: int, client: UserID) -> LifoQueue | None:
+    @property
+    def _stack(self) -> LifoQueue | None:
         stack: LifoQueue = LifoQueue(maxsize=255)
-        cls.stack = await cls.get_stack_by_room_and_client(room=room, client=client)
-        if cls.stack:
+        if self.stack:
             try:
-                _stack = json.loads(cls.stack)
-                stack.queue = _stack[client] if _stack else []
+                stack_dict = json.loads(self.stack)
+                stack.queue = stack_dict[self.client] if stack_dict else []
             except KeyError:
                 stack.queue = []
         return stack
@@ -86,11 +85,6 @@ class Route:
             await route.insert()
 
         return cls._from_row(row) if row else route
-
-    @classmethod
-    async def get_stack_by_room_and_client(cls, room: int, client: UserID) -> str | None:
-        q = "SELECT stack FROM route WHERE room=$1 AND client=$2"
-        return await cls.db.fetchval(q, room, client)
 
     async def insert(self) -> str:
         q = f"INSERT INTO route ({self._columns}) VALUES ($1, $2, $3, $4, $5, $6)"

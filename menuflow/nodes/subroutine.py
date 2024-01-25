@@ -25,8 +25,9 @@ class Subroutine(Base):
     async def run(self):
         """This function runs the subroutine node."""
         self.log.info(f"Room {self.room.room_id} enters subroutine node {self.id}")
+
         # Get current stack data
-        _stack = await self.room.route._stack(room=self.room.id, client=self.room.route.client)
+        lifo_stack: LifoQueue = self.room.route._stack
         stack: Dict = json.loads(self.room.route.stack)
         last_node = None
 
@@ -39,33 +40,33 @@ class Subroutine(Base):
                 return
 
             # If the stack is empty, add the current node to the stack
-            if _stack.empty():
+            if lifo_stack.empty():
                 self.log.info(f"Add '{self.id}' node to empty LiFo Stack")
-                _stack.put(self.id)
+                lifo_stack.put(self.id)
             else:
                 # Get the last node from the stack
-                last_node = _stack.get(timeout=3)  # seconds
+                last_node = lifo_stack.get(timeout=3)  # seconds
 
                 # If this node is not the last node, add it to the stack
                 if last_node and last_node != self.id:
-                    self.log.info(f"Add '{self.id}' node to LiFo Stack: {_stack.queue}")
-                    _stack.put(self.id)
+                    self.log.info(f"Add '{self.id}' node to LiFo Stack: {lifo_stack.queue}")
+                    lifo_stack.put(self.id)
 
             # Update the stack in db
-            stack[self.room.route.client] = _stack.queue
+            stack[self.room.route.client] = lifo_stack.queue
             self.room.route.stack = json.dumps(stack)
             await self.room.route.update()
         except ValueError as e:
             self.log.warning(e)
 
         # Update the menu
-        if not _stack.empty() and last_node != self.id:
+        if not lifo_stack.empty() and last_node != self.id:
             self.log.debug(f"Go to subroutine: '{self.go_sub}'")
             await self.room.update_menu(node_id=self.go_sub)
 
         # If the stack is empty, o finished subroutine go to the next node
         o_connection = self.render_data(self.content.get("o_connection", ""))
-        if _stack.empty() or last_node == self.id:
+        if lifo_stack.empty() or last_node == self.id:
             self.log.debug(f"Go to next node: '{o_connection}'")
             await self.room.update_menu(
                 node_id=o_connection,
