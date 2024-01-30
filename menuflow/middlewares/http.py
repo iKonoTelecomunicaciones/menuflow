@@ -127,6 +127,9 @@ class HTTPMiddleware(Base):
             response_data = {}
 
         if isinstance(response_data, dict):
+            self.log.critical(f"self.content: {self.content}")
+            self.log.critical(f"self.auth: {self.auth}")
+            self.log.critical(f"--------------_!!!!!!!!!!!!!!!!!!!!!!!!!!!!self: {self}")
             # Tulir and its magic since time immemorial
             serialized_data = RecursiveDict(CommentedMap(**response_data))
             if self.middleware_variables:
@@ -138,6 +141,10 @@ class HTTPMiddleware(Base):
                     except KeyError:
                         pass
         elif isinstance(response_data, str):
+            self.log.critical(f"self.content: {self.content}")
+            self.log.critical(f"self.auth: {self.auth}")
+            self.log.critical(f"--------------_!!!!!!!!!!!!!!!!!!!!!!!!!!!!self: {self}")
+
             if self.middleware_variables:
                 for variable in self.middleware_variables:
                     try:

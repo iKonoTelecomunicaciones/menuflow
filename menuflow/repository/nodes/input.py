@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import List, Dict, Any
 
 from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
@@ -55,6 +55,7 @@ class Input(Switch, Message):
     """
 
     variable: str = ib(default=None)
+    variables: Dict[str, Any] = ib(factory=dict)
     cases: List[Case] = ib(factory=list)
     inactivity_options: InactivityOptions = ib(default=None)
     input_type: str = ib(default=None)

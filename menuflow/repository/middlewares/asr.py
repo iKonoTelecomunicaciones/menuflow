@@ -62,3 +62,4 @@ class ASRMiddlewareModel(FlowObject):
     variables: Dict[str, Any] = ib(factory=dict)
     data: Dict[str, Any] = ib(factory=dict)
     json: Dict[str, Any] = ib(factory=dict)
+    cookies: Dict[str, Any] = ib(factory=dict)

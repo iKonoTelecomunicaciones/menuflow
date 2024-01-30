@@ -131,9 +131,20 @@ class Input(Switch, Message):
                 await Util.cancel_task(task_name=self.room.room_id)
 
             self.log.critical(f"Middleware Input: {self.middleware}")
+            self.log.critical(
+                f"---------------__!!!!!!!!!!!!!!!!!!!!!!Middleware Input: {self.content}"
+            )
             self.log.critical(f"evt.content: {evt.content}")
             if self.middleware:
-                await self.middleware.run(self, audio_url=evt.content.url)
+                self.log.critical(f"-------------------content input: {self.content}")
+                extended_data = self.render_data(self.content.get("variables", {}))
+                self.log.critical(f"-------------------extended_data: {extended_data}")
+
+                await self.middleware.run(
+                    self,
+                    extended_data=extended_data,
+                    audio_url=evt.content.url,
+                )
 
             await send_node_event(
                 config=self.room.config,
