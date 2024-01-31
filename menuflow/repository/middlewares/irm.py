@@ -10,6 +10,17 @@ from ..flow_object import FlowObject
 
 @dataclass
 class AditionalArguments(SerializableAttrs):
+    """Aditional Arguments.
+
+    Aditional Arguments for IRM Middleware.
+
+    - temperature: influences the randomness of the model's output during text generation,
+    it can be a float between 0 and 1.
+    - top_p: can be a float between 0 and 1.
+    - top_k: can be an integer.
+    - max_output_tokens: is the max length of the model output, it can be an integer.
+    """
+
     temperature: Optional[str] = ib(default="0.4")
     top_p: Optional[str] = ib(default="0.9")
     top_k: Optional[str] = ib(default="40")
