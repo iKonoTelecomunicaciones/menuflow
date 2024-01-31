@@ -7,9 +7,8 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import CheckTime as CheckTimeModel
 from ..room import Room
-from ..utils import Util
+from ..utils import Nodes, Util
 from .switch import Switch
-from .types import Nodes
 
 
 class CheckTime(Switch):

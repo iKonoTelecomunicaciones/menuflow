@@ -9,8 +9,8 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import HTTPRequest as HTTPRequestModel
 from ..room import Room
+from ..utils import Nodes
 from .switch import Switch
-from .types import Nodes
 
 if TYPE_CHECKING:
     from ..middlewares import HTTPMiddleware

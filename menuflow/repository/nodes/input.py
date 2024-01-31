@@ -58,3 +58,4 @@ class Input(Switch, Message):
     cases: List[Case] = ib(factory=list)
     inactivity_options: InactivityOptions = ib(default=None)
     input_type: str = ib(default=None)
+    middleware: str = ib(default=None)

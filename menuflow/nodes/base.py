@@ -4,7 +4,6 @@ from abc import abstractmethod
 from asyncio import sleep
 from json import JSONDecodeError, dumps, loads
 from logging import getLogger
-from queue import LifoQueue
 from random import randrange
 from typing import Any, Dict, List
 
@@ -14,7 +13,7 @@ from mautrix.util.logging import TraceLogger
 
 from ..config import Config
 from ..jinja.jinja_template import jinja_env
-from ..room import Room, Route
+from ..room import Room
 
 
 def convert_to_bool(item) -> Dict | List | str:

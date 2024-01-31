@@ -8,9 +8,8 @@ from ..events.event_generator import send_node_event
 from ..repository import InteractiveInput as InteractiveInputModel
 from ..repository import InteractiveMessage
 from ..room import Room
-from ..utils import Util
+from ..utils import Nodes, Util
 from .input import Input
-from .types import Nodes
 
 
 class InteractiveInput(Input):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from mautrix.types import (
     LocationMessageEventContent,
@@ -17,10 +17,12 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Input as InputModel
 from ..room import Room
-from ..utils import Util
+from ..utils import Nodes, Util
 from .message import Message
 from .switch import Switch
-from .types import Nodes
+
+if TYPE_CHECKING:
+    from ..middlewares import IRMMiddleware
 
 
 class Input(Switch, Message):
@@ -28,6 +30,7 @@ class Input(Switch, Message):
         Switch.__init__(self, input_node_data, room=room, default_variables=default_variables)
         Message.__init__(self, input_node_data, room=room, default_variables=default_variables)
         self.content = input_node_data
+        self.middleware: Optional[IRMMiddleware] = None
 
     @property
     def variable(self) -> str:
@@ -106,8 +109,8 @@ class Input(Switch, Message):
         """
 
         if self.room.route.state == RouteState.INPUT:
-            if not evt or not self.variable:
-                self.log.warning("A problem occurred to trying save the variable")
+            if not evt:
+                self.log.warning("A problem occurred getting message event.")
                 return
 
             if self.input_type == MessageType.TEXT:
@@ -118,7 +121,15 @@ class Input(Switch, Message):
                 MessageType.FILE,
                 MessageType.VIDEO,
             ]:
-                o_connection = await self.input_media(content=evt.content)
+                if self.input_type == MessageType.IMAGE and self.middleware:
+                    await self.middleware.run(
+                        image_mxc=evt.content.url,
+                        content_type=evt.content.info.mimetype,
+                        filename=evt.content.body,
+                    )
+                    o_connection = await Switch.run(self, generate_event=False)
+                else:
+                    o_connection = await self.input_media(content=evt.content)
             elif self.input_type == MessageType.LOCATION:
                 o_connection = await self.input_location(content=evt.content)
 
