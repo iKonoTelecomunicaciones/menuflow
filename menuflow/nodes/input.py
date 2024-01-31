@@ -101,8 +101,6 @@ class Input(Switch, Message):
 
         Parameters
         ----------
-        client : MatrixClient
-            The MatrixClient object.
         evt : Optional[MessageEvent]
             The event that triggered the node.
 
@@ -115,13 +113,8 @@ class Input(Switch, Message):
 
             if self.input_type == MessageType.TEXT:
                 o_connection = await self.input_text(content=evt.content)
-            elif self.input_type in [
-                MessageType.AUDIO,
-                MessageType.IMAGE,
-                MessageType.FILE,
-                MessageType.VIDEO,
-            ]:
-                if self.input_type == MessageType.IMAGE and self.middleware:
+            elif self.input_type == MessageType.IMAGE:
+                if self.input_type == evt.content.msgtype and self.middleware:
                     await self.middleware.run(
                         image_mxc=evt.content.url,
                         content_type=evt.content.info.mimetype,
@@ -130,6 +123,12 @@ class Input(Switch, Message):
                     o_connection = await Switch.run(self, generate_event=False)
                 else:
                     o_connection = await self.input_media(content=evt.content)
+            elif self.input_type in [
+                MessageType.AUDIO,
+                MessageType.FILE,
+                MessageType.VIDEO,
+            ]:
+                o_connection = await self.input_media(content=evt.content)
             elif self.input_type == MessageType.LOCATION:
                 o_connection = await self.input_location(content=evt.content)
 
