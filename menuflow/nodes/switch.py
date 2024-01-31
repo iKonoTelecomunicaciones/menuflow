@@ -6,8 +6,8 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Switch as SwitchModel
 from ..room import Room
+from ..utils import Nodes
 from .base import Base, safe_data_convertion
-from .types import Nodes
 
 
 class Switch(Base):

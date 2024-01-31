@@ -21,8 +21,8 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Media as MediaModel
 from ..room import Room
+from ..utils import Nodes
 from .message import Message
-from .types import Nodes
 
 try:
     from PIL import Image
