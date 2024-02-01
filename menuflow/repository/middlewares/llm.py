@@ -19,6 +19,8 @@ class AditionalArguments(SerializableAttrs):
     - top_p: can be a float between 0 and 1.
     - top_k: can be an integer.
     - max_output_tokens: is the max length of the model output, it can be an integer.
+    - frequency_penalty: is a float.
+    - presence_penalty: is a float.
     """
 
     temperature: Optional[str] = ib(default="0.4")
