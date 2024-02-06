@@ -55,7 +55,6 @@ class Input(Switch, Message):
     """
 
     variable: str = ib(default=None)
-    variables: Dict[str, Any] = ib(factory=dict)
     cases: List[Case] = ib(factory=list)
     inactivity_options: InactivityOptions = ib(default=None)
     input_type: str = ib(default=None)

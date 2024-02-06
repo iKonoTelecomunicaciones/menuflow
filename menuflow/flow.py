@@ -79,22 +79,17 @@ class Flow:
 
     def middleware(self, middleware_id: str, room: Room) -> HTTPMiddleware | MiddlewareType:
         middleware_model = self.flow_utils.get_middleware_by_id(middleware_id=middleware_id)
-        self.log.critical(f"middleware_model: {middleware_model}")
 
         if not middleware_model:
             return
 
         if middleware_model.type == MiddlewareType.asr:
-            self.log.critical("Initializing ASR middleware")
             middleware_initialized = ASRMiddleware(
                 asr_middleware_content=middleware_model,
                 room=room,
                 default_variables=self.flow_variables,
             )
-            self.log.critical(f"middleware_initialized: {middleware_initialized}")
-
         else:
-            self.log.critical("Initializing HTTPMiddleware")
             middleware_initialized = HTTPMiddleware(
                 http_middleware_data=middleware_model,
                 room=room,
@@ -137,7 +132,6 @@ class Flow:
             )
 
             if node_data.get("middleware"):
-                self.log.critical(f"node_data: {node_data}")
                 middleware = self.middleware(node_data.get("middleware"), room)
                 node_initialized.middleware = middleware
         elif node_data.get("type") == "check_time":

@@ -4,11 +4,8 @@ from aiohttp import ClientTimeout, ContentTypeError, FormData
 from ..nodes import Base
 from ..repository import ASRMiddlewareModel
 from ..room import Room
-from sqids import Sqids
-
-sqids = Sqids()
-
-
+from mautrix.util.config import RecursiveDict
+from ruamel.yaml.comments import CommentedMap
 class ASRMiddleware(Base):
     def __init__(
         self,
@@ -26,7 +23,7 @@ class ASRMiddleware(Base):
 
     @property
     def headers(self) -> Dict:
-        return self.render_data(self.content.get("general", {}).get("headers", {}))
+        return self.render_data(self.content.get("general", {}).get("headers", {})) 
 
     @property
     def middleware_variables(self) -> Dict:
@@ -57,18 +54,13 @@ class ASRMiddleware(Base):
         return self.render_data(self.content.get("provider", {}))
 
     async def run(self, extended_data: Dict, audio_url: str):
-        self.log.critical(
-            f"****************************ASR Middleware extended_data: {extended_data}"
-        )
         audio = await self.room.matrix_client.download_media(url=audio_url)
         result = await self.http_request(audio=audio)
-        self.log.critical(f"result: {result}")
 
         return result
 
     async def http_request(self, audio) -> Tuple[int, str]:
         """Recognize the text and return the status code and the text."""
-        self.log.critical(f"ASR Middleware http_request: {self.content}")
         request_body = {}
         form_data = FormData()
 
@@ -81,11 +73,12 @@ class ASRMiddleware(Base):
         if audio:
             form_data.add_field("audio", audio, filename="audio.ogg", content_type="audio/ogg")
             form_data.add_field("provider", self.provider)
+        else:
+            self.log.error("Error getting the audio")
+            return
 
         if self.json:
             request_body["json"] = self.json
-        self.log.critical(f"request_body: {request_body}")
-        self.log.critical(f"self.url: {self.url}")
 
         try:
             timeout = ClientTimeout(total=self.config["menuflow.timeouts.middlewares"])
@@ -97,19 +90,14 @@ class ASRMiddleware(Base):
                 **request_body,
             )
         except Exception as e:
-            self.log.exception(f"Error in middleware: {e}")
+            self.log.exception(f"Audio to text conversion error: {e}")
             return
 
-        self.log.critical(f"response: {response}")
         variables = {}
 
         if self.cookies:
             for cookie in self.cookies:
                 variables[cookie] = response.cookies.output(cookie)
-
-        self.log.debug(
-            f"middleware: {self.id}  type: {self.type} method: {self.method} url: {self.url} status: {response.status}"
-        )
 
         try:
             response_data = await response.json()
@@ -119,21 +107,20 @@ class ASRMiddleware(Base):
         if not response_data:
             return response.status, None
 
-        self.log.critical(f"response_data: {response_data}")
-        message = response_data.get("text")
-        self.log.critical(f"message: {message}")
-        self.log.critical(f"instance: {isinstance(message, str)}")
-        self.log.critical(f"self.middleware_variables: {self.middleware_variables}")
-
-        if isinstance(message, str):
-            self.log.critical(f"self.content: {self.content}")
-            self.log.critical(f"--------------_!!!!!!!!!!!!!!!!!!!!!!!!!!!!self: {self}")
-
+        if isinstance(response_data, dict):
+            # Tulir and its magic since time immemorial
+            serialized_data = RecursiveDict(CommentedMap(**response_data))
             if self.middleware_variables:
-                self.log.critical(f"middleware_variables: {self.middleware_variables}")
-                self.log.critical(
-                    f"self.render_data(response_data): {self.render_data(response_data)}"
-                )
+                for variable in self.middleware_variables:
+                    try:
+                        variables[variable] = self.render_data(
+                            serialized_data[self.middleware_variables[variable]]
+                        )
+                    except KeyError:
+                        pass
+
+        elif isinstance(response_data, str):
+            if self.middleware_variables:
                 for variable in self.middleware_variables:
                     try:
                         variables[variable] = self.render_data(response_data)
@@ -143,7 +130,6 @@ class ASRMiddleware(Base):
                     break
 
         if variables:
-            self.log.critical(f"variables: {variables}")
             await self.room.set_variables(variables=variables)
 
         return response.status, await response.text()

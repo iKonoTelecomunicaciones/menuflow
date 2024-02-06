@@ -48,13 +48,10 @@ class FlowUtils:
         try:
             for middleware in self.data.middlewares:
                 if middleware_id == middleware.get("id", ""):
-                    log.critical(f"middleware: {middleware}")
                     if middleware.get("type") == "asr":
                         middleware = ASRMiddlewareModel(**middleware)
-                        log.critical(f"--------------------------MDDDD {middleware}")
                     else:
                         middleware = HTTPMiddlewareModel(**middleware)
-                        log.critical(f"--------------------------MDDDD {middleware}")
                     self._add_middleware_to_cache(middleware)
                     return middleware
         except AttributeError:

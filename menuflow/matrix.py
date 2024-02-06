@@ -226,8 +226,6 @@ class MatrixHandler(MatrixClient):
         self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.route.state}]")
 
         if type(node) in (Input, InteractiveInput):
-            self.log.critical(f"********************************{evt}")
-            self.log.critical(f"Node: {node}")
             await node.run(evt=evt)
             if room.route.state == RouteState.INPUT:
                 return

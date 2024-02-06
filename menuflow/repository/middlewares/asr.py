@@ -25,10 +25,7 @@ class ASRMiddlewareModel(FlowObject):
       type: asr
       method: GET
       url: "http://localhost:5000/asr"
-      record_format: "wav"
-      scape_digits: "#"
-      timeout: 10000
-      silence: 2
+      provider: "azure"
       cookies:
           cookie1: "value1"
       query_params:
@@ -43,23 +40,19 @@ class ASRMiddlewareModel(FlowObject):
           data1: "value1"
       json:
           json1: "value1"
+      variables:
+          variable1: "value1"
     """
 
     id: str = ib(default=None)
     type: str = ib(default=None)
     method: str = ib(default=None)
     url: str = ib(default=None)
-    record_format: str = ib(default=None)
-    scape_digits: str = ib(default=None)
-    timeout: int = ib(default=None)
-    silence: int = ib(default=None)
     provider: str = ib(default=None)
     cookies: Dict[str, Any] = ib(factory=dict)
     query_params: Dict[str, Any] = ib(factory=dict)
-    attempts: Dict[str, Any] = ib(factory=dict)
     general: General = ib(default=None)
     basic_auth: Dict[str, Any] = ib(factory=dict)
     variables: Dict[str, Any] = ib(factory=dict)
     data: Dict[str, Any] = ib(factory=dict)
     json: Dict[str, Any] = ib(factory=dict)
-    cookies: Dict[str, Any] = ib(factory=dict)
