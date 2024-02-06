@@ -6,7 +6,7 @@ from typing import Dict, Optional
 from mautrix.util.logging import TraceLogger
 
 from .flow_utils import FlowUtils
-from .middlewares import HTTPMiddleware, ASRMiddleware
+from .middlewares import HTTPMiddleware, IRMMiddleware, ASRMiddleware
 from .nodes import (
     CheckTime,
     Email,
@@ -19,18 +19,18 @@ from .nodes import (
     Media,
     Message,
     SetVars,
+    Subroutine,
     Switch,
 )
 from .repository import Flow as FlowModel
 from .room import Room
-from .types import MiddlewareType
+from .utils import Middlewares
 
 
 class Flow:
     log: TraceLogger = logging.getLogger("menuflow.flow")
 
     nodes: Dict[str, Dict]
-    middlewares: Dict[str, Dict]
 
     def __init__(
         self,
@@ -40,9 +40,7 @@ class Flow:
     ) -> None:
         self.data = FlowModel.load_flow(flow_mxid=flow_mxid, content=content)
         self.nodes = self.data.get("nodes", [])
-        self.middlewares = self.data.get("middlewares", [])
         self.nodes_by_id: Dict[str, Dict] = {}
-        self.middlewares_by_id: Dict[str, Dict] = {}
         self.flow_utils = flow_utils
 
     def _add_node_to_cache(self, node_data: Dict):
@@ -77,21 +75,30 @@ class Flow:
                 self._add_node_to_cache(node)
                 return node
 
-    def middleware(self, middleware_id: str, room: Room) -> HTTPMiddleware | MiddlewareType:
+    def middleware(self, middleware_id: str, room: Room) -> HTTPMiddleware | IRMMiddleware | ASRMiddleware | None :
         middleware_model = self.flow_utils.get_middleware_by_id(middleware_id=middleware_id)
+        try:
+            middleware_type = Middlewares(middleware_model.type)
+        except ValueError:
+            self.log.warning(f"Middleware type {middleware_model.type} not found")
+            return
 
         if not middleware_model:
             return
 
-        if middleware_model.type == MiddlewareType.asr:
-            middleware_initialized = ASRMiddleware(
-                asr_middleware_content=middleware_model,
+        if middleware_type in (Middlewares.jwt, Middlewares.basic, Middlewares.base):
+            middleware_initialized = HTTPMiddleware(
+                http_middleware_data=middleware_model,
                 room=room,
                 default_variables=self.flow_variables,
             )
-        else:
-            middleware_initialized = HTTPMiddleware(
-                http_middleware_data=middleware_model,
+        elif middleware_type == Middlewares.irm:
+            middleware_initialized = IRMMiddleware(
+                irm_data=middleware_model, room=room, default_variables=self.flow_variables
+            )
+        elif middleware_type == Middlewares.asr:
+            middleware_initialized = ASRMiddleware(
+                asr_middleware_content=middleware_model,
                 room=room,
                 default_variables=self.flow_variables,
             )
@@ -130,7 +137,6 @@ class Flow:
             node_initialized = Input(
                 input_node_data=node_data, room=room, default_variables=self.flow_variables
             )
-
             if node_data.get("middleware"):
                 middleware = self.middleware(node_data.get("middleware"), room)
                 node_initialized.middleware = middleware
@@ -161,6 +167,10 @@ class Flow:
         elif node_data.get("type") == "invite_user":
             node_initialized = InviteUser(
                 invite_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
+        elif node_data.get("type") == "subroutine":
+            node_initialized = Subroutine(
+                subroutine_node_data=node_data, room=room, default_variables=self.flow_variables
             )
         else:
             return

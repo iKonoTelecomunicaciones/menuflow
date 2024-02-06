@@ -1,2 +1,3 @@
 from .http import HTTPMiddleware
 from .asr import ASRMiddleware
+from .irm import IRMMiddleware

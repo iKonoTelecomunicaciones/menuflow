@@ -5,27 +5,24 @@ from mautrix.util.logging import TraceLogger
 
 from .middlewares.http import HTTPMiddleware
 from .repository import FlowUtils as FlowUtilsModel
+from .repository.middlewares import HTTPMiddleware, IRMMiddleware, ASRMiddlewareModel
 from .repository.middlewares.email import EmailServer
-from .repository.middlewares.http import HTTPMiddleware as HTTPMiddlewareModel
-from .repository.middlewares.asr import ASRMiddlewareModel
 
 log: TraceLogger = logging.getLogger("menuflow.flow_utils")
 
 
 class FlowUtils:
     # Cache dicts
-    middlewares_by_id: Dict[str, HTTPMiddlewareModel | ASRMiddlewareModel] = {}
+    middlewares_by_id: Dict[str, HTTPMiddleware | IRMMiddleware | ASRMiddlewareModel] = {}
     email_servers_by_id: Dict[str, EmailServer] = {}
 
     def __init__(self) -> None:
         self.data: FlowUtilsModel = FlowUtilsModel.load_flow_utils()
 
-    def _add_middleware_to_cache(self, middleware_model: HTTPMiddlewareModel | ASRMiddlewareModel):
+    def _add_middleware_to_cache(self, middleware_model: HTTPMiddleware | IRMMiddleware | ASRMiddlewareModel) -> None:
         self.middlewares_by_id[middleware_model.id] = middleware_model
 
-    def get_middleware_by_id(
-        self, middleware_id: str
-    ) -> HTTPMiddleware | ASRMiddlewareModel | None:
+    def get_middleware_by_id(self, middleware_id: str) -> HTTPMiddleware | None:
         """This function retrieves a middleware by its ID from a cache or a list of middlewares.
 
         Parameters
@@ -47,11 +44,7 @@ class FlowUtils:
 
         try:
             for middleware in self.data.middlewares:
-                if middleware_id == middleware.get("id", ""):
-                    if middleware.get("type") == "asr":
-                        middleware = ASRMiddlewareModel(**middleware)
-                    else:
-                        middleware = HTTPMiddlewareModel(**middleware)
+                if middleware_id == middleware.id:
                     self._add_middleware_to_cache(middleware)
                     return middleware
         except AttributeError:
@@ -59,9 +52,8 @@ class FlowUtils:
 
     def get_email_servers(self) -> Dict[str, EmailServer]:
         try:
-            for email_server_data in self.data.email_servers:
-                email_server = EmailServer(**email_server_data)
-                self.email_servers_by_id[email_server.server_id] = email_server
+            for email_server in self.data.email_servers:
+                self._add_email_server_to_cache(email_server)
         except AttributeError:
             log.warning("No email servers found in flow_utils.json")
 

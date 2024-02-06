@@ -155,3 +155,28 @@ class Base:
             data = loads(data_template.render())
             data = convert_to_bool(data)
             return data
+
+    async def get_o_connection(self) -> str:
+        """It returns the ID of the next node to be executed.
+
+        Returns
+        -------
+            The ID of the next node to be executed.
+
+        """
+        # Get the next node from the content of node
+        o_connection = self.render_data(self.content.get("o_connection", ""))
+
+        # If the o_connection is None or empty, get the o_connection from the stack
+        if o_connection is None or o_connection in ["finish", ""]:
+            # If the stack is not empty, get the last node from the stack
+            if not self.room.route._stack.empty() and self.type != "subroutine":
+                self.log.debug(
+                    f"Getting o_connection from route stack: {self.room.route._stack.queue}"
+                )
+                o_connection = self.room.route._stack.get(timeout=3)
+
+        if o_connection:
+            self.log.info(f"Go to o_connection node in [{self.id}]: '{o_connection}'")
+
+        return o_connection

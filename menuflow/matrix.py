@@ -81,9 +81,10 @@ class MatrixHandler(MatrixClient):
         elif evt.content.membership == Membership.JOIN and prev_membership != Membership.JOIN:
             await self.handle_join(evt)
         elif evt.content.membership == Membership.LEAVE:
-            if prev_membership == Membership.JOIN:
-                await self.handle_leave(evt)
-            elif prev_membership == Membership.INVITE:
+            if evt.state_key == self.mxid:
+                self.unlock_room(room_id=evt.room_id)
+
+            if prev_membership == Membership.INVITE:
                 await self.handle_reject_invite(evt)
 
     async def handle_invite(self, evt: StrippedStateEvent):
@@ -92,6 +93,7 @@ class MatrixHandler(MatrixClient):
             await self.leave_room(evt.room_id)
             return
 
+        self.unlock_room(room_id=evt.room_id)
         await self.join_room(evt.room_id)
 
     async def handle_reject_invite(self, evt: StrippedStateEvent):
@@ -168,9 +170,6 @@ class MatrixHandler(MatrixClient):
         await self.load_room_constants(evt.room_id)
         await self.algorithm(room=room)
 
-    async def handle_leave(self, evt: StrippedStateEvent):
-        self.unlock_room(evt.room_id)
-
     async def handle_message(self, message: MessageEvent) -> None:
         self.log.debug(
             f"Incoming message [user: {message.sender}] [message: {message.content.body}] [room_id: {message.room_id}]"
@@ -219,7 +218,7 @@ class MatrixHandler(MatrixClient):
         node = self.flow.node(room=room)
 
         if node is None:
-            self.log.debug(f"Room {room.room_id} does not have a node")
+            self.log.debug(f"Room {room.room_id} does not have a node [{node}]")
             await room.update_menu(node_id="start")
             return
 
