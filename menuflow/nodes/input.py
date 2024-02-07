@@ -22,7 +22,7 @@ from .message import Message
 from .switch import Switch
 
 if TYPE_CHECKING:
-    from ..middlewares import IRMMiddleware
+    from ..middlewares import IRMMiddleware, LLMMiddleware
 
 if TYPE_CHECKING:
     from ..middlewares import ASRMiddleware
@@ -35,7 +35,7 @@ class Input(Switch, Message):
         Switch.__init__(self, input_node_data, room=room, default_variables=default_variables)
         Message.__init__(self, input_node_data, room=room, default_variables=default_variables)
         self.content = input_node_data
-        self.middleware: Optional[IRMMiddleware] = None
+        self.middleware: Optional[IRMMiddleware | LLMMiddleware] = None
 
     @property
     def variable(self) -> str:
@@ -116,7 +116,11 @@ class Input(Switch, Message):
                 self.log.warning("A problem occurred getting message event.")
                 return
             if self.input_type == MessageType.TEXT:
-                o_connection = await self.input_text(content=evt.content)
+                if self.middleware:
+                    await self.middleware.run(text=evt.content.body)
+                    o_connection = await Switch.run(self, generate_event=False)
+                else:
+                    o_connection = await self.input_text(content=evt.content)
             elif self.input_type == MessageType.IMAGE:
                 if self.input_type == evt.content.msgtype and self.middleware:
                     await self.middleware.run(

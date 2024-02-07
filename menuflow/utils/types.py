@@ -18,8 +18,9 @@ class Nodes(SerializableEnum):
 
 
 class Middlewares(SerializableEnum):
-    jwt = "jwt"
-    basic = "basic"
-    base = "base"
-    irm = "irm"
+    JWT = "jwt"
+    BASIC = "basic"
+    BASE = "base"
+    IRM = "irm"
+    LLM = "llm"
     asr = "asr"

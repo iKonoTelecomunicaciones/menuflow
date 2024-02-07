@@ -19,20 +19,23 @@ class AdditionalArguments(SerializableAttrs):
     - top_p: can be a float between 0 and 1.
     - top_k: can be an integer.
     - max_output_tokens: is the max length of the model output, it can be an integer.
+    - frequency_penalty: is a float.
+    - presence_penalty: is a float.
     """
 
     temperature: Optional[str] = ib(default="0.4")
     top_p: Optional[str] = ib(default="0.9")
     top_k: Optional[str] = ib(default="40")
     max_output_tokens: Optional[str] = ib(default="1024")
+    frequency_penalty: Optional[int] = ib(default=0)
+    presence_penalty: Optional[int] = ib(default=0)
 
 
 @dataclass
-class IRMMiddleware(FlowObject):
-    """IRM Middleware.
+class LLMMiddleware(FlowObject):
+    """LLM Middleware.
 
-    An IRMMiddleware is used to preprocess images in input nodes
-    and extract information of it.
+    An LLMMiddleware is used to implement large language models in Menuflow.
 
     content:
 
@@ -41,7 +44,7 @@ class IRMMiddleware(FlowObject):
             -   id: irm_middleware
                 type: irm
                 method: POST
-                url: "https://webapinet.userfoo.com/api/irm/recognize"
+                url: "https://webapinet.userfoo.com/api/llm/generate_text"
                 prompt: "Given an image, give me the text in it"
                 variables:
                     token: token
@@ -57,10 +60,12 @@ class IRMMiddleware(FlowObject):
     headers: Dict[str, Any] = ib(factory=dict)
     basic_auth: Dict[str, Any] = ib(factory=dict)
     prompt: str = ib(factory=str)
+    provider: str = ib(factory=str)
+    args: Dict[str, Any] = ib(factory=dict)
     additional_arguments: AdditionalArguments = ib(factory=AdditionalArguments)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> IRMMiddleware:
+    def from_dict(cls, data: Dict) -> LLMMiddleware:
         return cls(
             id=data.get("id"),
             type=data.get("type"),
@@ -71,5 +76,7 @@ class IRMMiddleware(FlowObject):
             headers=data.get("headers"),
             basic_auth=data.get("basic_auth"),
             prompt=data.get("prompt"),
+            provider=data.get("provider"),
+            args=data.get("args"),
             additional_arguments=AdditionalArguments(**data.get("additional_arguments", {})),
         )

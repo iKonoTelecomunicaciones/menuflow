@@ -9,14 +9,14 @@ from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
 from ..utils import Middlewares
-from .middlewares import ASRMiddleware, EmailServer, HTTPMiddleware, IRMMiddleware
+from .middlewares import ASRMiddleware, EmailServer, HTTPMiddleware, IRMMiddleware, LLMMiddleware
 
 log: TraceLogger = logging.getLogger("menuflow.repository.flow_utils")
 
 
 @dataclass
 class FlowUtils(SerializableAttrs):
-    middlewares: List[HTTPMiddleware, IRMMiddleware, ASRMiddleware] = ib(default=[])
+    middlewares: List[HTTPMiddleware, IRMMiddleware] = ib(default=[])
     email_servers: List[EmailServer] = ib(default=[])
 
     @classmethod
@@ -45,17 +45,19 @@ class FlowUtils(SerializableAttrs):
     @classmethod
     def initialize_middleware_dataclass(
         cls, middleware: Dict
-    ) -> HTTPMiddleware | IRMMiddleware | ASRMiddleware:
+    ) -> HTTPMiddleware | IRMMiddleware | LLMMiddleware | ASRMiddleware | None:
         try:
             middleware_type = Middlewares(middleware.get("type"))
         except ValueError:
             log.warning(f"Middleware type {middleware.get('type')} not found")
             return
 
-        if middleware_type in (Middlewares.jwt, Middlewares.basic, Middlewares.base):
+        if middleware_type in (Middlewares.JWT, Middlewares.BASIC, Middlewares.BASE):
             return HTTPMiddleware(**middleware)
-        elif middleware_type == Middlewares.irm:
+        elif middleware_type == Middlewares.IRM:
             return IRMMiddleware.from_dict(middleware)
+        elif middleware_type == Middlewares.LLM:
+            return LLMMiddleware.from_dict(middleware)
         elif middleware_type == Middlewares.asr:
             return ASRMiddleware.from_dict(middleware)
 
