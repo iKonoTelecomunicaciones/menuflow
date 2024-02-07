@@ -66,9 +66,9 @@ class IRMMiddleware(Base):
         image = await self.room.matrix_client.download_media(url=image_mxc)
         data.add_field(name="image", value=image, content_type=content_type, filename=filename)
         data.add_field(name="prompt", value=self.prompt)
-        if self.content.aditional_arguments:
-            aditional_arguments: Dict = self.content.aditional_arguments.serialize()
-            for key, value in aditional_arguments.items():
+        if self.content.additional_arguments:
+            additional_arguments: Dict = self.content.additional_arguments.serialize()
+            for key, value in additional_arguments.items():
                 data.add_field(name=key, value=value)
         request_body["data"] = data
 

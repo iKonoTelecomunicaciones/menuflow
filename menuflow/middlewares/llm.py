@@ -80,9 +80,9 @@ class LLMMiddleware(Base):
             "question": question,
             "provider": self.provider,
         }
-        if self.content.aditional_arguments:
-            aditional_arguments: Dict = self.content.aditional_arguments.serialize()
-            for key, value in aditional_arguments.items():
+        if self.content.additional_arguments:
+            additional_arguments: Dict = self.content.additional_arguments.serialize()
+            for key, value in additional_arguments.items():
                 data[key] = value = value
         request_body["json"] = data
 

@@ -9,7 +9,7 @@ from ..flow_object import FlowObject
 
 
 @dataclass
-class AditionalArguments(SerializableAttrs):
+class AdditionalArguments(SerializableAttrs):
     """Aditional Arguments.
 
     Aditional Arguments for IRM Middleware.
@@ -62,7 +62,7 @@ class LLMMiddleware(FlowObject):
     prompt: str = ib(factory=str)
     provider: str = ib(factory=str)
     args: Dict[str, Any] = ib(factory=dict)
-    aditional_arguments: AditionalArguments = ib(factory=AditionalArguments)
+    additional_arguments: AdditionalArguments = ib(factory=AdditionalArguments)
 
     @classmethod
     def from_dict(cls, data: Dict) -> LLMMiddleware:
@@ -78,5 +78,5 @@ class LLMMiddleware(FlowObject):
             prompt=data.get("prompt"),
             provider=data.get("provider"),
             args=data.get("args"),
-            aditional_arguments=AditionalArguments(**data.get("aditional_arguments", {})),
+            additional_arguments=AdditionalArguments(**data.get("additional_arguments", {})),
         )
