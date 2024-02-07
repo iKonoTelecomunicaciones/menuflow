@@ -128,9 +128,9 @@ class Input(Switch, Message):
                 else:
                     o_connection = await self.input_media(content=evt.content)
             elif self.input_type == MessageType.AUDIO:
-                if self.middleware and evt.content.msgtype == MessageType.AUDIO: 
-                    await self.middleware.run(self,audio_url=evt.content.url)
-                    o_connection = await Switch.run(self=self,generate_event=False)
+                if self.middleware and evt.content.msgtype == MessageType.AUDIO:
+                    await self.middleware.run(self, audio_url=evt.content.url)
+                    o_connection = await Switch.run(self=self, generate_event=False)
                 else:
                     o_connection = await self.input_media(content=evt.content)
             elif self.input_type in [
@@ -145,7 +145,7 @@ class Input(Switch, Message):
 
             if self.inactivity_options:
                 await Util.cancel_task(task_name=self.room.room_id)
-               
+
             await send_node_event(
                 config=self.room.config,
                 send_event=self.content.get("send_event"),
