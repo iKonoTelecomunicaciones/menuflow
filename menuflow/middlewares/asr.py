@@ -2,7 +2,7 @@ from typing import Dict, Tuple
 
 from aiohttp import ClientTimeout, ContentTypeError, FormData
 from ..nodes import Base
-from ..repository import ASRMiddlewareModel
+from ..repository import ASRMiddleware as ASRMiddlewareModel
 from ..room import Room
 from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
@@ -19,39 +19,27 @@ class ASRMiddleware(Base):
 
     @property
     def url(self) -> str:
-        return self.render_data(self.content.get("url", ""))
+        return self.render_data(self.content.url)
 
     @property
     def headers(self) -> Dict:
-        return self.render_data(self.content.get("general", {}).get("headers", {})) 
+        return self.render_data(self.content.headers) 
 
     @property
     def middleware_variables(self) -> Dict:
-        return self.render_data(self.content.get("variables", {}))
-
-    @property
-    def data(self) -> Dict:
-        return self.render_data(self.content.get("data", {}))
-
-    @property
-    def json(self) -> Dict:
-        return self.render_data(self.content.get("json", {}))
+        return self.render_data(self.content.variables)
 
     @property
     def method(self) -> Dict:
-        return self.render_data(self.content.get("method", ""))
+        return self.render_data(self.content.method)
 
     @property
     def cookies(self) -> Dict:
-        return self.render_data(self.content.get("cookies", {}))
-
-    @property
-    def query_params(self) -> Dict:
-        return self.render_data(self.content.get("query_params", {}))
+        return self.render_data(self.content.cookies)
 
     @property
     def provider(self) -> str:
-        return self.render_data(self.content.get("provider", {}))
+        return self.render_data(self.content.provider)
 
     async def run(self, extended_data: Dict, audio_url: str):
         audio = await self.room.matrix_client.download_media(url=audio_url)
@@ -64,21 +52,17 @@ class ASRMiddleware(Base):
         request_body = {}
         form_data = FormData()
 
-        if self.query_params:
-            request_body["params"] = self.query_params
-
         if self.headers:
             request_body["headers"] = self.headers
 
+
         if audio:
             form_data.add_field("audio", audio, filename="audio.ogg", content_type="audio/ogg")
+
             form_data.add_field("provider", self.provider)
         else:
             self.log.error("Error getting the audio")
             return
-
-        if self.json:
-            request_body["json"] = self.json
 
         try:
             timeout = ClientTimeout(total=self.config["menuflow.timeouts.middlewares"])
@@ -98,9 +82,9 @@ class ASRMiddleware(Base):
         if self.cookies:
             for cookie in self.cookies:
                 variables[cookie] = response.cookies.output(cookie)
-
         try:
             response_data = await response.json()
+
         except ContentTypeError:
             response_data = {}
 
@@ -128,8 +112,8 @@ class ASRMiddleware(Base):
                         pass
 
                     break
-
-        if variables:
+       
+        if variables:   
             await self.room.set_variables(variables=variables)
 
         return response.status, await response.text()

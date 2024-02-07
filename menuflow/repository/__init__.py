@@ -1,6 +1,6 @@
 from .flow import Flow
 from .flow_utils import FlowUtils
-from .middlewares import HTTPMiddleware, IRMMiddleware, ASRMiddlewareModel
+from .middlewares import HTTPMiddleware, IRMMiddleware, ASRMiddleware
 from .nodes import (
     Case,
     CheckTime,

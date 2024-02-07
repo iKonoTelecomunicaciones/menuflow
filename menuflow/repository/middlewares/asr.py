@@ -1,22 +1,16 @@
+from __future__ import annotations
+
 from typing import Any, Dict
-from mautrix.types import SerializableAttrs
 
 from attr import dataclass, ib
 
 from ..flow_object import FlowObject
 
-
 @dataclass
-class General(SerializableAttrs):
-    headers: Dict[str, Any] = ib(default=None)
+class ASRMiddleware(FlowObject):
+    """ASRMiddleware
 
-
-@dataclass
-class ASRMiddlewareModel(FlowObject):
-    """
-    ## ASRMiddlewareModel
-
-    A ASR middleware node allows to recognize text from a sound file.
+    Middleware node recognize the text from a sound file.
 
     content:
 
@@ -28,18 +22,8 @@ class ASRMiddlewareModel(FlowObject):
       provider: "azure"
       cookies:
           cookie1: "value1"
-      query_params:
-          param1: "value1"
-      general:
-          header:
-             header1: "value1"
-      basic_auth:
-          username: "user"
-          password: "pass"
-      data:
-          data1: "value1"
-      json:
-          json1: "value1"
+      header:
+          header1: "value1"
       variables:
           variable1: "value1"
     """
@@ -50,9 +34,18 @@ class ASRMiddlewareModel(FlowObject):
     url: str = ib(default=None)
     provider: str = ib(default=None)
     cookies: Dict[str, Any] = ib(factory=dict)
-    query_params: Dict[str, Any] = ib(factory=dict)
-    general: General = ib(default=None)
-    basic_auth: Dict[str, Any] = ib(factory=dict)
+    headers: Dict[str, Any] = ib(default=None)
     variables: Dict[str, Any] = ib(factory=dict)
-    data: Dict[str, Any] = ib(factory=dict)
-    json: Dict[str, Any] = ib(factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> ASRMiddleware:
+        return cls(
+            id=data.get("id"),
+            type=data.get("type"),
+            method=data.get("method"),
+            url=data.get("url"),
+            provider=data.get("provider"),
+            variables=data.get("variables"),
+            cookies=data.get("cookies"),
+            headers=data.get("headers"),
+        )

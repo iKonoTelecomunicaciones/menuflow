@@ -10,7 +10,7 @@ from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
 from ..utils import Util
-from .middlewares import HTTPMiddleware, ASRMiddlewareModel
+from .middlewares import HTTPMiddleware, ASRMiddleware
 from .nodes import CheckTime, HTTPRequest, Input, Message, Switch
 
 log: TraceLogger = logging.getLogger("menuflow.repository.flow")
@@ -19,7 +19,7 @@ log: TraceLogger = logging.getLogger("menuflow.repository.flow")
 @dataclass
 class Flow(SerializableAttrs):
     nodes: List[Message, Input, HTTPRequest, Switch, CheckTime] = ib(factory=list)
-    middlewares: List[HTTPMiddleware | ASRMiddlewareModel] = ib(default=[])
+    middlewares: List[HTTPMiddleware | ASRMiddleware] = ib(default=[])
     flow_variables: Dict[str, Any] = ib(default={})
 
     @classmethod
