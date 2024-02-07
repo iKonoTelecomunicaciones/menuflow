@@ -5,7 +5,7 @@ from mautrix.util.logging import TraceLogger
 
 from .middlewares.http import HTTPMiddleware
 from .repository import FlowUtils as FlowUtilsModel
-from .repository.middlewares import HTTPMiddleware, IRMMiddleware, ASRMiddleware
+from .repository.middlewares import ASRMiddleware, HTTPMiddleware, IRMMiddleware
 from .repository.middlewares.email import EmailServer
 
 log: TraceLogger = logging.getLogger("menuflow.flow_utils")
@@ -19,7 +19,9 @@ class FlowUtils:
     def __init__(self) -> None:
         self.data: FlowUtilsModel = FlowUtilsModel.load_flow_utils()
 
-    def _add_middleware_to_cache(self, middleware_model: HTTPMiddleware | IRMMiddleware | ASRMiddleware) -> None:
+    def _add_middleware_to_cache(
+        self, middleware_model: HTTPMiddleware | IRMMiddleware | ASRMiddleware
+    ) -> None:
         self.middlewares_by_id[middleware_model.id] = middleware_model
 
     def get_middleware_by_id(self, middleware_id: str) -> HTTPMiddleware | None:

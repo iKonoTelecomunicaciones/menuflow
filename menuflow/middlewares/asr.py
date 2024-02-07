@@ -1,11 +1,14 @@
 from typing import Dict, Tuple
 
 from aiohttp import ClientTimeout, ContentTypeError, FormData
+from mautrix.util.config import RecursiveDict
+from ruamel.yaml.comments import CommentedMap
+
 from ..nodes import Base
 from ..repository import ASRMiddleware as ASRMiddlewareModel
 from ..room import Room
-from mautrix.util.config import RecursiveDict
-from ruamel.yaml.comments import CommentedMap
+
+
 class ASRMiddleware(Base):
     def __init__(
         self,
@@ -23,7 +26,7 @@ class ASRMiddleware(Base):
 
     @property
     def headers(self) -> Dict:
-        return self.render_data(self.content.headers) 
+        return self.render_data(self.content.headers)
 
     @property
     def middleware_variables(self) -> Dict:
@@ -54,7 +57,6 @@ class ASRMiddleware(Base):
 
         if self.headers:
             request_body["headers"] = self.headers
-
 
         if audio:
             form_data.add_field("audio", audio, filename="audio.ogg", content_type="audio/ogg")
@@ -112,8 +114,8 @@ class ASRMiddleware(Base):
                         pass
 
                     break
-       
-        if variables:   
+
+        if variables:
             await self.room.set_variables(variables=variables)
 
         return response.status, await response.text()

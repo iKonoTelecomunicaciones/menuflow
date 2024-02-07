@@ -10,7 +10,7 @@ from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
 from ..utils import Util
-from .middlewares import HTTPMiddleware, ASRMiddleware
+from .middlewares import ASRMiddleware, HTTPMiddleware
 from .nodes import CheckTime, HTTPRequest, Input, Message, Switch
 
 log: TraceLogger = logging.getLogger("menuflow.repository.flow")

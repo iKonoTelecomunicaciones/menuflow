@@ -6,7 +6,7 @@ from typing import Dict, Optional
 from mautrix.util.logging import TraceLogger
 
 from .flow_utils import FlowUtils
-from .middlewares import HTTPMiddleware, IRMMiddleware, ASRMiddleware
+from .middlewares import ASRMiddleware, HTTPMiddleware, IRMMiddleware
 from .nodes import (
     CheckTime,
     Email,
@@ -75,7 +75,9 @@ class Flow:
                 self._add_node_to_cache(node)
                 return node
 
-    def middleware(self, middleware_id: str, room: Room) -> HTTPMiddleware | IRMMiddleware | ASRMiddleware | None :
+    def middleware(
+        self, middleware_id: str, room: Room
+    ) -> HTTPMiddleware | IRMMiddleware | ASRMiddleware | None:
         middleware_model = self.flow_utils.get_middleware_by_id(middleware_id=middleware_id)
         try:
             middleware_type = Middlewares(middleware_model.type)

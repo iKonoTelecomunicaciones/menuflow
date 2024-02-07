@@ -9,7 +9,7 @@ from mautrix.types import SerializableAttrs
 from mautrix.util.logging import TraceLogger
 
 from ..utils import Middlewares
-from .middlewares import EmailServer, HTTPMiddleware, IRMMiddleware, ASRMiddleware
+from .middlewares import ASRMiddleware, EmailServer, HTTPMiddleware, IRMMiddleware
 
 log: TraceLogger = logging.getLogger("menuflow.repository.flow_utils")
 
@@ -43,7 +43,9 @@ class FlowUtils(SerializableAttrs):
         )
 
     @classmethod
-    def initialize_middleware_dataclass(cls, middleware: Dict) -> HTTPMiddleware | IRMMiddleware | ASRMiddleware:
+    def initialize_middleware_dataclass(
+        cls, middleware: Dict
+    ) -> HTTPMiddleware | IRMMiddleware | ASRMiddleware:
         try:
             middleware_type = Middlewares(middleware.get("type"))
         except ValueError:
