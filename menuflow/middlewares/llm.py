@@ -5,15 +5,15 @@ from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
 from ..nodes import Base
-from ..repository import IRMMiddleware as IRMMiddlewareModel
+from ..repository import LLMMiddleware as LLMMiddlewareModel
 from ..room import Room
 
 
-class IRMMiddleware(Base):
-    def __init__(self, irm_data: IRMMiddlewareModel, room: Room, default_variables: Dict) -> None:
+class LLMMiddleware(Base):
+    def __init__(self, llm_data: LLMMiddlewareModel, room: Room, default_variables: Dict) -> None:
         Base.__init__(self, room=room, default_variables=default_variables)
-        self.log = self.log.getChild(irm_data.id)
-        self.content: IRMMiddlewareModel = irm_data
+        self.log = self.log.getChild(llm_data.id)
+        self.content: LLMMiddlewareModel = llm_data
 
     @property
     def method(self) -> str:
@@ -43,7 +43,15 @@ class IRMMiddleware(Base):
     def prompt(self) -> str:
         return self.render_data(self.content.prompt)
 
-    async def run(self, image_mxc: str, content_type: str, filename: str) -> Tuple[int, str]:
+    @property
+    def provider(self) -> str:
+        return self.render_data(self.content.provider)
+
+    @property
+    def args(self) -> Dict:
+        return self.render_data(self.content.args)
+
+    async def run(self, text: str) -> Tuple[int, str]:
         """Make the auth request to refresh api token
 
         Parameters
@@ -58,19 +66,25 @@ class IRMMiddleware(Base):
         """
 
         request_body = {}
+        question = text
 
         if self.headers:
             request_body["headers"] = self.headers
 
-        data = FormData()
-        image = await self.room.matrix_client.download_media(url=image_mxc)
-        data.add_field(name="image", value=image, content_type=content_type, filename=filename)
-        data.add_field(name="prompt", value=self.prompt)
+        if self.args:
+            args_values = self.args.values()
+            question = f"{text}, {', '.join(args_values)}"
+
+        data = {
+            "prompt": self.prompt,
+            "question": question,
+            "provider": self.provider,
+        }
         if self.content.additional_arguments:
             additional_arguments: Dict = self.content.additional_arguments.serialize()
             for key, value in additional_arguments.items():
-                data.add_field(name=key, value=value)
-        request_body["data"] = data
+                data[key] = value = value
+        request_body["json"] = data
 
         try:
             timeout = ClientTimeout(total=self.config["menuflow.timeouts.middlewares"])
@@ -96,8 +110,6 @@ class IRMMiddleware(Base):
             response_data = await response.json()
         except ContentTypeError:
             response_data = await response.text()
-
-        self.log.critical(f"response_data: {response_data}")
 
         if isinstance(response_data, dict):
             # Tulir and its magic since time immemorial
