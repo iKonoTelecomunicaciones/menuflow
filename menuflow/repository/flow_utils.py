@@ -16,7 +16,7 @@ log: TraceLogger = logging.getLogger("menuflow.repository.flow_utils")
 
 @dataclass
 class FlowUtils(SerializableAttrs):
-    middlewares: List[HTTPMiddleware, IRMMiddleware] = ib(default=[])
+    middlewares: List[HTTPMiddleware, IRMMiddleware, LLMMiddleware, ASRMiddleware] = ib(default=[])
     email_servers: List[EmailServer] = ib(default=[])
 
     @classmethod
@@ -58,7 +58,7 @@ class FlowUtils(SerializableAttrs):
             return IRMMiddleware.from_dict(middleware)
         elif middleware_type == Middlewares.LLM:
             return LLMMiddleware.from_dict(middleware)
-        elif middleware_type == Middlewares.asr:
+        elif middleware_type == Middlewares.ASR:
             return ASRMiddleware.from_dict(middleware)
 
     @classmethod

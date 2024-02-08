@@ -44,13 +44,15 @@ class ASRMiddleware(Base):
     def provider(self) -> str:
         return self.render_data(self.content.provider)
 
-    async def run(self, extended_data: Dict, audio_url: str):
+    async def run(
+        self, extended_data: Dict, audio_url: str, audio_name: str = None
+    ) -> Tuple[int, str]:
         audio = await self.room.matrix_client.download_media(url=audio_url)
-        result = await self.http_request(audio=audio)
+        result = await self.http_request(audio=audio, audio_name=audio_name)
 
         return result
 
-    async def http_request(self, audio) -> Tuple[int, str]:
+    async def http_request(self, audio, audio_name) -> Tuple[int, str]:
         """Recognize the text and return the status code and the text."""
         request_body = {}
         form_data = FormData()
@@ -59,7 +61,7 @@ class ASRMiddleware(Base):
             request_body["headers"] = self.headers
 
         if audio:
-            form_data.add_field("audio", audio, filename="audio.ogg", content_type="audio/ogg")
+            form_data.add_field("audio", audio, filename=audio_name, content_type="audio/ogg")
 
             form_data.add_field("provider", self.provider)
         else:

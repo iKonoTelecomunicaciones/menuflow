@@ -24,7 +24,7 @@ class ASRMiddleware(FlowObject):
       cookies:
           cookie1: "value1"
       header:
-          header1: "value1"
+          Client-token: "client-token"
       variables:
           variable1: "value1"
     """

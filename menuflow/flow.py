@@ -102,7 +102,7 @@ class Flow:
             middleware_initialized = LLMMiddleware(
                 llm_data=middleware_model, room=room, default_variables=self.flow_variables
             )
-        elif middleware_type == Middlewares.asr:
+        elif middleware_type == Middlewares.ASR:
             middleware_initialized = ASRMiddleware(
                 asr_middleware_content=middleware_model,
                 room=room,

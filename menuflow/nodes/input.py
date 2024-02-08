@@ -22,15 +22,10 @@ from .message import Message
 from .switch import Switch
 
 if TYPE_CHECKING:
-    from ..middlewares import IRMMiddleware, LLMMiddleware
-
-if TYPE_CHECKING:
-    from ..middlewares import ASRMiddleware
+    from ..middlewares import ASRMiddleware, IRMMiddleware, LLMMiddleware
 
 
 class Input(Switch, Message):
-    middleware: "ASRMiddleware" = None
-
     def __init__(self, input_node_data: InputModel, room: Room, default_variables: Dict) -> None:
         Switch.__init__(self, input_node_data, room=room, default_variables=default_variables)
         Message.__init__(self, input_node_data, room=room, default_variables=default_variables)
@@ -133,13 +128,14 @@ class Input(Switch, Message):
                     o_connection = await self.input_media(content=evt.content)
             elif self.input_type == MessageType.AUDIO:
                 if self.middleware and evt.content.msgtype == MessageType.AUDIO:
-                    await self.middleware.run(self, audio_url=evt.content.url)
+                    audio_name = evt.content.file or "audio.ogg"
+                    await self.middleware.run(
+                        self, audio_url=evt.content.url, audio_name=audio_name
+                    )
                     o_connection = await Switch.run(self=self, generate_event=False)
                 else:
                     o_connection = await self.input_media(content=evt.content)
             elif self.input_type in [
-                MessageType.AUDIO,
-                MessageType.IMAGE,
                 MessageType.FILE,
                 MessageType.VIDEO,
             ]:

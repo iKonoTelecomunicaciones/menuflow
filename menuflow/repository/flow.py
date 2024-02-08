@@ -19,7 +19,6 @@ log: TraceLogger = logging.getLogger("menuflow.repository.flow")
 @dataclass
 class Flow(SerializableAttrs):
     nodes: List[Message, Input, HTTPRequest, Switch, CheckTime] = ib(factory=list)
-    middlewares: List[HTTPMiddleware | ASRMiddleware] = ib(default=[])
     flow_variables: Dict[str, Any] = ib(default={})
 
     @classmethod
