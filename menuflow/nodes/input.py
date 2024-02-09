@@ -22,7 +22,7 @@ from .message import Message
 from .switch import Switch
 
 if TYPE_CHECKING:
-    from ..middlewares import IRMMiddleware, LLMMiddleware
+    from ..middlewares import ASRMiddleware, IRMMiddleware, LLMMiddleware
 
 
 class Input(Switch, Message):
@@ -110,7 +110,6 @@ class Input(Switch, Message):
             if not evt:
                 self.log.warning("A problem occurred getting message event.")
                 return
-
             if self.input_type == MessageType.TEXT:
                 if self.middleware:
                     await self.middleware.run(text=evt.content.body)
@@ -127,8 +126,16 @@ class Input(Switch, Message):
                     o_connection = await Switch.run(self, generate_event=False)
                 else:
                     o_connection = await self.input_media(content=evt.content)
+            elif self.input_type == MessageType.AUDIO:
+                if self.middleware and evt.content.msgtype == MessageType.AUDIO:
+                    audio_name = evt.content.file or "audio.ogg"
+                    await self.middleware.run(
+                        self, audio_url=evt.content.url, audio_name=audio_name
+                    )
+                    o_connection = await Switch.run(self=self, generate_event=False)
+                else:
+                    o_connection = await self.input_media(content=evt.content)
             elif self.input_type in [
-                MessageType.AUDIO,
                 MessageType.FILE,
                 MessageType.VIDEO,
             ]:

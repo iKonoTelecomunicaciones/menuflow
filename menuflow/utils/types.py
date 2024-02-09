@@ -23,3 +23,4 @@ class Middlewares(SerializableEnum):
     BASE = "base"
     IRM = "irm"
     LLM = "llm"
+    ASR = "asr"
