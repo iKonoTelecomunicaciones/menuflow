@@ -24,7 +24,12 @@ class FlowUtils:
     ) -> None:
         self.middlewares_by_id[middleware_model.id] = middleware_model
 
-    def get_middleware_by_id(self, middleware_id: str) -> HTTPMiddleware | None:
+    def _add_email_server_to_cache(self, email_server_model: EmailServer) -> None:
+        self.email_servers_by_id[email_server_model.server_id] = email_server_model
+
+    def get_middleware_by_id(
+        self, middleware_id: str | IRMMiddleware | ASRMiddleware | None
+    ) -> HTTPMiddleware | None:
         """This function retrieves a middleware by its ID from a cache or a list of middlewares.
 
         Parameters
