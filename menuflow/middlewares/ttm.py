@@ -5,15 +5,15 @@ from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 
 from ..nodes import Base
-from ..repository import IRMMiddleware as IRMMiddlewareModel
+from ..repository import TTMMiddleware as TTMMiddlewareModel
 from ..room import Room
 
 
-class IRMMiddleware(Base):
-    def __init__(self, irm_data: IRMMiddlewareModel, room: Room, default_variables: Dict) -> None:
+class TTMMiddleware(Base):
+    def __init__(self, ttm_data: TTMMiddlewareModel, room: Room, default_variables: Dict) -> None:
         Base.__init__(self, room=room, default_variables=default_variables)
-        self.log = self.log.getChild(irm_data.id)
-        self.content: IRMMiddlewareModel = irm_data
+        self.log = self.log.getChild(ttm_data.id)
+        self.content: TTMMiddlewareModel = ttm_data
 
     @property
     def method(self) -> str:
@@ -40,10 +40,18 @@ class IRMMiddleware(Base):
         return self.render_data(self.content.basic_auth)
 
     @property
-    def prompt(self) -> str:
-        return self.render_data(self.content.prompt)
+    def target_language(self) -> str:
+        return self.render_data(self.content.target_language)
 
-    async def run(self, image_mxc: str, content_type: str, filename: str) -> Tuple[int, str]:
+    @property
+    def source_language(self) -> str:
+        return self.render_data(self.content.source_language)
+
+    @property
+    def provider(self) -> str:
+        return self.render_data(self.content.provider)
+
+    async def run(self, text: str) -> Tuple[int, str]:
         """Make the auth request to refresh api token
 
         Parameters
@@ -63,13 +71,10 @@ class IRMMiddleware(Base):
             request_body["headers"] = self.headers
 
         data = FormData()
-        image = await self.room.matrix_client.download_media(url=image_mxc)
-        data.add_field(name="image", value=image, content_type=content_type, filename=filename)
-        data.add_field(name="prompt", value=self.prompt)
-        if self.content.additional_arguments:
-            additional_arguments: Dict = self.content.additional_arguments.serialize()
-            for key, value in additional_arguments.items():
-                data.add_field(name=key, value=value)
+        data.add_field(name="text", value=text)
+        data.add_field(name="target_language", value=self.target_language)
+        data.add_field(name="source_language", value=self.source_language)
+        data.add_field(name="provider", value=self.provider)
         request_body["data"] = data
 
         try:
@@ -123,4 +128,4 @@ class IRMMiddleware(Base):
         if variables:
             await self.room.set_variables(variables=variables)
 
-        return response.status, await response.text()
+        return response.status, response_data.get("text")
