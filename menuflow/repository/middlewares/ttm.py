@@ -9,7 +9,7 @@ from ..flow_object import FlowObject
 
 @dataclass
 class TTMMiddleware(FlowObject):
-    """TTM Middleware.
+    """Text translation model Middleware.
 
     An TTMMiddleware is used to translate text from a source language to a target language.
 

@@ -33,7 +33,7 @@ class AdditionalArguments(SerializableAttrs):
 
 @dataclass
 class LLMMiddleware(FlowObject):
-    """LLM Middleware.
+    """Large language model Middleware.
 
     An LLMMiddleware is used to implement large language models in Menuflow.
 
