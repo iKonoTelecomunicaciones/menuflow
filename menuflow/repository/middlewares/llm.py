@@ -59,6 +59,7 @@ class LLMMiddleware(FlowObject):
     cookies: Dict[str, Any] = ib(factory=dict)
     headers: Dict[str, Any] = ib(factory=dict)
     basic_auth: Dict[str, Any] = ib(factory=dict)
+    model: str = ib(default=None)
     prompt: str = ib(factory=str)
     provider: str = ib(factory=str)
     args: Dict[str, Any] = ib(factory=dict)
@@ -75,6 +76,7 @@ class LLMMiddleware(FlowObject):
             cookies=data.get("cookies"),
             headers=data.get("headers"),
             basic_auth=data.get("basic_auth"),
+            model=data.get("model"),
             prompt=data.get("prompt"),
             provider=data.get("provider"),
             args=data.get("args"),

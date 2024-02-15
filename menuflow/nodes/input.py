@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from mautrix.types import (
     LocationMessageEventContent,
@@ -17,12 +17,12 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Input as InputModel
 from ..room import Room
-from ..utils import Nodes, Util
+from ..utils import Middlewares, Nodes, Util
 from .message import Message
 from .switch import Switch
 
 if TYPE_CHECKING:
-    from ..middlewares import ASRMiddleware, IRMMiddleware, LLMMiddleware
+    from ..middlewares import ASRMiddleware, IRMMiddleware, LLMMiddleware, TTMMiddleware
 
 
 class Input(Switch, Message):
@@ -30,7 +30,9 @@ class Input(Switch, Message):
         Switch.__init__(self, input_node_data, room=room, default_variables=default_variables)
         Message.__init__(self, input_node_data, room=room, default_variables=default_variables)
         self.content = input_node_data
-        self.middleware: Optional[IRMMiddleware | LLMMiddleware] = None
+        self.middlewares: Optional[
+            List[LLMMiddleware, ASRMiddleware, IRMMiddleware, TTMMiddleware]
+        ] = []
 
     @property
     def variable(self) -> str:
@@ -74,7 +76,7 @@ class Input(Switch, Message):
         await self.room.update_menu(o_connection or "default")
         return o_connection
 
-    async def input_text(self, content: MessageEventContent):
+    async def input_text(self, text: str, middlewares_sorted: Dict[Middlewares, Any] = None):
         """It takes the input from the user and sets the variable to the input
 
         Parameters
@@ -83,13 +85,22 @@ class Input(Switch, Message):
             The content of the message event.
 
         """
-        try:
-            await self.room.set_variable(
-                self.variable,
-                int(content.body) if content.body.isdigit() else content.body,
-            )
-        except ValueError as e:
-            self.log.warning(e)
+
+        if self.middlewares:
+            given_text = text
+            if Middlewares.TTM in middlewares_sorted:
+                _, given_text = await middlewares_sorted[Middlewares.TTM].run(text=text)
+
+            if Middlewares.LLM in middlewares_sorted:
+                await middlewares_sorted[Middlewares.LLM].run(text=given_text)
+        else:
+            try:
+                await self.room.set_variable(
+                    self.variable,
+                    int(text) if text.isdigit() else text,
+                )
+            except ValueError as e:
+                self.log.warning(e)
 
         # If the node has an output connection, then update the menu to the output connection.
         # Otherwise, run the node and update the menu to the output connection.
@@ -106,19 +117,25 @@ class Input(Switch, Message):
 
         """
 
+        middlewares_sorted = {
+            Middlewares(middleware.type): middleware for middleware in self.middlewares
+        }
+
         if self.room.route.state == RouteState.INPUT:
             if not evt:
                 self.log.warning("A problem occurred getting message event.")
                 return
+
             if self.input_type == MessageType.TEXT:
-                if self.middleware:
-                    await self.middleware.run(text=evt.content.body)
-                    o_connection = await Switch.run(self, generate_event=False)
-                else:
-                    o_connection = await self.input_text(content=evt.content)
+                o_connection = await self.input_text(
+                    text=evt.content.body, middlewares_sorted=middlewares_sorted
+                )
             elif self.input_type == MessageType.IMAGE:
-                if self.input_type == evt.content.msgtype and self.middleware:
-                    await self.middleware.run(
+                if (
+                    self.input_type == evt.content.msgtype
+                    and Middlewares.IRM in middlewares_sorted
+                ):
+                    await middlewares_sorted[Middlewares.IRM].run(
                         image_mxc=evt.content.url,
                         content_type=evt.content.info.mimetype,
                         filename=evt.content.body,
@@ -127,13 +144,20 @@ class Input(Switch, Message):
                 else:
                     o_connection = await self.input_media(content=evt.content)
             elif self.input_type == MessageType.AUDIO:
-                if self.middleware and evt.content.msgtype == MessageType.AUDIO:
+                if (
+                    Middlewares.ASR in middlewares_sorted
+                    and evt.content.msgtype == MessageType.AUDIO
+                ):
                     audio_name = evt.content.file or "audio.ogg"
-                    await self.middleware.run(
-                        self, audio_url=evt.content.url, audio_name=audio_name
+                    _, given_text = await middlewares_sorted[Middlewares.ASR].run(
+                        audio_url=evt.content.url, audio_name=audio_name
                     )
                     o_connection = await Switch.run(self=self, generate_event=False)
-                else:
+
+                if Middlewares.LLM in middlewares_sorted:
+                    await middlewares_sorted[Middlewares.LLM].run(text=given_text)
+
+                if not self.middlewares:
                     o_connection = await self.input_media(content=evt.content)
             elif self.input_type in [
                 MessageType.FILE,

@@ -68,7 +68,7 @@ class FlowUtils(SerializableAttrs):
         elif middleware_type == Middlewares.LLM:
             return LLMMiddleware.from_dict(middleware)
         elif middleware_type == Middlewares.ASR:
-            return ASRMiddleware.from_dict(middleware)
+            return ASRMiddleware(**middleware)
         elif middleware_type == Middlewares.TTM:
             return TTMMiddleware(**middleware)
 
