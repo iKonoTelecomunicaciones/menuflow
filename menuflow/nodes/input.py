@@ -76,7 +76,7 @@ class Input(Switch, Message):
         await self.room.update_menu(o_connection or "default")
         return o_connection
 
-    async def input_text(self, text: str, middlewares_sorted: Dict[Middlewares, Any]):
+    async def input_text(self, text: str, middlewares_sorted: Dict[Middlewares, Any] = None):
         """It takes the input from the user and sets the variable to the input
 
         Parameters

@@ -24,17 +24,11 @@ class TestInputNode:
 
     @pytest.mark.asyncio
     async def test_input_text_in_text_input_node(self, input_text: Input):
-        await input_text.input_text(
-            content=TextMessageEventContent(msgtype=MessageType.TEXT, body="y")
-        )
+        await input_text.input_text(text="y")
         assert input_text.room.route.node_id == "input-2"
-        await input_text.input_text(
-            content=TextMessageEventContent(msgtype=MessageType.TEXT, body="n")
-        )
+        await input_text.input_text(text="n")
         assert input_text.room.route.node_id == "last-message"
-        await input_text.input_text(
-            content=TextMessageEventContent(msgtype=MessageType.TEXT, body="foo")
-        )
+        await input_text.input_text(text="foo")
         assert input_text.room.route.node_id == "last-message"
 
     @pytest.mark.asyncio
