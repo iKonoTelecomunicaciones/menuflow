@@ -40,6 +40,10 @@ class LLMMiddleware(Base):
         return self.render_data(self.content.basic_auth)
 
     @property
+    def model(self) -> str:
+        return self.render_data(self.content.model)
+
+    @property
     def prompt(self) -> str:
         return self.render_data(self.content.prompt)
 
@@ -72,18 +76,19 @@ class LLMMiddleware(Base):
             request_body["headers"] = self.headers
 
         if self.args:
-            args_values = self.args.values()
-            question = f"{text}, {', '.join(args_values)}"
+            question = text
+            for key, value in self.args.items():
+                question = f"{question}, {key} {value}"
 
         data = {
+            "model": self.model,
             "prompt": self.prompt,
             "question": question,
             "provider": self.provider,
         }
         if self.content.additional_arguments:
             additional_arguments: Dict = self.content.additional_arguments.serialize()
-            for key, value in additional_arguments.items():
-                data[key] = value = value
+            data.update({"advanced_settings": additional_arguments})
         request_body["json"] = data
 
         try:

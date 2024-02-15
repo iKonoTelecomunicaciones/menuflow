@@ -44,9 +44,15 @@ class ASRMiddleware(Base):
     def provider(self) -> str:
         return self.render_data(self.content.provider)
 
-    async def run(
-        self, extended_data: Dict, audio_url: str, audio_name: str = None
-    ) -> Tuple[int, str]:
+    @property
+    def target_languages(self) -> str:
+        return self.render_data(self.content.target_languages)
+
+    @property
+    def source_language(self) -> str:
+        return self.render_data(self.content.source_language)
+
+    async def run(self, audio_url: str, audio_name: str = None) -> Tuple[int, str]:
         audio = await self.room.matrix_client.download_media(url=audio_url)
         result = await self.http_request(audio=audio, audio_name=audio_name)
 
@@ -55,18 +61,21 @@ class ASRMiddleware(Base):
     async def http_request(self, audio, audio_name) -> Tuple[int, str]:
         """Recognize the text and return the status code and the text."""
         request_body = {}
-        form_data = FormData()
 
         if self.headers:
             request_body["headers"] = self.headers
 
-        if audio:
-            form_data.add_field("audio", audio, filename=audio_name, content_type="audio/ogg")
-
-            form_data.add_field("provider", self.provider)
-        else:
+        if not audio:
             self.log.error("Error getting the audio")
             return
+
+        form_data = FormData()
+        form_data.add_field("audio", audio, filename=audio_name, content_type="audio/ogg")
+        form_data.add_field("provider", self.provider)
+
+        if self.target_languages and self.source_language:
+            form_data.add_field("target_languages", self.target_languages)
+            form_data.add_field("source_language", self.source_language)
 
         try:
             timeout = ClientTimeout(total=self.config["menuflow.timeouts.middlewares"])
@@ -120,4 +129,10 @@ class ASRMiddleware(Base):
         if variables:
             await self.room.set_variables(variables=variables)
 
-        return response.status, await response.text()
+        result_text = (
+            response_data["result"].get(self.target_languages)
+            if self.target_languages
+            else response_data.get("text")
+        )
+
+        return response.status, result_text

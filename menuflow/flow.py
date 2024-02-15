@@ -147,9 +147,11 @@ class Flow:
             node_initialized = Input(
                 input_node_data=node_data, room=room, default_variables=self.flow_variables
             )
-            if node_data.get("middleware"):
-                middleware = self.middleware(node_data.get("middleware"), room)
-                node_initialized.middleware = middleware
+            if node_data.get("middlewares"):
+                middlewares = []
+                for middleware in node_data.get("middlewares"):
+                    middlewares.append(self.middleware(middleware, room=room))
+                node_initialized.middlewares = middlewares
         elif node_data.get("type") == "check_time":
             node_initialized = CheckTime(
                 check_time_node_data=node_data, room=room, default_variables=self.flow_variables
