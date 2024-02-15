@@ -9,7 +9,7 @@ from ..flow_object import FlowObject
 
 @dataclass
 class ASRMiddleware(FlowObject):
-    """ASRMiddleware
+    """Automatic speech recognition middleware
 
     Middleware node recognize the text from a sound file.
 

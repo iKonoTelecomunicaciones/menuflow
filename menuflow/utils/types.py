@@ -24,3 +24,4 @@ class Middlewares(SerializableEnum):
     IRM = "irm"
     LLM = "llm"
     ASR = "asr"
+    TTM = "ttm"

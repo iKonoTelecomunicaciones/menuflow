@@ -29,7 +29,7 @@ class AdditionalArguments(SerializableAttrs):
 
 @dataclass
 class IRMMiddleware(FlowObject):
-    """IRM Middleware.
+    """Image recognition model middleware.
 
     An IRMMiddleware is used to preprocess images in input nodes
     and extract information of it.

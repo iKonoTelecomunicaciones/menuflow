@@ -6,7 +6,7 @@ from typing import Dict, Optional
 from mautrix.util.logging import TraceLogger
 
 from .flow_utils import FlowUtils
-from .middlewares import ASRMiddleware, HTTPMiddleware, IRMMiddleware, LLMMiddleware
+from .middlewares import ASRMiddleware, HTTPMiddleware, IRMMiddleware, LLMMiddleware, TTMMiddleware
 from .nodes import (
     CheckTime,
     Email,
@@ -107,6 +107,10 @@ class Flow:
                 asr_middleware_content=middleware_model,
                 room=room,
                 default_variables=self.flow_variables,
+            )
+        elif middleware_type == Middlewares.TTM:
+            middleware_initialized = TTMMiddleware(
+                ttm_data=middleware_model, room=room, default_variables=self.flow_variables
             )
 
         return middleware_initialized
