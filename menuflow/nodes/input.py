@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, Optional, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from mautrix.types import (
     LocationMessageEventContent,
@@ -17,7 +17,7 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Input as InputModel
 from ..room import Room
-from ..utils import Nodes, Util, Middlewares
+from ..utils import Middlewares, Nodes, Util
 from .message import Message
 from .switch import Switch
 
