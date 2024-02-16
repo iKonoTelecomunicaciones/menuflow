@@ -55,7 +55,7 @@ class InteractiveInput(Input):
                 self.log.warning("A problem occurred to trying save the variable")
                 return
 
-            o_connection = await self.input_text(content=evt.content)
+            o_connection = await self.input_text(text=evt.content.body)
 
             if self.inactivity_options:
                 await Util.cancel_task(task_name=self.room.room_id)
