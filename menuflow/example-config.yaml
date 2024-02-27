@@ -69,7 +69,7 @@ nats:
     # Nats password
     password: "nats"
     # Stream name to publish messages
-    stream: "menuflow_company_name"
+    stream: "MENUFLOW_COMPANY_NAME"
     # Subject to publish messages
     subject: "menuflow.company_name"
 
