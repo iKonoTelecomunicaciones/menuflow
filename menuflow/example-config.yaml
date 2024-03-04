@@ -35,6 +35,10 @@ menuflow:
         start: 1
         end: 3
 
+    # It defines how much time have to wait before receive a message in a room,
+    # it's to avoid send too much messages to the customer
+    message_rate_limit: 1 #seconds
+
 
 server:
     # The IP and port to listen to.
