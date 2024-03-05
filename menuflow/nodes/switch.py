@@ -120,7 +120,7 @@ class Switch(Base):
             case_result: Dict = cases[id]
 
             # Load variables defined in the case into the room
-            await self.load_variables(case_result)
+            await self.load_variables(case_result.get("variables", {}))
 
             case_o_connection = self.render_data(case_result.get("o_connection"))
 
@@ -193,7 +193,7 @@ class Switch(Base):
 
         return case_o_connection
 
-    async def load_variables(self, case: Dict) -> None:
+    async def load_variables(self, variables: Dict) -> None:
         """This function loads variables defined in switch cases into the room.
 
         Parameters
@@ -203,16 +203,18 @@ class Switch(Base):
 
         """
         variables_recorded = []
-        if case.get("variables") and self.room:
-            for variable in case.get("variables", {}):
-                if variable in variables_recorded:
-                    continue
+        if not variables:
+            return
 
-                await self.room.set_variable(
-                    variable_id=variable,
-                    value=self.render_data(case["variables"][variable]),
-                )
-                variables_recorded.append(variable)
+        for variable in variables:
+            if variable in variables_recorded:
+                continue
+
+            await self.room.set_variable(
+                variable_id=variable,
+                value=self.render_data(variables[variable]),
+            )
+            variables_recorded.append(variable)
 
     async def manage_case_exceptions(self) -> tuple[str, str]:
         """
