@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from copy import deepcopy
+from datetime import datetime
 from typing import Dict, Optional
 
 from mautrix.client import Client as MatrixClient
@@ -36,6 +37,7 @@ class MatrixHandler(MatrixClient):
         self.flow = Flow(flow_utils=flow_utils, flow_mxid=self.mxid)
         self.LOCKED_ROOMS = set()
         self.LAST_JOIN_EVENT: Dict[RoomID, int] = {}
+        self.LAST_RECEIVED_MESSAGE: Dict[RoomID, datetime] = {}
         Base.init_cls(
             config=self.config,
             session=self.api.session,
@@ -190,6 +192,17 @@ class MatrixHandler(MatrixClient):
             )
             return
 
+        current_message_time = datetime.fromtimestamp(message.timestamp / 1000)
+        last_message_time = self.LAST_RECEIVED_MESSAGE.get(message.room_id)
+        if (
+            last_message_time
+            and (current_message_time - last_message_time).seconds
+            < self.config["menuflow.message_rate_limit"]
+        ):
+            self.log.warning(f"Message in {message.room_id} ignored due to rate limit")
+            return
+
+        self.LAST_RECEIVED_MESSAGE[message.room_id] = current_message_time
         room: Room = await Room.get_by_room_id(room_id=message.room_id, bot_mxid=self.mxid)
         room.config = self.config = self.config
         room.matrix_client = self

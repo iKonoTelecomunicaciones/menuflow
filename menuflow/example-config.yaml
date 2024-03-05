@@ -35,6 +35,10 @@ menuflow:
         start: 1
         end: 3
 
+    # It defines how much time to wait between two consecutive messages from the customer to process the message
+    # it's to avoid sending too much messages to the customer
+    message_rate_limit: 1 #seconds
+
 
 server:
     # The IP and port to listen to.
