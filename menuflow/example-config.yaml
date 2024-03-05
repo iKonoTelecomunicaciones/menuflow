@@ -28,15 +28,15 @@ menuflow:
         http_request: 10 #seconds
         middlewares: 5 #seconds
 
-    # It defines how much time to wait between two consecutive messages from the customer to process the message
-    # it's to avoid sending too much messages to the customer
+    # Do you want the menu to generate a typing notification event before sending messages to rooms?
+    # The range is related to the time duration of the write notification event.
     typing_notification:
         enable: true
         start: 1
         end: 3
 
-    # It defines how much time have to wait before receive a message in a room,
-    # it's to avoid send too much messages to the customer
+    # It defines how much time to wait between two consecutive messages from the customer to process the message
+    # it's to avoid sending too much messages to the customer
     message_rate_limit: 1 #seconds
 
 
