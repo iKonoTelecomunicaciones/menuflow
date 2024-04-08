@@ -15,6 +15,7 @@ class Nodes(SerializableEnum):
     set_vars = "set_vars"
     subroutine = "subroutine"
     switch = "switch"
+    delay = "delay"
 
 
 class Middlewares(SerializableEnum):

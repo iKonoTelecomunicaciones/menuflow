@@ -9,6 +9,7 @@ from .flow_utils import FlowUtils
 from .middlewares import ASRMiddleware, HTTPMiddleware, IRMMiddleware, LLMMiddleware, TTMMiddleware
 from .nodes import (
     CheckTime,
+    Delay,
     Email,
     HTTPRequest,
     Input,
@@ -183,6 +184,10 @@ class Flow:
         elif node_data.get("type") == "subroutine":
             node_initialized = Subroutine(
                 subroutine_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
+        elif node_data.get("type") == "delay":
+            node_initialized = Delay(
+                delay_node_data=node_data, room=room, default_variables=self.flow_variables
             )
         else:
             return
