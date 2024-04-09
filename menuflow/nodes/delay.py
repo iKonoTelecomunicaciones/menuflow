@@ -1,4 +1,4 @@
-from time import sleep
+from asyncio import sleep
 from typing import Dict
 
 from ..repository import Delay as DelayModel
@@ -19,10 +19,11 @@ class Delay(Base):
 
     @property
     async def o_connection(self) -> str:
-        return await self.get_o_connection()
+        o_connection = await self.get_o_connection()
+        return self.render_data(data=o_connection)
 
     async def run(self):
         self.log.debug(f"Room {self.room.room_id} enters delay node {self.id}")
-        sleep(self.time)
+        await sleep(self.time)
         o_connection = await self.o_connection
         await self.room.update_menu(node_id=o_connection, state=None)
