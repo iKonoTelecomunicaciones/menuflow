@@ -152,12 +152,13 @@ class Input(Switch, Message):
                     _, given_text = await middlewares_sorted[Middlewares.ASR].run(
                         audio_url=evt.content.url, audio_name=audio_name
                     )
-                    o_connection = await Switch.run(self=self, generate_event=False)
 
                 if Middlewares.LLM in middlewares_sorted:
                     await middlewares_sorted[Middlewares.LLM].run(text=given_text)
 
-                if not self.middlewares:
+                if self.middlewares:
+                    o_connection = await Switch.run(self=self, generate_event=False)
+                else:
                     o_connection = await self.input_media(content=evt.content)
             elif self.input_type in [
                 MessageType.FILE,
