@@ -39,6 +39,11 @@ menuflow:
     # it's to avoid sending too much messages to the customer
     message_rate_limit: 1 #seconds
 
+    # It defines which is the source of the flow, it can be a yaml file or a database
+    # - yaml: the flow is defined in a yaml file
+    # - database: the flow is defined in a database
+    load_flow_from: "yaml"
+
 
 server:
     # The IP and port to listen to.

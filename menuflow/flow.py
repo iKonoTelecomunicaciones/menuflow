@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, Optional
+from typing import Dict, List, NewType, Optional
 
 from mautrix.util.logging import TraceLogger
 
+from .config import Config
 from .flow_utils import FlowUtils
 from .middlewares import ASRMiddleware, HTTPMiddleware, IRMMiddleware, LLMMiddleware, TTMMiddleware
 from .nodes import (
@@ -27,19 +28,44 @@ from .repository import Flow as FlowModel
 from .room import Room
 from .utils import Middlewares
 
+Node = NewType(
+    "Node",
+    (
+        CheckTime,
+        Email,
+        HTTPRequest,
+        Input,
+        InteractiveInput,
+        InviteUser,
+        Leave,
+        Location,
+        Media,
+        Message,
+        SetVars,
+        Subroutine,
+        Switch,
+        Delay,
+    ),
+)
+
 
 class Flow:
     log: TraceLogger = logging.getLogger("menuflow.flow")
 
-    nodes: Dict[str, Dict]
+    def __init__(self) -> None:
+        self.data: Dict = {}
+        self.nodes: List[Dict] = []
+        self.nodes_by_id: Dict[str, Dict] = {}
+        self.flow_utils: Optional[FlowUtils] = None
 
-    def __init__(
+    async def load_flow(
         self,
         flow_mxid: Optional[str] = None,
         content: Optional[Dict] = None,
         flow_utils: Optional[FlowUtils] = None,
-    ) -> None:
-        self.data = FlowModel.load_flow(flow_mxid=flow_mxid, content=content)
+        config: Optional[Config] = None,
+    ) -> Flow:
+        self.data = await FlowModel.load_flow(flow_mxid=flow_mxid, content=content, config=config)
         self.nodes = self.data.get("nodes", [])
         self.nodes_by_id: Dict[str, Dict] = {}
         self.flow_utils = flow_utils
@@ -116,9 +142,7 @@ class Flow:
 
         return middleware_initialized
 
-    def node(
-        self, room: Room
-    ) -> Message | Input | HTTPRequest | Switch | CheckTime | Media | Email | Location | None:
+    def node(self, room: Room) -> Node | None:
         node_data = self.get_node_by_id(node_id=room.route.node_id)
 
         if not node_data:
