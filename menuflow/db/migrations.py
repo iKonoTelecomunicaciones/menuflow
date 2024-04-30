@@ -67,3 +67,22 @@ async def upgrade_v2(conn: Connection) -> None:
 async def upgrade_v3(conn: Connection) -> None:
     # Add stack column to route table
     await conn.execute("ALTER TABLE route ADD COLUMN stack JSONB NOT NULL DEFAULT '{}'::jsonb")
+
+
+@upgrade_table.register(description="Add flow table and flow column to client table")
+async def upgrade_v4(conn: Connection) -> None:
+    # Add flow column to client table
+    await conn.execute("ALTER TABLE client ADD COLUMN flow INT")
+
+    # Create flow table
+    await conn.execute(
+        """CREATE TABLE flow (
+            id          SERIAL PRIMARY KEY,
+            flow        JSONB DEFAULT '{}'::jsonb
+        )"""
+    )
+
+    # Add foreign key to client table
+    await conn.execute(
+        "ALTER TABLE client ADD CONSTRAINT FK_flow_client FOREIGN KEY (flow) references flow (id)"
+    )
