@@ -28,7 +28,7 @@ class Flow:
 
     @classmethod
     async def get_by_id(cls, id: int) -> "Flow" | None:
-        q = f"SELECT id, flow FROM flow WHERE id=$1"
+        q = "SELECT id, flow FROM flow WHERE id=$1"
         row = await cls.db.fetchrow(q, id)
 
         if not row:
