@@ -48,7 +48,7 @@ class Flow(SerializableAttrs):
             Flow: The loaded flow.
         """
         log.info(f"Loading flow {flow_mxid} from YAML file")
-        path = Path("/data/flows") / f"{flow_mxid}.yaml"
+        path = Path(f"/data/flows/{flow_mxid}.yaml")
         if not path.exists():
             log.warning(f"File {flow_mxid}.yaml not found")
             path.write_text(yaml.dump(Util.flow_example()))

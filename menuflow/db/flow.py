@@ -39,7 +39,7 @@ class Flow:
 
     @classmethod
     async def get_by_mxid(cls, mxid: str) -> Union["Flow", None]:
-        q = f"SELECT f.id, f.flow FROM flow as f JOIN client as c ON f.id = c.flow WHERE c.id = $1"
+        q = "SELECT f.id, f.flow FROM flow as f JOIN client as c ON f.id = c.flow WHERE c.id = $1"
         row = await cls.db.fetchrow(q, mxid)
 
         if not row:
