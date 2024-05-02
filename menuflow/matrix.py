@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from copy import deepcopy
 from datetime import datetime
-from typing import Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 
 from mautrix.client import Client as MatrixClient
 from mautrix.types import (
@@ -18,23 +18,25 @@ from mautrix.types import (
 
 from .config import Config
 from .db.route import RouteState
-from .flow import Flow
 from .nodes import Base, Input, InteractiveInput
-from .repository import FlowUtils
 from .room import Room
 from .user import User
 from .utils import Util
 
+if TYPE_CHECKING:
+    from .flow import Flow
+    from .repository import FlowUtils
+
 
 class MatrixHandler(MatrixClient):
     def __init__(
-        self, config: Config, flow_utils: Optional[FlowUtils] = None, *args, **kwargs
+        self, config: Config, flow: Flow, flow_utils: Optional[FlowUtils] = None, *args, **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
         self.config = config
         self.flow_utils = flow_utils
         self.util = Util(self.config)
-        self.flow = Flow(flow_utils=flow_utils, flow_mxid=self.mxid)
+        self.flow = flow
         self.LOCKED_ROOMS = set()
         self.LAST_JOIN_EVENT: Dict[RoomID, int] = {}
         self.LAST_RECEIVED_MESSAGE: Dict[RoomID, datetime] = {}

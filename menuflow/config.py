@@ -22,6 +22,7 @@ class Config(BaseFileConfig):
         copy("menuflow.timeouts.middlewares")
         copy("menuflow.typing_notification")
         copy("menuflow.send_events")
+        copy("menuflow.load_flow_from")
         copy("server.hostname")
         copy("server.port")
         copy("server.public_url")

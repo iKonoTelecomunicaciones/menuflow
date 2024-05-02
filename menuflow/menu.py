@@ -24,6 +24,7 @@ from mautrix.util.async_getter_lock import async_getter_lock
 from mautrix.util.logging import TraceLogger
 
 from .db import Client as DBClient
+from .flow import Flow
 from .http_middlewares import end_auth_middleware, start_auth_middleware
 from .matrix import MatrixHandler
 
@@ -74,6 +75,7 @@ class MenuClient(DBClient):
     ) -> MatrixHandler:
         return MatrixHandler(
             config=self.menuflow.config,
+            flow=self.flow_cls,
             flow_utils=self.menuflow.flow_utils,
             mxid=self.id,
             base_url=homeserver or self.homeserver,
@@ -87,7 +89,7 @@ class MenuClient(DBClient):
             # state_store=self.menuflow.state_store,
         )
 
-    def postinit(self) -> None:
+    async def postinit(self) -> None:
         if self._postinited:
             raise RuntimeError("postinit() called twice")
         self._postinited = True
@@ -99,6 +101,10 @@ class MenuClient(DBClient):
         self.http_client = ClientSession(loop=self.menuflow.loop, trace_configs=[trace_config])
         self.started = False
         self.sync_ok = True
+        self.flow_cls = Flow()
+        await self.flow_cls.load_flow(
+            flow_utils=self.menuflow.flow_utils, flow_mxid=self.id, config=self.menuflow.config
+        )
         self.matrix_handler: MatrixHandler = self._make_client()
         asyncio.create_task(self.matrix_handler.load_all_room_constants())
         # if self.enable_crypto:
@@ -242,7 +248,7 @@ class MenuClient(DBClient):
             try:
                 yield cls.cache[user.id]
             except KeyError:
-                user.postinit()
+                await user.postinit()
                 yield user
 
     @classmethod
@@ -262,7 +268,7 @@ class MenuClient(DBClient):
 
         user = cast(cls, await super().get(user_id))
         if user is not None:
-            user.postinit()
+            await user.postinit()
             return user
 
         if homeserver and access_token:
@@ -273,7 +279,7 @@ class MenuClient(DBClient):
                 device_id=device_id or "",
             )
             await user.insert()
-            user.postinit()
+            await user.postinit()
             return user
 
         return None
