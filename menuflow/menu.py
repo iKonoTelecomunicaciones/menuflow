@@ -51,6 +51,7 @@ class MenuClient(DBClient):
         next_batch: SyncToken = "",
         filter_id: FilterID = "",
         autojoin: bool = True,
+        flow: int | None = None,
     ) -> None:
         super().__init__(
             id=id,
@@ -60,6 +61,7 @@ class MenuClient(DBClient):
             next_batch=next_batch,
             filter_id=filter_id,
             autojoin=bool(autojoin),
+            flow=flow,
         )
         self._postinited = False
 

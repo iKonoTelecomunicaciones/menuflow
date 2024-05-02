@@ -24,6 +24,7 @@ class Client(SyncStore):
     filter_id: FilterID
 
     autojoin: bool
+    flow: int | None = None
 
     @classmethod
     def _from_row(cls, row: Record | None) -> Client | None:
@@ -31,7 +32,7 @@ class Client(SyncStore):
             return None
         return cls(**row)
 
-    _columns = "id, homeserver, access_token, device_id, next_batch, filter_id, autojoin"
+    _columns = "id, homeserver, access_token, device_id, next_batch, filter_id, autojoin, flow"
 
     @property
     def _values(self):
@@ -43,6 +44,7 @@ class Client(SyncStore):
             self.next_batch,
             self.filter_id,
             self.autojoin,
+            self.flow,
         )
 
     @classmethod
@@ -58,7 +60,7 @@ class Client(SyncStore):
     async def insert(self) -> None:
         q = (
             "INSERT INTO client (id, homeserver, access_token, device_id, next_batch, filter_id, "
-            "autojoin) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+            "autojoin, flow) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
         )
         await self.db.execute(q, *self._values)
 
@@ -72,7 +74,7 @@ class Client(SyncStore):
     async def update(self) -> None:
         q = (
             "UPDATE client SET homeserver=$2, access_token=$3, device_id=$4, next_batch=$5, "
-            "filter_id=$6, autojoin=$7 WHERE id=$1"
+            "filter_id=$6, autojoin=$7, flow=$8 WHERE id=$1"
         )
         await self.db.execute(q, *self._values)
 
