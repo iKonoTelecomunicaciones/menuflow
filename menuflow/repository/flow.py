@@ -82,12 +82,12 @@ class Flow(SerializableAttrs):
         Returns:
             Flow: The loaded flow.
         """
-        if flow_mxid:
+        if content:
+            flow = content
+        elif flow_mxid:
             if config["menuflow.load_flow_from"] == "database":
                 flow = await cls.load_from_db(flow_mxid, config)
             else:
                 flow = cls.load_from_yaml(flow_mxid)
-        elif content:
-            flow = content
 
         return cls(**flow["menu"])

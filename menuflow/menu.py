@@ -102,9 +102,7 @@ class MenuClient(DBClient):
         self.started = False
         self.sync_ok = True
         self.flow_cls = Flow()
-        await self.flow_cls.load_flow(
-            flow_utils=self.menuflow.flow_utils, flow_mxid=self.id, config=self.menuflow.config
-        )
+        await self.flow_cls.load_flow(flow_mxid=self.id, config=self.menuflow.config)
         self.matrix_handler: MatrixHandler = self._make_client()
         asyncio.create_task(self.matrix_handler.load_all_room_constants())
         # if self.enable_crypto:
@@ -231,6 +229,7 @@ class MenuClient(DBClient):
             #     self.crypto.account.fingerprint if self.crypto and self.crypto.account else None
             # ),
             "autojoin": self.autojoin,
+            "flow": self.flow,
         }
 
     async def delete(self) -> None:

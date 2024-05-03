@@ -23,6 +23,7 @@ class Config(BaseFileConfig):
         copy("menuflow.typing_notification")
         copy("menuflow.send_events")
         copy("menuflow.load_flow_from")
+        copy_dict("menuflow.regex")
         copy("server.hostname")
         copy("server.port")
         copy("server.public_url")

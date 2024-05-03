@@ -17,6 +17,7 @@ class CheckTime(Switch):
     ) -> None:
         Switch.__init__(self, check_time_node_data, room=room, default_variables=default_variables)
         self.content = check_time_node_data
+        self.util = Util(self.config)
 
     @property
     def time_ranges(self) -> List[str]:
@@ -93,8 +94,8 @@ class CheckTime(Switch):
 
         for range_months in self.months:
             month_start, month_end = range_months.split("-")
-            if Util.is_within_range(
-                month, Util.months.get(month_start), Util.months.get(month_end)
+            if self.util.is_within_range(
+                month, self.util.months.get(month_start), self.util.months.get(month_end)
             ):
                 return True
 
@@ -120,10 +121,10 @@ class CheckTime(Switch):
 
         for week_days_range in self.days_of_week:
             week_day_start, week_day_end = week_days_range.split("-")
-            if Util.is_within_range(
-                Util.week_days.get(week_day),
-                Util.week_days.get(week_day_start),
-                Util.week_days.get(week_day_end),
+            if self.util.is_within_range(
+                self.util.week_days.get(week_day),
+                self.util.week_days.get(week_day_start),
+                self.util.week_days.get(week_day_end),
             ):
                 return True
 

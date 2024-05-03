@@ -2,18 +2,19 @@ import json
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, Union
 
 from asyncpg import Record
-from attr import dataclass
+from attr import dataclass, ib
+from mautrix.types import SerializableAttrs
 from mautrix.util.async_db import Database
 
 fake_db = Database.create("") if TYPE_CHECKING else None
 
 
 @dataclass
-class Flow:
+class Flow(SerializableAttrs):
     db: ClassVar[Database] = fake_db
 
-    id: int | None
-    flow: Dict[str, Any]
+    id: int = ib(default=None)
+    flow: Dict[str, Any] = ib(factory=dict)
 
     @classmethod
     def _from_row(cls, row: Record) -> Union["Flow", None]:
@@ -21,11 +22,24 @@ class Flow:
 
     @property
     def values(self) -> Dict[str, Any]:
-        return self.flow
+        return json.dumps(self.flow)
 
     async def insert(self) -> str:
         q = "INSERT INTO flow (flow) VALUES ($1)"
         await self.db.execute(q, self.values)
+
+    async def update(self) -> None:
+        q = "UPDATE flow SET flow=$1 WHERE id=$2"
+        await self.db.execute(q, self.values, self.id)
+
+    @classmethod
+    async def all(cls) -> list[Dict]:
+        q = "SELECT id, flow FROM flow"
+        rows = await cls.db.fetch(q)
+        if not rows:
+            return []
+
+        return [cls._from_row(row).serialize() for row in rows]
 
     @classmethod
     async def get_by_id(cls, id: int) -> Union["Flow", None]:

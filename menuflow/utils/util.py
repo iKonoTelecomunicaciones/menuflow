@@ -1,5 +1,4 @@
 import json
-import os
 from asyncio import Task, all_tasks
 from logging import getLogger
 from re import match
@@ -19,7 +18,6 @@ class Util:
     def __init__(self, config: Config):
         self.config = config
 
-    @classmethod
     @property
     def months(self) -> Dict[str, int]:
         return {
@@ -37,7 +35,6 @@ class Util:
             "dec": 12,
         }
 
-    @classmethod
     @property
     def week_days(self) -> Dict[str, int]:
         return {
@@ -187,3 +184,9 @@ class Util:
                     return True
 
         return False
+
+    async def cancel_tasks(self) -> None:
+        tasks = all_tasks()
+        for task in tasks:
+            if match(self.config["menuflow.regex.room_id"], task.get_name()):
+                task.cancel()

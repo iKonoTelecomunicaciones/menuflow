@@ -12,9 +12,9 @@ from .db import init as init_db
 from .db import upgrade_table
 from .email_client import EmailClient
 from .events import NatsPublisher
+from .flow import Flow
 from .flow_utils import FlowUtils
 from .menu import MenuClient
-from .repository.flow_utils import FlowUtils as FlowUtilsModel
 from .repository.middlewares import EmailServer
 from .server import MenuFlowServer
 
@@ -54,6 +54,7 @@ class MenuFlow(Program):
         management_api = init_api(self.config, self.loop)
         self.server = MenuFlowServer(management_api, self.config, self.loop)
         self.flow_utils = FlowUtils()
+        Flow.init_cls(self.flow_utils)
 
     async def start_email_connections(self):
         self.log.debug("Starting email clients...")

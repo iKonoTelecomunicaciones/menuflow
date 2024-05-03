@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from http import HTTPStatus
+from typing import Dict, Optional
 
 from aiohttp import web
 
@@ -80,13 +81,30 @@ class _Response:
             status=HTTPStatus.CONFLICT,
         )
 
-    @property
-    def ok(self) -> web.Response:
-        return web.json_response({}, status=HTTPStatus.OK)
+    def ok(self, data: Optional[Dict] = {}) -> web.Response:
+        return web.json_response(data, status=HTTPStatus.OK)
 
     @staticmethod
     def created(data: dict) -> web.Response:
         return web.json_response(data, status=HTTPStatus.CREATED)
+
+    def bad_request(self, message: str) -> web.Response:
+        return web.json_response(
+            {
+                "error": message,
+                "errcode": "bad_request",
+            },
+            status=HTTPStatus.BAD_REQUEST,
+        )
+
+    def client_not_found(self, user_id: str) -> web.Response:
+        return web.json_response(
+            {
+                "error": f"Client with user ID {user_id} not found",
+                "errcode": "client_not_found",
+            },
+            status=HTTPStatus.NOT_FOUND,
+        )
 
 
 resp = _Response()
