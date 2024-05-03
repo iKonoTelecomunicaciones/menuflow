@@ -1,20 +1,26 @@
 from __future__ import annotations
 
 from json import JSONDecodeError
-from typing import Dict
+from logging import Logger, getLogger
+from typing import Dict, Optional
 
 from aiohttp import web
 from mautrix.client import Client as MatrixClient
 from mautrix.errors import MatrixConnectionError, MatrixInvalidToken, MatrixRequestError
 from mautrix.types import UserID
 
+from ..db.client import Client as DBClient
+from ..db.flow import Flow as DBFlow
 from ..menu import MenuClient
 from ..room import Room
+from ..utils import Util
 from .base import routes
 from .responses import resp
 
+log: Logger = getLogger("menuflow.api.client")
 
-async def _create_client(user_id: UserID | None, data: dict) -> web.Response:
+
+async def _create_client(user_id: UserID | None, data: Dict) -> web.Response:
     homeserver = data.get("homeserver", None)
     access_token = data.get("access_token", None)
     device_id = data.get("device_id", None)
@@ -50,6 +56,16 @@ async def _create_client(user_id: UserID | None, data: dict) -> web.Response:
     return resp.created(client.to_dict())
 
 
+async def _reload_flow(client: MenuClient, flow_content: Optional[Dict] = None) -> web.Response:
+    await client.flow_cls.load_flow(
+        flow_mxid=client.id, content=flow_content, config=client.menuflow.config
+    )
+    client.flow_cls.nodes_by_id = {}
+
+    util = Util(client.menuflow.config)
+    await util.cancel_tasks()
+
+
 @routes.post("/client/new")
 async def create_client(request: web.Request) -> web.Response:
     try:
@@ -73,3 +89,90 @@ async def set_variables(request: web.Request) -> web.Response:
     await room.set_variable(variable_id="external", value=variables)
 
     return resp.ok
+
+
+# Update or create new flow
+@routes.put("/flow")
+async def create_flow(request: web.Request) -> web.Response:
+    try:
+        data: Dict = await request.json()
+    except JSONDecodeError:
+        return resp.body_not_json
+
+    flow_id = data.get("id", None)
+    incoming_flow = data.get("flow", None)
+
+    if not incoming_flow:
+        return resp.bad_request("Incoming flow is required")
+
+    if flow_id:
+        db_clients = await DBClient.get_by_flow_id(flow_id)
+        flow = await DBFlow.get_by_id(flow_id)
+        flow.flow = incoming_flow
+        await flow.update()
+        for db_client in db_clients:
+            client = MenuClient.cache[db_client.id]
+            await _reload_flow(client, incoming_flow)
+        message = "Flow updated successfully"
+    else:
+        new_flow = DBFlow(flow=incoming_flow)
+        await new_flow.insert()
+        message = "Flow created successfully"
+
+    return resp.ok({"error": message})
+
+
+@routes.get("/flow")
+async def get_flow(request: web.Request) -> web.Response:
+    flow_id = request.query.get("id", None)
+    client_mxid = request.query.get("client_mxid", None)
+    if flow_id:
+        flow = await DBFlow.get_by_id(int(flow_id))
+        data = flow.serialize()
+    elif client_mxid:
+        flow = await DBFlow.get_by_mxid(client_mxid)
+        data = flow.serialize()
+    else:
+        flows = await DBFlow.all()
+        data = {"flows": flows}
+
+    return resp.ok(data)
+
+
+@routes.patch("/client/{mxid}/flow")
+async def update_client(request: web.Request) -> web.Response:
+    mxid = request.match_info["mxid"]
+    client: MenuClient = MenuClient.cache.get(mxid)
+    if not client:
+        return resp.client_not_found(mxid)
+
+    try:
+        data: Dict = await request.json()
+    except JSONDecodeError:
+        return resp.body_not_json
+
+    flow_id = data.get("flow_id", None)
+    if not flow_id:
+        return resp.bad_request("Flow ID is required")
+
+    flow_db = await DBFlow.get_by_id(flow_id)
+    if not flow_db:
+        return resp.bad_request("Flow not found")
+
+    client.flow = flow_id
+    await _reload_flow(client, flow_db.flow)
+
+    await client.update()
+    return resp.ok(client.to_dict())
+
+
+@routes.post("/client/{mxid}/flow/reload")
+async def reload_client_flow(request: web.Request) -> web.Response:
+    mxid = request.match_info["mxid"]
+    client: MenuClient = MenuClient.cache.get(mxid)
+    if not client:
+        return resp.client_not_found(mxid)
+
+    await _reload_flow(client)
+
+    return resp.ok(client.to_dict())

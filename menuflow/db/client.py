@@ -57,6 +57,12 @@ class Client(SyncStore):
         q = f"SELECT {cls._columns} FROM client WHERE id=$1"
         return cls._from_row(await cls.db.fetchrow(q, id))
 
+    @classmethod
+    async def get_by_flow_id(cls, flow_id: int) -> list[Client]:
+        q = f"SELECT {cls._columns} FROM client WHERE flow=$1"
+        rows = await cls.db.fetch(q, flow_id)
+        return [cls._from_row(row) for row in rows]
+
     async def insert(self) -> None:
         q = (
             "INSERT INTO client (id, homeserver, access_token, device_id, next_batch, filter_id, "

@@ -235,6 +235,7 @@ class MatrixHandler(MatrixClient):
         if node is None:
             self.log.debug(f"Room {room.room_id} does not have a node [{node}]")
             await room.update_menu(node_id="start")
+            await self.algorithm(room=room)
             return
 
         self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.route.state}]")

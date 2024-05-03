@@ -44,6 +44,9 @@ menuflow:
     # - database: the flow is defined in a database
     load_flow_from: "yaml"
 
+    regex:
+        room_id: ^![\w-]+:[\w.-]+$
+
 
 server:
     # The IP and port to listen to.
