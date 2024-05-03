@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from http import HTTPStatus
-from typing import Optional
+from typing import Dict, Optional
 
 from aiohttp import web
 
@@ -81,7 +81,7 @@ class _Response:
             status=HTTPStatus.CONFLICT,
         )
 
-    def ok(self, data: Optional[str] = {}) -> web.Response:
+    def ok(self, data: Optional[Dict] = {}) -> web.Response:
         return web.json_response(data, status=HTTPStatus.OK)
 
     @staticmethod
