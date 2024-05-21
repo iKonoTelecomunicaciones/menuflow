@@ -57,7 +57,6 @@ class Flow:
         self.data: Flow = None
         self.nodes: List[Dict] = []
         self.nodes_by_id: Dict[str, Dict] = {}
-        self.flow_utils: Optional[FlowUtils] = None
 
     async def load_flow(
         self,
