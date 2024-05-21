@@ -14,7 +14,7 @@ class InviteUser(Switch):
     - id: 'invite_user'
       type: 'invite_user'
       timeout: 5
-      invitees: '{{ main_menu }}'
+      invitee: '{{ main_menu }}'
       cases:
         - id: 'join'
           o_connection: 'next_node'

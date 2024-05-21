@@ -18,7 +18,7 @@ from mautrix.types import (
 
 from .config import Config
 from .db.route import RouteState
-from .nodes import Base, Input, InteractiveInput
+from .nodes import Base, GPTAssistant, Input, InteractiveInput
 from .room import Room
 from .user import User
 from .utils import Util
@@ -170,7 +170,10 @@ class MatrixHandler(MatrixClient):
         room.config = self.config
         room.matrix_client = self
 
+        # Clean up the actions
         await room.clean_up()
+        del GPTAssistant.assistant_cache[room.route.id]
+
         await self.load_room_constants(evt.room_id)
         await self.algorithm(room=room)
 
