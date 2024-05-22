@@ -172,7 +172,8 @@ class MatrixHandler(MatrixClient):
 
         # Clean up the actions
         await room.clean_up()
-        del GPTAssistant.assistant_cache[room.route.id]
+        if (room.room_id, room.route.id) in GPTAssistant.assistant_cache:
+            del GPTAssistant.assistant_cache[(room.room_id, room.route.id)]
 
         await self.load_room_constants(evt.room_id)
         await self.algorithm(room=room)

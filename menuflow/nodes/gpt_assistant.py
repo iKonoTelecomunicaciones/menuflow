@@ -1,8 +1,11 @@
+import html
 import json
+import re
 from asyncio import sleep
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import openai
+from mautrix.types import RoomID
 
 from ..db.route import RouteState
 from ..repository import GPTAssistant as GPTAssistantModel
@@ -11,7 +14,7 @@ from .base import Base
 
 
 class GPTAssistant(Base):
-    assistant_cache: Dict[int, "GPTAssistant"] = {}
+    assistant_cache: Dict[Tuple[RoomID, int], "GPTAssistant"] = {}
 
     def __init__(
         self, gpt_assistant_node_data: GPTAssistantModel, room: Room, default_variables: Dict
@@ -98,11 +101,23 @@ class GPTAssistant(Base):
             state=RouteState.END if not o_connection else None,
         )
 
+    def json_in_text(self, text: str) -> Dict | None:
+        json_pattern = re.compile(r"```json(.*?)```", re.DOTALL)
+        match = json_pattern.search(text)
+        if match:
+            json_str = match.group(1).strip()
+            json_str = html.unescape(json_str)
+            return json_str
+
     async def run(self):
         self.add_message(str(self.user_input))
         assistant_resp = await self.run_assistant()
+        response = int(assistant_resp) if assistant_resp.isdigit() else assistant_resp
+        if json_str := self.json_in_text(response):
+            response = json.loads(json_str)
+
         await self.room.set_variable(
             self.variable,
-            int(assistant_resp) if assistant_resp.isdigit() else assistant_resp,
+            value=response,
         )
         await self._update_node(self.o_connection)
