@@ -1,6 +1,6 @@
 from typing import Dict, Tuple
 
-from aiohttp import ClientTimeout, ContentTypeError, FormData
+from aiohttp import ClientTimeout, ContentTypeError
 from mautrix.util.config import RecursiveDict
 from ruamel.yaml.comments import CommentedMap
 

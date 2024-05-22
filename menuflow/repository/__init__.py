@@ -6,6 +6,7 @@ from .nodes import (
     CheckTime,
     Delay,
     Email,
+    GPTAssistant,
     HTTPRequest,
     InactivityOptions,
     Input,

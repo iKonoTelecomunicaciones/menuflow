@@ -15,3 +15,4 @@ fuzzywuzzy==0.18.0
 python-Levenshtein==0.21.1
 nats-py==2.6.0
 aiohttp-cors==0.7.0
+openai==1.30.1
