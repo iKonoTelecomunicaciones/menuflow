@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Dict
 
 import mautrix.errors.request
+from mautrix.types import UserID
 
 from ..db.route import RouteState
 from ..repository import InviteUser as InviteUserModel
@@ -18,7 +19,7 @@ class InviteUser(Switch):
         self.content = invite_node_data
 
     @property
-    def invitee(self) -> list[str]:
+    def invitee(self) -> UserID:
         return self.render_data(self.content.get("invitee"))
 
     @property

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from attr import dataclass, ib
+from mautrix.types import UserID
 
-from .switch import Case, Switch
+from .switch import Switch
 
 
 @dataclass
@@ -24,5 +25,5 @@ class InviteUser(Switch):
           o_connection: 'timeout_invite_user'
     """
 
-    invitees: list[str] = ib(default=None)
+    invitee: UserID = ib(default=None)
     timeout: int = ib(default=5)
