@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Awaitable, Callable, cast
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Awaitable, Callable, Optional, cast
 
 from aiohttp import ClientSession, TraceConfig
 from mautrix.client import Client, InternalEventType
@@ -256,9 +256,10 @@ class MenuClient(DBClient):
         cls,
         user_id: UserID,
         *,
-        homeserver: str | None = None,
-        access_token: str | None = None,
-        device_id: DeviceID | None = None,
+        homeserver: Optional[str] = None,
+        access_token: Optional[str] = None,
+        device_id: Optional[DeviceID] = None,
+        flow_id: Optional[int] = None,
     ) -> Client | None:
         try:
             return cls.cache[user_id]
@@ -276,6 +277,7 @@ class MenuClient(DBClient):
                 homeserver=homeserver,
                 access_token=access_token,
                 device_id=device_id or "",
+                flow=flow_id,
             )
             await user.insert()
             await user.postinit()
