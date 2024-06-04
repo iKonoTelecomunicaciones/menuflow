@@ -24,9 +24,10 @@ class Flow(SerializableAttrs):
     def values(self) -> Dict[str, Any]:
         return json.dumps(self.flow)
 
-    async def insert(self) -> str:
+    async def insert(self) -> int:
         q = "INSERT INTO flow (flow) VALUES ($1)"
         await self.db.execute(q, self.values)
+        return await self.db.fetchval("SELECT MAX(id) FROM flow")
 
     async def update(self) -> None:
         q = "UPDATE flow SET flow=$1 WHERE id=$2"

@@ -20,7 +20,9 @@ from .responses import resp
 log: Logger = getLogger("menuflow.api.client")
 
 
-async def _create_client(user_id: UserID | None, data: Dict) -> web.Response:
+async def _create_client(
+    data: Dict, *, user_id: Optional[UserID] = None, flow_id: Optional[int] = None
+) -> MenuClient | web.Response:
     homeserver = data.get("homeserver", None)
     access_token = data.get("access_token", None)
     device_id = data.get("device_id", None)
@@ -47,7 +49,11 @@ async def _create_client(user_id: UserID | None, data: Dict) -> web.Response:
     elif whoami.device_id and device_id and whoami.device_id != device_id:
         return resp.device_id_mismatch(whoami.device_id)
     client: MenuClient = await MenuClient.get(
-        whoami.user_id, homeserver=homeserver, access_token=access_token, device_id=device_id
+        whoami.user_id,
+        homeserver=homeserver,
+        access_token=access_token,
+        device_id=device_id,
+        flow_id=flow_id,
     )
     client.enabled = data.get("enabled", True)
     client.autojoin = data.get("autojoin", True)
@@ -72,7 +78,14 @@ async def create_client(request: web.Request) -> web.Response:
         data = await request.json()
     except JSONDecodeError:
         return resp.body_not_json
-    return await _create_client(None, data)
+
+    new_flow_id = None
+    if MenuClient.menuflow.config["menuflow.load_flow_from"] == "database":
+        example_flow = {"menu": {"flow_variables": {}, "nodes": []}}
+        new_flow = DBFlow(flow=example_flow)
+        new_flow_id = await new_flow.insert()
+
+    return await _create_client(data, flow_id=new_flow_id)
 
 
 @routes.post("/room/{room_id}/set_variables")
@@ -119,7 +132,7 @@ async def create_flow(request: web.Request) -> web.Response:
         await new_flow.insert()
         message = "Flow created successfully"
 
-    return resp.ok({"error": message})
+    return resp.ok({"detail": {"message": message}})
 
 
 @routes.get("/flow")
@@ -128,9 +141,13 @@ async def get_flow(request: web.Request) -> web.Response:
     client_mxid = request.query.get("client_mxid", None)
     if flow_id:
         flow = await DBFlow.get_by_id(int(flow_id))
+        if not flow:
+            return resp.not_found(f"Flow with ID {flow_id} not found")
         data = flow.serialize()
     elif client_mxid:
         flow = await DBFlow.get_by_mxid(client_mxid)
+        if not flow:
+            return resp.not_found(f"Flow with mxid {client_mxid} not found")
         data = flow.serialize()
     else:
         flows = await DBFlow.all()
