@@ -101,7 +101,7 @@ async def set_variables(request: web.Request) -> web.Response:
 
     await room.set_variable(variable_id="external", value=variables)
 
-    return resp.ok
+    return resp.ok({"detail": {"message": "Variables set successfully"}})
 
 
 # Update or create new flow
