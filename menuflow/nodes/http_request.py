@@ -137,6 +137,9 @@ class HTTPRequest(Switch):
             f"node: {self.id} method: {self.method} url: {self.url} status: {response.status}"
         )
 
+        if response.status >= 400:
+            self.log.debug(f"Response: {await response.text()}")
+
         if response.status == 401:
             o_connection = None
             if not self.middleware:
@@ -230,12 +233,11 @@ class HTTPRequest(Switch):
                 {
                     self.room.room_id: {
                         "last_http_node": self.id,
-                        "attempts_count": self.HTTP_ATTEMPTS.get(self.room.room_id, {}).get(
-                            "attempts_count"
-                        )
-                        + 1
-                        if self.HTTP_ATTEMPTS.get(self.room.room_id)
-                        else 1,
+                        "attempts_count": (
+                            self.HTTP_ATTEMPTS.get(self.room.room_id, {}).get("attempts_count") + 1
+                            if self.HTTP_ATTEMPTS.get(self.room.room_id)
+                            else 1
+                        ),
                     }
                 }
             )
