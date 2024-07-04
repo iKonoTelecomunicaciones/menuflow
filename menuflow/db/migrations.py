@@ -86,3 +86,8 @@ async def upgrade_v4(conn: Connection) -> None:
     await conn.execute(
         "ALTER TABLE client ADD CONSTRAINT FK_flow_client FOREIGN KEY (flow) references flow (id)"
     )
+
+
+@upgrade_table.register(description="Add enable column to client table")
+async def upgrade_v5(conn: Connection) -> None:
+    await conn.execute("ALTER TABLE client ADD COLUMN enabled BOOLEAN NOT NULL DEFAULT TRUE")

@@ -52,6 +52,7 @@ class MenuClient(DBClient):
         next_batch: SyncToken = "",
         filter_id: FilterID = "",
         autojoin: bool = True,
+        enabled: bool = True,
         flow: int | None = None,
     ) -> None:
         super().__init__(
@@ -62,6 +63,7 @@ class MenuClient(DBClient):
             next_batch=next_batch,
             filter_id=filter_id,
             autojoin=bool(autojoin),
+            enabled=bool(enabled),
             flow=flow,
         )
         self._postinited = False
@@ -238,6 +240,11 @@ class MenuClient(DBClient):
         except KeyError:
             pass
         await super().delete()
+
+    async def leave_rooms(self) -> None:
+        rooms = await self.matrix_handler.get_joined_rooms()
+        for room_id in rooms:
+            await self.matrix_handler.leave_room(room_id)
 
     @classmethod
     async def all(cls) -> AsyncGenerator[MenuClient, None]:

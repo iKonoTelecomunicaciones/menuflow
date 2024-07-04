@@ -24,6 +24,7 @@ class Client(SyncStore):
     filter_id: FilterID
 
     autojoin: bool
+    enabled: bool
     flow: int | None = None
 
     @classmethod
@@ -32,7 +33,9 @@ class Client(SyncStore):
             return None
         return cls(**row)
 
-    _columns = "id, homeserver, access_token, device_id, next_batch, filter_id, autojoin, flow"
+    _columns = (
+        "id, homeserver, access_token, device_id, next_batch, filter_id, autojoin, enabled, flow"
+    )
 
     @property
     def _values(self):
@@ -44,12 +47,13 @@ class Client(SyncStore):
             self.next_batch,
             self.filter_id,
             self.autojoin,
+            self.enabled,
             self.flow,
         )
 
     @classmethod
     async def all(cls) -> list[Client]:
-        rows = await cls.db.fetch(f"SELECT {cls._columns} FROM client")
+        rows = await cls.db.fetch(f"SELECT {cls._columns} FROM client WHERE enabled IS TRUE")
         return [cls._from_row(row) for row in rows]
 
     @classmethod
@@ -59,14 +63,14 @@ class Client(SyncStore):
 
     @classmethod
     async def get_by_flow_id(cls, flow_id: int) -> list[Client]:
-        q = f"SELECT {cls._columns} FROM client WHERE flow=$1"
+        q = f"SELECT {cls._columns} FROM client WHERE flow=$1 AND enabled IS TRUE"
         rows = await cls.db.fetch(q, flow_id)
         return [cls._from_row(row) for row in rows]
 
     async def insert(self) -> None:
         q = (
             "INSERT INTO client (id, homeserver, access_token, device_id, next_batch, filter_id, "
-            "autojoin, flow) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+            "autojoin, enabled, flow) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)"
         )
         await self.db.execute(q, *self._values)
 
@@ -80,7 +84,7 @@ class Client(SyncStore):
     async def update(self) -> None:
         q = (
             "UPDATE client SET homeserver=$2, access_token=$3, device_id=$4, next_batch=$5, "
-            "filter_id=$6, autojoin=$7, flow=$8 WHERE id=$1"
+            "filter_id=$6, autojoin=$7, enabled=$8, flow=$9 WHERE id=$1"
         )
         await self.db.execute(q, *self._values)
 
