@@ -104,11 +104,11 @@ jobs:
           # Download updated docker image to testing server
           ssh -tt ${{ secrets.HOST_TESTING }} "docker pull ${{ vars.MENUFLOW_IMAGE }}"
 
-          echo "** Update menuflow image in registered domains **"
-          for domain in  ${{ vars.DOMAINS }}; do
+          echo "** Update menuflow image in registered stacks **"
+          for stack in  ${{ vars.STACKS }}; do
             echo " >> Setting service variables"
-            stack_name=$(echo ${domain} | tr -d '.')
-            service=$(echo ${domain} | cut -d '.' -f1)
+            stack_name=$(echo ${stack} | tr -d '.')
+            service=$(echo ${stack} | cut -d '.' -f1)
             menuflow_service="${stack_name}_${service}-menuflow"
             echo " >> Remove the service if exists"
             ssh -tt ${{ secrets.HOST_TESTING }} " \
@@ -120,7 +120,7 @@ jobs:
             "
 
             echo " >> Deploy the service"
-            docker_compose_file="/mnt/shared/matrix/${domain}/docker-compose.yml"
+            docker_compose_file="/mnt/shared/matrix/${stack}/docker-compose.yml"
             ssh -tt ${{ secrets.HOST_TESTING }} " \
               docker-compose -f ${docker_compose_file} config | \
                 docker stack deploy -c - ${stack_name};
