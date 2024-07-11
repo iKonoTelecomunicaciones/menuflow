@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from json import JSONDecodeError
 from logging import Logger, getLogger
 from typing import Dict, Optional
@@ -194,6 +195,28 @@ async def reload_client_flow(request: web.Request) -> web.Response:
     await _reload_flow(client)
 
     return resp.ok(client.to_dict())
+
+
+@routes.patch("/client/{mxid}/{action}")
+async def enable_disable_client(request: web.Request) -> web.Response:
+    mxid = request.match_info["mxid"]
+    action = request.match_info["action"]
+    client: MenuClient = await MenuClient.get(mxid)
+    if not client:
+        return resp.client_not_found(mxid)
+
+    if action == "enable":
+        client.enabled = True
+        await client.start()
+    elif action == "disable":
+        client.enabled = False
+        asyncio.create_task(client.leave_rooms(), name=f"{mxid}-leave_rooms")
+        await client.stop()
+    else:
+        return resp.bad_request("Invalid action provided")
+
+    await client.update()
+    return resp.ok({"detail": {"message": f"Client {action}d successfully"}})
 
 
 @routes.get("/client/email_servers")
