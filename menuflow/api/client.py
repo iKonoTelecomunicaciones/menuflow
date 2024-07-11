@@ -12,6 +12,7 @@ from mautrix.types import UserID
 
 from ..db.client import Client as DBClient
 from ..db.flow import Flow as DBFlow
+from ..flow_utils import FlowUtils
 from ..menu import MenuClient
 from ..room import Room
 from ..utils import Util
@@ -216,3 +217,10 @@ async def enable_disable_client(request: web.Request) -> web.Response:
 
     await client.update()
     return resp.ok({"detail": {"message": f"Client {action}d successfully"}})
+
+
+@routes.get("/client/email_servers")
+async def get_id_email_servers(request: web.Request) -> web.Response:
+    name_email_servers = [name for name in FlowUtils.email_servers_by_id.keys()]
+
+    return resp.ok({"email_servers": name_email_servers})
