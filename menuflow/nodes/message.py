@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Dict
 
 from markdown import markdown
 from mautrix.types import Format, MessageType, TextMessageEventContent
@@ -68,11 +68,12 @@ class Message(Base):
         if not self.text:
             self.log.warning(f"The message {self.id} hasn't been send because the text is empty")
         else:
+            # Add nl2br extension to markdown to convert new lines to <br> tags
             msg_content = TextMessageEventContent(
                 msgtype=self.message_type,
                 body=self.text,
                 format=Format.HTML,
-                formatted_body=markdown(self.text),
+                formatted_body=markdown(text=self.text, extensions=["nl2br"]),
             )
 
             await self.send_message(room_id=self.room.room_id, content=msg_content)
