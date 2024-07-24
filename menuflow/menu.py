@@ -153,13 +153,11 @@ class MenuClient(DBClient):
             whoami = await self.matrix_handler.whoami()
         except MatrixInvalidToken as e:
             self.log.error(f"Invalid token: {e}. Disabling client")
-            self.enabled = False
             await self.update()
             return
         except Exception as e:
             if try_n >= 8:
                 self.log.exception("Failed to get /account/whoami, disabling client")
-                self.enabled = False
                 await self.update()
             else:
                 self.log.warning(
@@ -169,14 +167,12 @@ class MenuClient(DBClient):
             return
         if whoami.user_id != self.id:
             self.log.error(f"User ID mismatch: expected {self.id}, but got {whoami.user_id}")
-            self.enabled = False
             await self.update()
             return
         elif whoami.device_id and self.device_id and whoami.device_id != self.device_id:
             self.log.error(
                 f"Device ID mismatch: expected {whoami.device_id}, but got {self.device_id}"
             )
-            self.enabled = False
             await self.update()
             return
         if not self.filter_id:
