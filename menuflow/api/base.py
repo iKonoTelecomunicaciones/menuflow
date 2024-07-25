@@ -5,16 +5,18 @@ from aiohttp import web
 from ..config import Config
 
 routes: web.RouteTableDef = web.RouteTableDef()
-_config: Config | None = None
 
 
-def set_config(config: Config) -> None:
-    global _config
-    _config = config
+class Base:
+    _config: Config
 
+    @classmethod
+    def init_cls(cls, config: Config) -> None:
+        cls._config = config
 
-def get_config() -> Config:
-    return _config
+    @classmethod
+    def get_config(cls) -> Config:
+        return cls._config
 
 
 @routes.get("/version")
