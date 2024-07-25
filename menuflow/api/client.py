@@ -10,13 +10,14 @@ from mautrix.client import Client as MatrixClient
 from mautrix.errors import MatrixConnectionError, MatrixInvalidToken, MatrixRequestError
 from mautrix.types import UserID
 
+from ..config import Config
 from ..db.client import Client as DBClient
 from ..db.flow import Flow as DBFlow
 from ..flow_utils import FlowUtils
 from ..menu import MenuClient
 from ..room import Room
 from ..utils import Util
-from .base import routes
+from .base import Base, routes
 from .responses import resp
 
 log: Logger = getLogger("menuflow.api.client")
@@ -65,12 +66,11 @@ async def _create_client(
 
 
 async def _reload_flow(client: MenuClient, flow_content: Optional[Dict] = None) -> web.Response:
-    await client.flow_cls.load_flow(
-        flow_mxid=client.id, content=flow_content, config=client.menuflow.config
-    )
+    config: Config = Base.get_config()
+    await client.flow_cls.load_flow(flow_mxid=client.id, content=flow_content, config=config)
     client.flow_cls.nodes_by_id = {}
 
-    util = Util(client.menuflow.config)
+    util = Util(config)
     await util.cancel_tasks()
 
 
@@ -109,6 +109,7 @@ async def set_variables(request: web.Request) -> web.Response:
 # Update or create new flow
 @routes.put("/flow")
 async def create_flow(request: web.Request) -> web.Response:
+    config: Config = Base.get_config()
     try:
         data: Dict = await request.json()
     except JSONDecodeError:
@@ -121,13 +122,15 @@ async def create_flow(request: web.Request) -> web.Response:
         return resp.bad_request("Incoming flow is required")
 
     if flow_id:
-        db_clients = await DBClient.get_by_flow_id(flow_id)
         flow = await DBFlow.get_by_id(flow_id)
         flow.flow = incoming_flow
         await flow.update()
-        for db_client in db_clients:
-            client = MenuClient.cache[db_client.id]
-            await _reload_flow(client, incoming_flow)
+
+        if config["menuflow.load_flow_from"] == "database":
+            db_clients = await DBClient.get_by_flow_id(flow_id)
+            for db_client in db_clients:
+                client = MenuClient.cache[db_client.id]
+                await _reload_flow(client, incoming_flow)
         message = "Flow updated successfully"
     else:
         new_flow = DBFlow(flow=incoming_flow)
@@ -161,7 +164,7 @@ async def get_flow(request: web.Request) -> web.Response:
 @routes.patch("/client/{mxid}/flow")
 async def update_client(request: web.Request) -> web.Response:
     mxid = request.match_info["mxid"]
-    client: MenuClient = MenuClient.cache.get(mxid)
+    client: Optional[MenuClient] = MenuClient.cache.get(mxid)
     if not client:
         return resp.client_not_found(mxid)
 
@@ -188,7 +191,7 @@ async def update_client(request: web.Request) -> web.Response:
 @routes.post("/client/{mxid}/flow/reload")
 async def reload_client_flow(request: web.Request) -> web.Response:
     mxid = request.match_info["mxid"]
-    client: MenuClient = MenuClient.cache.get(mxid)
+    client: Optional[MenuClient] = MenuClient.cache.get(mxid)
     if not client:
         return resp.client_not_found(mxid)
 
@@ -201,7 +204,7 @@ async def reload_client_flow(request: web.Request) -> web.Response:
 async def enable_disable_client(request: web.Request) -> web.Response:
     mxid = request.match_info["mxid"]
     action = request.match_info["action"]
-    client: MenuClient = await MenuClient.get(mxid)
+    client: Optional[MenuClient] = await MenuClient.get(mxid)
     if not client:
         return resp.client_not_found(mxid)
 
