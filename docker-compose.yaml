@@ -1,10 +1,7 @@
-version: '3.9'
-
 services:
 
-
   # synapse:
-  #   image: matrixdotorg/synapse:v1.74.0
+  #   image: matrixdotorg/synapse:v1.110.0
   #   environment:
   #     - SYNAPSE_CONFIG_PATH=/data/homeserver.yaml
   #   volumes:
@@ -15,7 +12,7 @@ services:
   #     - postgres
 
   menuflow:
-    image: bramenn/menuflow:latest
+    image: ikonoim/menuflow:latest
     restart: unless-stopped
     # Only use this if you want to develop in this project
     # build: .
@@ -32,7 +29,7 @@ services:
       - ./volumes/menuflow/flows:/data/flows
 
   postgres:
-    image: postgres:12-alpine
+    image: postgres:14-alpine
     restart: unless-stopped
     ports:
       - "5434:5432"
