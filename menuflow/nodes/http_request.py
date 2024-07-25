@@ -1,8 +1,7 @@
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING, Dict, List
 
 from aiohttp import BasicAuth, ClientTimeout, ContentTypeError
-from mautrix.util.config import RecursiveDict
-from ruamel.yaml.comments import CommentedMap
+from jsonpath_ng import parse
 
 from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
@@ -164,15 +163,17 @@ class HTTPRequest(Switch):
         except ContentTypeError:
             response_data = {}
 
-        if isinstance(response_data, dict):
-            # Tulir and its magic since time immemorial
-            serialized_data = RecursiveDict(CommentedMap(**response_data))
+        if isinstance(response_data, dict) or isinstance(response_data, list):
             if self.http_variables:
                 for variable in self.http_variables:
+                    expr = parse(self.http_variables[variable])
+                    data_match: List = [match.value for match in expr.find(response_data)]
+
+                    if not data_match:
+                        continue
+
                     try:
-                        variables[variable] = self.render_data(
-                            serialized_data[self.http_variables[variable]]
-                        )
+                        variables[variable] = data_match if len(data_match) > 1 else data_match[0]
                     except KeyError:
                         pass
         elif isinstance(response_data, str):
