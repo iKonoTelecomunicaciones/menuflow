@@ -145,7 +145,8 @@ class Base:
         copy_variables = self.default_variables | self.room.all_variables
 
         try:
-            data = loads(data_template.render(**copy_variables))
+            clear_variables = dumps(copy_variables).replace("\\n", " ")
+            data = loads(data_template.render(**loads(clear_variables)))
             data = convert_to_bool(data)
             return data
         except JSONDecodeError:
