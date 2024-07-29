@@ -145,8 +145,12 @@ class Base:
         copy_variables = self.default_variables | self.room.all_variables
 
         try:
-            data = loads(data_template.render(**copy_variables))
-            data = convert_to_bool(data)
+            # if save variables have a string with \n,
+            # it will be replaced by ik-line-break to avoid errors when dict is dumped
+            # and before return, it will be replaced by \n again to keep the original string
+            clear_variables = dumps(copy_variables).replace("\\n", "ik-line-break")
+            data = data_template.render(**loads(clear_variables))
+            data = convert_to_bool(loads(data.replace("ik-line-break", "\\n")))
             return data
         except JSONDecodeError:
             data = data_template.render(**copy_variables)
