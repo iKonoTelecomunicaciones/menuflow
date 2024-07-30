@@ -138,7 +138,7 @@ class Switch(Base):
         if case_o_connection is None or case_o_connection in ["finish", ""]:
             case_o_connection = await self.get_o_connection()
 
-        return case_o_connection
+        return case_o_connection or "start"
 
     async def validate_cases(self) -> str:
         """Used to validate case by case and return the o_connection value

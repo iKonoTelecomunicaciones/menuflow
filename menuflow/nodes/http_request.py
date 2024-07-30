@@ -186,9 +186,7 @@ class HTTPRequest(Switch):
 
                     break
 
-        if self.cases:
-            o_connection = await self.get_case_by_id(id=response.status)
-
+        o_connection = await self.get_case_by_id(id=response.status)
         if o_connection:
             await self.room.update_menu(
                 node_id=o_connection, state=RouteState.END if not self.cases else None
@@ -196,9 +194,6 @@ class HTTPRequest(Switch):
 
         if variables:
             await self.room.set_variables(variables=variables)
-
-        if o_connection is None:
-            o_connection = await self.get_o_connection()
 
         return response.status, await response.text(), o_connection
 
