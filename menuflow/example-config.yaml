@@ -55,7 +55,7 @@ server:
     # Public base URL where the server is visible.
     public_url: https://example.com
     # The base management API path.
-    base_path: /_matrix/menuflow/v1
+    base_path: /_matrix/menuflow
 
     # The shared secret to sign API access tokens.
     # Set to "generate" to generate and save a new token at startup.

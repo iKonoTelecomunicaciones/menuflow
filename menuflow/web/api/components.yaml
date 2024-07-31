@@ -1,0 +1,519 @@
+components:
+  schemas:
+    GetEmailServersOk:
+      type: object
+      properties:
+        email_servers:
+          type: array
+      example:
+        email_servers:
+          - example_email_server_1
+          - example_email_server_2
+          - example_email_server_3
+
+    CreateUpdateFlowOk:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        :wqvalue:
+          detail:
+            message: Flow created successfully.
+            data:
+              flow_id: 1
+
+    BodyNotJson:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: Request body is not JSON.
+
+    FlowIsRequired:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: Parameter flow is required.
+
+    GetFlowOk:
+      type: object
+      properties:
+        id:
+          type: integer
+        flow:
+          type: object
+      example:
+        id: 1
+        flow:
+          menu:
+            flow_variables:
+              variable_1: value_1
+              variable_2: value_2
+            nodes:
+              - id: message_1
+                type: message
+                message: message_1
+                o_connection: message_2
+
+    GetAllFlowsOk:
+      type: object
+      properties:
+        flows:
+          type: array
+      example:
+        flows:
+          - id: 1
+            flow:
+              menu:
+                flow_variables:
+                  variable_1: value_1
+                  variable_2: value_2
+                nodes:
+                  - id: message_1
+                    type: message
+                    message: message_1
+                    o_connection: message_2
+          - id: 2
+            flow:
+              menu:
+                flow_variables:
+                  variable_1: value_1
+                  variable_2: value_2
+                nodes:
+                  - id: message_1
+                    type: message
+                    message: message_1
+                    o_connection: message_2
+
+    GetFlowByIDNotFound:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: Flow with ID 1 not found.
+
+    GetFlowByUserIDNotFound:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: Flow with mxid @menubot1:darknet.com not found.
+
+    CreateClientOk:
+      type: object
+      properties:
+        id:
+          type: integer
+        homeserver:
+          type: string
+        access_token:
+          type: string
+        device_id:
+          type: string
+        autojoin:
+          type: boolean
+        flow:
+          type: integer
+      example:
+        id: 1
+        homeserver: https://matrix.darknet.com
+        access_token: sk_lcksahye1ds2a5s6d2c3a5d4verf2
+        device_id: DHFGY545
+        autojoin: true
+        flow: 1
+
+    InvalidAccessToken:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: Invalid access token.
+
+    InvalidHomeserver:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: Invalid homeserver or access token.
+
+    HomeserverConnectionError:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: Could not connect to homeserver.
+
+    ClientAlreadyExists:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: There is already a client with the user ID of that token.
+
+    AccessTokenMismatch:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: >
+            The Matrix user ID of the client and the user ID of the access token don't
+            match. Access token is for user @bot:example.com.
+
+    DeviceIDMismatch:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: >
+            The Matrix device ID of the client and the device ID of the access token
+            don't match. Access token is for device HDJSK56.
+
+    VariablesSetOk:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: Variables set successfully.
+
+    UpdateFlowOk:
+      type: object
+      properties:
+        id:
+          type: integer
+        homeserver:
+          type: string
+        access_token:
+          type: string
+        device_id:
+          type: string
+        autojoin:
+          type: boolean
+        flow:
+          type: integer
+      example:
+        id: 1
+        homeserver: https://matrix.darknet.com
+        access_token: sk_lcksahye1ds2a5s6d2c3a5d4verf2
+        device_id: DHFGY545
+        autojoin: true
+        flow: 1
+
+    ClientNotFound:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: Client with given user ID @bot:example.com not found.
+
+    FlowNotFound:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: Flow not found.
+
+    FlowReloadedOk:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: Flow reloaded successfully.
+
+    ClientEnabledOrDisabledOk:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: Client enabled/disabled successfully.
+
+    InvalidAction:
+      type: object
+      properties:
+        detail:
+          type: object
+      example:
+        detail:
+          message: Invalid action provided.
+
+  responses:
+    GetEmailServersSuccess:
+      description: Get email servers success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GetEmailServersOk"
+
+    CreateUpdateFlowSuccess:
+      description: Create or update flow success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateUpdateFlowOk"
+          examples:
+            CreateFlow:
+              value:
+                detail:
+                  message: Flow created successfully.
+                  data:
+                    flow_id: 1
+            UpdateFlow:
+              value:
+                detail:
+                  message: Flow updated successfully.
+                  data:
+                    flow_id: 1
+
+    CreateUpdateFlowBadRequest:
+      description: Create or update flow bad request.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/BodyNotJson"
+              - $ref: "#/components/schemas/FlowIsRequired"
+          examples:
+            BodyNotJson:
+              value:
+                detail:
+                  message: Request body is not JSON.
+            FlowIsRequired:
+              value:
+                detail:
+                  message: Parameter flow is required.
+
+    GetFlowSuccess:
+      description: Get flow success.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/GetFlowOk"
+              - $ref: "#/components/schemas/GetAllFlowsOk"
+          examples:
+            GetFlow:
+              value:
+                id: 1
+                flow:
+                  menu:
+                    flow_variables:
+                      variable_1: value_1
+                      variable_2: value_2
+                    nodes:
+                      - id: message_1
+                        type: message
+                        message: message_1
+                        o_connection: message_2
+            GetAllFlows:
+              value:
+                flows:
+                  - id: 1
+                    flow:
+                      menu:
+                        flow_variables:
+                          variable_1: value_1
+                          variable_2: value_2
+                        nodes:
+                          - id: message_1
+                            type: message
+                            message: message_1
+                            o_connection: message_2
+                  - id: 2
+                    flow:
+                      menu:
+                        flow_variables:
+                          variable_1: value_1
+                          variable_2: value_2
+                        nodes:
+                          - id: message_1
+                            type: message
+                            message: message_1
+                            o_connection: message_2
+
+    GetFlowNotFound:
+      description: Get flow not found.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/GetFlowByIDNotFound"
+              - $ref: "#/components/schemas/GetFlowByUserIDNotFound"
+          examples:
+            GetFlowByIDNotFound:
+              value:
+                detail:
+                  message: Flow with ID 1 not found.
+            GetFlowByUserIDNotFound:
+              value:
+                detail:
+                  message: Flow with mxid @menubot1:darknet.com not found.
+
+    CreateClientSuccess:
+      description: Create client success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateClientOk"
+
+    CreateClientBadRequest:
+      description: Create client bad request.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/BodyNotJson"
+              - $ref: "#/components/schemas/InvalidAccessToken"
+              - $ref: "#/components/schemas/InvalidHomeserver"
+              - $ref: "#/components/schemas/HomeserverConnectionError"
+              - $ref: "#/components/schemas/ClientAlreadyExists"
+              - $ref: "#/components/schemas/AccessTokenMismatch"
+              - $ref: "#/components/schemas/DeviceIDMismatch"
+          examples:
+            BodyNotJson:
+              value:
+                detail:
+                  message: Request body is not JSON.
+            InvalidAccessToken:
+              value:
+                detail:
+                  message: Invalid access token.
+            InvalidHomeserver:
+              value:
+                detail:
+                  message: Invalid homeserver or access token.
+            HomeserverConnectionError:
+              value:
+                detail:
+                  message: Could not connect to homeserver.
+            ClientAlreadyExists:
+              value:
+                detail:
+                  message: There is already a client with the user ID of that token.
+            AccessTokenMismatch:
+              value:
+                detail:
+                  message: >
+                    The Matrix user ID of the client and the user ID of the access token don't
+                    match. Access token is for user @bot:example.com.
+            DeviceIDMismatch:
+              value:
+                detail:
+                  message: >
+                    The Matrix device ID of the client and the device ID of the access token
+                    don't match. Access token is for device HDJSK56.
+
+    VariablesSetSuccess:
+      description: Variables set success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/VariablesSetOk"
+
+    ClientFlowUpdated:
+      description: Client flow updated.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UpdateFlowOk"
+
+    ClientUpdateFlowBadRequest:
+      description: Client update flow bad request.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/BodyNotJson"
+              - $ref: "#/components/schemas/FlowIsRequired"
+          examples:
+            BodyNotJson:
+              value:
+                detail:
+                  message: Request body is not JSON.
+            FlowIsRequired:
+              value:
+                detail:
+                  message: Parameter flow is required.
+
+    ClientUpdateFlowNotFound:
+      description: Client update flow not found.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/ClientNotFound"
+              - $ref: "#/components/schemas/FlowNotFound"
+          examples:
+            ClientNotFound:
+              value:
+                detail:
+                  message: Client with given user ID @bot:example.com not found.
+            FlowNotFound:
+              value:
+                detail:
+                  message: Flow not found.
+
+    ClientFlowReloaded:
+      description: Client flow reloaded.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/FlowReloadedOk"
+
+    ClientReloadFlowNotFound:
+      description: Client reload flow not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ClientNotFound"
+
+    ClientEnabledOrDisabled:
+      description: Client enabled or disabled.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ClientEnabledOrDisabledOk"
+
+    ClientEnableOrDisableBadRequest:
+      description: Client enable or disable bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/InvalidAction"
+
+    ClientEnableOrDisableNotFound:
+      description: Client enable or disable not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ClientNotFound"
