@@ -1,5 +1,6 @@
 mautrix==0.20.4
-aiohttp==3.9.5
+aiohttp-swagger3==0.8.0
+aiohttp-cors==0.7.0
 yarl>=1,<2
 asyncpg==0.29.0
 ruamel.yaml==0.18.6

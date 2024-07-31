@@ -5,8 +5,6 @@ from typing import Dict
 from mautrix.util.async_db import Database, DatabaseException
 from mautrix.util.program import Program
 
-from .api import client
-from .api import init as init_api
 from .config import Config
 from .db import init as init_db
 from .db import upgrade_table
@@ -17,6 +15,7 @@ from .flow_utils import FlowUtils
 from .menu import MenuClient
 from .repository.middlewares import EmailServer
 from .server import MenuFlowServer
+from .web.management_api import ManagementAPI
 
 
 class MenuFlow(Program):
@@ -33,6 +32,8 @@ class MenuFlow(Program):
     command = "python -m menuflow"
 
     description = "A manager of bots that have conversation flows."
+
+    management_api: ManagementAPI
 
     def prepare_arg_parser(self) -> None:
         super().prepare_arg_parser()
@@ -51,8 +52,11 @@ class MenuFlow(Program):
         self.prepare_db()
         MenuClient.init_cls(self)
         NatsPublisher.init_cls(self.config)
-        management_api = init_api(self.config, self.loop)
-        self.server = MenuFlowServer(management_api, self.config, self.loop)
+        self.management_api = ManagementAPI(
+            config=self.config,
+            loop=self.loop,
+        )
+        self.server = MenuFlowServer(self.management_api.app, self.config, self.loop)
         self.flow_utils = FlowUtils()
         Flow.init_cls(self.flow_utils)
 

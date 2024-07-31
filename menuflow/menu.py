@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
 class MenuClient(DBClient):
     menuflow: "MenuFlow" = None
-    cache: dict[UserID, Client] = {}
+    cache: dict[UserID, "MenuClient"] = {}
     _async_get_locks: dict[Any, asyncio.Lock] = defaultdict(lambda: asyncio.Lock())
     log: TraceLogger = logging.getLogger("menuflow.client")
 

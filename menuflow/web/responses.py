@@ -84,7 +84,7 @@ class _Response:
 
     def client_not_found(self, user_id: str) -> web.Response:
         return web.json_response(
-            {"detail": {"message": f"Client with user ID {user_id} not found"}},
+            {"detail": {"message": f"Client with given user ID {user_id} not found"}},
             status=HTTPStatus.NOT_FOUND,
         )
 
