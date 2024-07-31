@@ -23,7 +23,7 @@ async def config() -> Config:
 @pytest_asyncio.fixture
 async def sample_flow_1(config: Config) -> Flow:
     flow = Flow()
-    await flow.load_flow(content=Util.flow_example(flow_index=0))
+    await flow.load_flow(content=Util.flow_example(flow_index=0), config=config)
     for node in [Input, Location, Message, Switch]:
         node.config = config
 
@@ -33,7 +33,7 @@ async def sample_flow_1(config: Config) -> Flow:
 @pytest_asyncio.fixture
 async def sample_flow_2(config: Config) -> Flow:
     flow = Flow()
-    await flow.load_flow(content=Util.flow_example(flow_index=1))
+    await flow.load_flow(content=Util.flow_example(flow_index=1), config=config)
     for node in [Input, Location, Message, Switch]:
         node.config = config
 

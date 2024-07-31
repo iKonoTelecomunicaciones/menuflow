@@ -59,7 +59,6 @@ class ManagementAPI:
         for route in list(self.app.router.routes()):
             cors.add(route)
             if route.method in ["post", "POST"]:
-                self.log.debug(f"Adding OPTIONS route for {route.get_info()}")
                 route_info: Dict = route.get_info()
                 swagger.add_options(
                     path=route_info.get("path") or route_info.get("formatter"),
