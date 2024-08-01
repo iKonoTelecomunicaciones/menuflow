@@ -1,12 +1,21 @@
 from __future__ import annotations
 
 from attr import dataclass, ib
+from mautrix.types import SerializableAttrs
 
-from ..flow_object import FlowObject
+from .switch import Switch
 
 
 @dataclass
-class GPTAssistant(FlowObject):
+class InactivityOptions(SerializableAttrs):
+    chat_timeout: int = ib(default=None)
+    warning_message: str = ib(default=None)
+    time_between_attempts: int = ib(default=None)
+    attempts: int = ib(default=None)
+
+
+@dataclass
+class GPTAssistant(Switch):
     """
     ## GptAssistant
 
@@ -14,6 +23,10 @@ class GPTAssistant(FlowObject):
 
     * If you want to create a new assistant, you need to provide name, instructions, model parameters.
     * If you want to use an existing assistant, you need to provide assistant_id.
+
+    **Note:**
+    If you want to provide the assistant some initial information,
+    you can use the initial_info parameter.
 
     content:
 
@@ -25,9 +38,26 @@ class GPTAssistant(FlowObject):
           model: "gpt-3.5-turbo"
           assistant_id: "123456"
           api_key: "123456"
-          variable: "gpt_response"
-          user_input: "user_input"
-          o_connection: "m1"
+          initial_info: "{{ route.context }}, {{ route.external.user_name }}"
+          variable: opt
+          validation: '{{ opt.isdigit() }}'
+          validation_attempts: 3
+          inactivity_options:
+            chat_timeout: 20 #seconds
+            warning_message: "Message"
+            time_between_attempts: 10 #seconds
+            attempts: 3
+          cases:
+            - id: true
+              o_connection: m1
+            - id: false
+              o_connection: m2
+            - id: default
+              o_connection: m3
+            - id: timeout
+              o_connection: m4
+            - id: attempt_exceeded
+              o_connection: m5
     ```
     """
 
@@ -36,6 +66,8 @@ class GPTAssistant(FlowObject):
     model: str = ib(default=None)
     assistant_id: str = ib(default=None)
     api_key: str = ib(factory=str)
-    variable: str = ib(factory=str)
-    user_input: str = ib(factory=str)
-    o_connection: str = ib(factory=str)
+    initial_info: str = ib(default=None)
+    variable: str = ib(default=None)
+    validation: str = ib(default=None)
+    validation_attempts: int = ib(default=None)
+    inactivity_options: InactivityOptions = ib(default=None)
