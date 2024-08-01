@@ -53,6 +53,10 @@ class GPTAssistant(Switch):
         return self.render_data(data=self.content.get("api_key", ""))
 
     @property
+    def initial_info(self) -> str:
+        return self.render_data(self.content.get("initial_info", ""))
+
+    @property
     def variable(self) -> str:
         return self.render_data(self.content.get("variable", ""))
 
@@ -63,6 +67,7 @@ class GPTAssistant(Switch):
         self.warning_message: str = self.render_data(data.get("warning_message", ""))
         self.time_between_attempts: int = data.get("time_between_attempts", 0)
         self.attempts: int = data.get("attempts", 0)
+        return data
 
     def setup_assistant(self):
         if self.assistant_id:
@@ -149,6 +154,8 @@ class GPTAssistant(Switch):
             self.log.debug(f"Room {self.room.room_id} enters gpt_assistant node {self.id}")
 
             if not await self.room.get_variable(self.variable):
+                if self.initial_info:
+                    self.add_message(self.initial_info)
                 assistant_resp = await self.run_assistant()
                 response = int(assistant_resp) if assistant_resp.isdigit() else assistant_resp
                 if json_str := self.json_in_text(response):

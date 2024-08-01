@@ -24,6 +24,10 @@ class GPTAssistant(Switch):
     * If you want to create a new assistant, you need to provide name, instructions, model parameters.
     * If you want to use an existing assistant, you need to provide assistant_id.
 
+    **Note:**
+    If you want to provide the assistant some initial information,
+    you can use the initial_info parameter.
+
     content:
 
     ```yaml
@@ -34,6 +38,7 @@ class GPTAssistant(Switch):
           model: "gpt-3.5-turbo"
           assistant_id: "123456"
           api_key: "123456"
+          initial_info: "{{ route.context }}, {{ route.external.user_name }}"
           variable: opt
           validation: '{{ opt.isdigit() }}'
           validation_attempts: 3
@@ -61,6 +66,7 @@ class GPTAssistant(Switch):
     model: str = ib(default=None)
     assistant_id: str = ib(default=None)
     api_key: str = ib(factory=str)
+    initial_info: str = ib(default=None)
     variable: str = ib(default=None)
     validation: str = ib(default=None)
     validation_attempts: int = ib(default=None)
