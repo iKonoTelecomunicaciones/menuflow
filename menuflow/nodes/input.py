@@ -8,7 +8,6 @@ from mautrix.types import (
     LocationMessageEventContent,
     MediaMessageEventContent,
     MessageEvent,
-    MessageEventContent,
     MessageType,
 )
 
