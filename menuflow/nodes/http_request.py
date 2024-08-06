@@ -159,7 +159,8 @@ class HTTPRequest(Switch):
                 variables[cookie] = response.cookies.output(cookie)
 
         try:
-            response_data = await response.json()
+            response_data: Dict = await response.json()
+            response_data.update({"status": response.status})
         except ContentTypeError:
             response_data = {}
 
