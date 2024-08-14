@@ -10,6 +10,7 @@ from aiohttp_swagger3 import SwaggerDocs, SwaggerInfo, SwaggerUiSettings
 from mautrix.util.logging import TraceLogger
 
 from ..config import Config
+from ..flow_utils import FlowUtils
 from . import api
 from .base import routes, set_config
 
@@ -20,10 +21,12 @@ class ManagementAPI:
     log: TraceLogger = logging.getLogger("menuflow.management_api")
     app: web.Application
 
-    def __init__(self, config: Config, loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(
+        self, config: Config, flow_utils: FlowUtils, loop: asyncio.AbstractEventLoop
+    ) -> None:
         self.app = web.Application()
         self.loop = loop
-        set_config(config=config)
+        set_config(config=config, flow_utils=flow_utils)
 
         swagger = SwaggerDocs(
             self.app,
