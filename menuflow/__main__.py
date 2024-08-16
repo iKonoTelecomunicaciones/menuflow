@@ -52,12 +52,13 @@ class MenuFlow(Program):
         self.prepare_db()
         MenuClient.init_cls(self)
         NatsPublisher.init_cls(self.config)
+        self.flow_utils = FlowUtils()
         self.management_api = ManagementAPI(
             config=self.config,
             loop=self.loop,
+            flow_utils=self.flow_utils,
         )
         self.server = MenuFlowServer(self.management_api.app, self.config, self.loop)
-        self.flow_utils = FlowUtils()
         Flow.init_cls(self.flow_utils)
 
     async def start_email_connections(self):

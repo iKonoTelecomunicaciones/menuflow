@@ -11,6 +11,17 @@ components:
           - example_email_server_2
           - example_email_server_3
 
+    GetMiddlewaresOk:
+      type: object
+      properties:
+        middlewares:
+          type: array
+      example:
+        middlewares:
+          - example_middleware_1
+          - example_middleware_2
+          - example_middleware_3
+
     CreateUpdateFlowOk:
       type: object
       properties:
@@ -274,6 +285,13 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/GetEmailServersOk"
+
+    GetMiddlewaresSuccess:
+      description: Get middlewares success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GetMiddlewaresOk"
 
     CreateUpdateFlowSuccess:
       description: Create or update flow success.
