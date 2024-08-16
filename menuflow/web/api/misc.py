@@ -38,5 +38,8 @@ async def get_id_middlewares(request: web.Request) -> web.Response:
     """
 
     flow_utils = get_flow_utils()
-    name_middlewares = [middleware.id for middleware in flow_utils.data.middlewares]
-    return resp.ok({"middlewares": name_middlewares})
+    middlewares = [
+        {"id": middleware.id, "type": middleware.type}
+        for middleware in flow_utils.data.middlewares
+    ]
+    return resp.ok({"middlewares": middlewares})
