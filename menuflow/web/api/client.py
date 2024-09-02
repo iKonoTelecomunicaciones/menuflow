@@ -212,7 +212,7 @@ async def update_client(request: web.Request) -> web.Response:
             $ref: '#/components/responses/ClientUpdateFlowNotFound'
     """
     mxid = request.match_info["mxid"]
-    client: Optional[MenuClient] = MenuClient.get(mxid)
+    client: Optional[MenuClient] = await MenuClient.get(mxid)
     if not client:
         return resp.client_not_found(mxid)
 
