@@ -83,11 +83,10 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
         message = "Flow updated successfully"
     else:
         new_flow = DBFlow(flow=incoming_flow)
-        await new_flow.insert()
+        flow_id = await new_flow.insert()
         message = "Flow created successfully"
 
-    flow_id_response = new_flow.id if not flow_id else flow_id
-    return resp.ok({"detail": {"message": message, "data": {"id": flow_id_response}}})
+    return resp.ok({"detail": {"message": message, "data": {"flow_id": flow_id}}})
 
 
 @routes.get("/v1/flow", allow_head=False)
