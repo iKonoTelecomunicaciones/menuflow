@@ -161,7 +161,6 @@ class Base:
                 return data
         except Exception as e:
             self.log.exception(e)
-            return "except"
 
     async def get_o_connection(self) -> str:
         """It returns the ID of the next node to be executed.
