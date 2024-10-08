@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import mimetypes
 from io import BytesIO
 from typing import Dict
@@ -70,9 +71,16 @@ class Media(Message):
 
         """
         resp = await self.session.get(self.url)
-        data = await resp.read()
-        media_info = self.info
+        if resp.headers.get("Content-Type") == "application/json":
+            try:
+                data = base64.b64decode(await resp.text())
+            except Exception as e:
+                self.log.exception(f"error {e}")
+                return
+        else:
+            data = await resp.read()
 
+        media_info = self.info
         if media_info is None:
             return
 
@@ -131,6 +139,7 @@ class Media(Message):
                     node_id=o_connection,
                     state=RouteState.END if not o_connection else None,
                 )
+                return
             self.media_cache[self.url] = media_message
 
         await self.send_message(room_id=self.room.room_id, content=media_message)
