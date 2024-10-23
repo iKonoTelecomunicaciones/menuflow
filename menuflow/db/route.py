@@ -101,4 +101,5 @@ class Route:
         self.state = RouteState.START
         self.node_id = "start"
         self.variables = json.dumps({"external": self._variables.pop("external", {})})
+        self.stack = json.dumps({self.client: []})
         await self.update()
