@@ -8,7 +8,7 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import HTTPRequest as HTTPRequestModel
 from ..room import Room
-from ..utils import Nodes
+from ..utils import Nodes, Util
 from .switch import Switch
 
 if TYPE_CHECKING:
@@ -90,10 +90,10 @@ class HTTPRequest(Switch):
             request_body["headers"] = self.headers
 
         if self.data:
-            request_body["data"] = self.data
+            request_body["data"] = Util.convert_to_json(self.data)
 
         if self.json:
-            request_body["json"] = self.json
+            request_body["json"] = Util.convert_to_json(self.json)
 
         return request_body
 

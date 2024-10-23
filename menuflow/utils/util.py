@@ -1,7 +1,7 @@
 import json
 from asyncio import Task, all_tasks
 from logging import getLogger
-from re import match
+from re import match, sub
 from typing import Dict
 
 from mautrix.types import RoomID, UserID
@@ -190,3 +190,39 @@ class Util:
         for task in tasks:
             if match(self.config["menuflow.regex.room_id"], task.get_name()):
                 task.cancel()
+
+    # Function to fix malformed lists
+    @classmethod
+    def fix_malformed_json(cls, value: str) -> str:
+        # Replace single quotes with double quotes
+        value = value.replace("'", '"')
+
+        # Correct malformed lists inside strings
+        # Find a malformed list inside a string and fix the quotes
+        value = sub(r'"\[([^]]+)\]"', r"[\1]", value)
+
+        return value
+
+    # Recursive function to convert values to JSON if possible
+    @classmethod
+    def convert_to_json(cls, value: str | list | dict) -> str | list | dict:
+        if isinstance(value, dict):
+            # If it's a dictionary, apply the recursive conversion on each key
+            return {k: cls.convert_to_json(v) for k, v in value.items()}
+        elif isinstance(value, list):
+            # If it's a list, apply the recursive conversion on each item
+            return [cls.convert_to_json(item) for item in value]
+        elif isinstance(value, str):
+            # First, fix any malformed format
+            value = cls.fix_malformed_json(value)
+            try:
+                # Try to load as JSON
+                converted = json.loads(value)
+                # If the result is a dictionary or a list, apply the recursive conversion
+                return cls.convert_to_json(converted)
+            except (json.JSONDecodeError, TypeError):
+                # If the conversion to JSON fails, return the original value
+                return value
+        else:
+            # If it's not a string, list or dictionary, return the value as is
+            return value
