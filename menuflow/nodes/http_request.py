@@ -90,10 +90,10 @@ class HTTPRequest(Switch):
             request_body["headers"] = self.headers
 
         if self.data:
-            request_body["data"] = Util.convert_to_json(self.data)
+            request_body["data"] = self.data
 
         if self.json:
-            request_body["json"] = Util.convert_to_json(self.json)
+            request_body["json"] = self.json
 
         return request_body
 
