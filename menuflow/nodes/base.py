@@ -14,6 +14,7 @@ from mautrix.util.logging import TraceLogger
 from ..config import Config
 from ..jinja.jinja_template import jinja_env
 from ..room import Room
+from ..utils import Util
 
 
 def convert_to_bool(item) -> Dict | List | str:
@@ -150,7 +151,8 @@ class Base:
                 # and before return, it will be replaced by \n again to keep the original string
                 clear_variables = dumps(copy_variables).replace("\\n", "ik-line-break")
                 data = data_template.render(**loads(clear_variables))
-                data = convert_to_bool(loads(data.replace("ik-line-break", "\\n")))
+                data = data.replace("ik-line-break", "\\n")
+                data = convert_to_bool(Util.convert_to_json(data))
                 return data
             except JSONDecodeError:
                 data = data_template.render(**copy_variables)
