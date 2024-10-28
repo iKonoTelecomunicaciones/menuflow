@@ -16,6 +16,15 @@ menuflow:
         messages_from:
             - "@whatsappbot:example.com"
             - "@admin:example.com"
+            - '@gs_whatsappbot:example.com'
+            - '@mx_whatsappbot:example.com'
+            - '@instagrambot:example.com'
+            - '@facebookbot:example.com'
+            - '@wb_whatsappbot:example.com'
+            - '@metabot:example.com'
+            - '@acd[0-9]*:example.com'
+            - '@supervisor[0-9]*:example.com'
+            - '@agente[0-9]*:example.com'
 
         invitations_from:
             - "@whatsappbot:example.com"
@@ -25,8 +34,8 @@ menuflow:
     # it's important that middlewares will have a time minor to http_request
     # because jwt request shouldn't take much time, and it can stop http_request too much time.
     timeouts:
-        http_request: 10 #seconds
-        middlewares: 5 #seconds
+        http_request: 60 #seconds
+        middlewares: 60 #seconds
 
     # Do you want the menu to generate a typing notification event before sending messages to rooms?
     # The range is related to the time duration of the write notification event.
@@ -73,7 +82,7 @@ events:
 
 # Nats configuration
 nats:
-    enabled: false
+    enabled: true
     # Nats server address
     address: "nats://nats:4222"
     # Nats user
