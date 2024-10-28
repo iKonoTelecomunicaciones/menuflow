@@ -16,15 +16,6 @@ menuflow:
         messages_from:
             - "@whatsappbot:example.com"
             - "@admin:example.com"
-            - '@gs_whatsappbot:example.com'
-            - '@mx_whatsappbot:example.com'
-            - '@instagrambot:example.com'
-            - '@facebookbot:example.com'
-            - '@wb_whatsappbot:example.com'
-            - '@metabot:example.com'
-            - '@acd[0-9]*:example.com'
-            - '@supervisor[0-9]*:example.com'
-            - '@agente[0-9]*:example.com'
 
         invitations_from:
             - "@whatsappbot:example.com"
@@ -82,7 +73,7 @@ events:
 
 # Nats configuration
 nats:
-    enabled: true
+    enabled: false
     # Nats server address
     address: "nats://nats:4222"
     # Nats user
