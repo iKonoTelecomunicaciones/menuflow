@@ -25,8 +25,8 @@ menuflow:
     # it's important that middlewares will have a time minor to http_request
     # because jwt request shouldn't take much time, and it can stop http_request too much time.
     timeouts:
-        http_request: 10 #seconds
-        middlewares: 5 #seconds
+        http_request: 60 #seconds
+        middlewares: 60 #seconds
 
     # Do you want the menu to generate a typing notification event before sending messages to rooms?
     # The range is related to the time duration of the write notification event.
