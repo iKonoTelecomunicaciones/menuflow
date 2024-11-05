@@ -11,6 +11,7 @@ from mautrix.util.logging import TraceLogger
 
 from ..config import Config
 from ..flow_utils import FlowUtils
+from ..version import version
 from . import api
 from .base import routes, set_config
 
@@ -36,7 +37,7 @@ class ManagementAPI:
                     "Documentation for Menuflow matrix bot builder "
                     "project by **iKono Telecomunicaciones S.A.S.**"
                 ),
-                version=f"v0.3.5",
+                version=f"v{version}",
             ),
             components="menuflow/web/api/components.yaml",
             swagger_ui_settings=SwaggerUiSettings(
