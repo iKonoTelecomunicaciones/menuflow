@@ -76,16 +76,6 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       -
-        name: Build and push versioned image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./Dockerfile
-          push: true
-          run: |
-            TAG_VERSION=$(grep "version = " menuflow/version.py | cut -d"=" -f2 | sed 's/"//g; s/+dev.*/-dev/g' | xargs)
-          tags: ${{ vars.MENUFLOW_IMAGE }}:v${TAG_VERSION}
-      -
         name: Build and push
         uses: docker/build-push-action@v5
         with:

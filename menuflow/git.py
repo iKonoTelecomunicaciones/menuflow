@@ -15,22 +15,21 @@ cmd_env = {
 
 # Run a command in the shell
 def run(cmd):
-    if os.path.exists(".git") and shutil.which("git"):
-        try:
-            return (
-                subprocess.check_output(cmd, stderr=subprocess.DEVNULL, env=cmd_env)
-                .strip()
-                .decode("ascii")
-            )
-        except (subprocess.CalledProcessError, subprocess.SubprocessError, OSError) as err:
-            if "--exact-match" in cmd:
-                # If the command 'git describe --exact-match --tags' fails, it means there is no tag
-                return None
-            else:
-                logger.error(f"------>Error: {err}")
-            return None
-    else:
+    if not os.path.exists(".git") and not shutil.which("git"):
         logger.error("Error: git not found")
+        return None
+
+    try:
+        return (
+            subprocess.check_output(cmd, stderr=subprocess.DEVNULL, env=cmd_env)
+            .strip()
+            .decode("ascii")
+        )
+    except (subprocess.CalledProcessError, subprocess.SubprocessError, OSError) as err:
+        # If the command 'git describe --exact-match --tags' fails, it means there is no tag
+        if "--exact-match" not in cmd:
+            logger.error(f"------>Error: {err}")
+
         return None
 
 
@@ -85,8 +84,8 @@ def get_version():
     # Getting version project
     if git_tag and git_tag.endswith("+dev"):
         return f"{git_tag[1:]}.{get_latest_revision()}"
-    else:
-        return git_tag[1:]
+
+    return git_tag[1:]
 
 
 def get_version_link():
@@ -98,6 +97,6 @@ def get_version_link():
         # with revision (commit) URL
         git_revision = get_latest_revision()
         return f"{git_tag}.[{git_revision}]({url_project}/-/commit/{git_revision})"
-    else:
-        # with tag URL
-        return f"[{git_tag}]({url_project}/-/tags/{git_tag})"
+
+    # with tag URL
+    return f"[{git_tag}]({url_project}/-/tags/{git_tag})"

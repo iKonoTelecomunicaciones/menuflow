@@ -1,5 +1,3 @@
-from logging import getLogger
-
 import setuptools
 
 from menuflow.git import (
@@ -9,8 +7,6 @@ from menuflow.git import (
     get_version_link,
     update_init_file,
 )
-
-log = getLogger("setup.py")
 
 try:
     long_desc = open("README.md").read()
@@ -35,8 +31,6 @@ with open("requirements-dev.txt") as reqs:
 git_latest_tag = get_latest_tag()
 version = get_version()
 
-log.critical(f"Version: {version}")
-log.critical(f"git_latest_tag: {git_latest_tag}")
 # Update the init file
 if git_latest_tag:
     # git tag without 'v' prefix
