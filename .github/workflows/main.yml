@@ -51,13 +51,20 @@ jobs:
         pytest -vv
 
   docker:
-    if: "github.ref_name == 'main'"
+    if: "github.ref_name == '166-get-the-version-automatically'"
     runs-on: ubuntu-latest
     needs: [lint, test]
     environment: deploy
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      -
+        name: Get the latest version
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+        run: |
+          python setup.py --version
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -68,14 +75,23 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       -
+        name: Build and push versioned image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          run: |
+            TAG_VERSION=$(grep "version = " menuflow/version.py | cut -d"=" -f2 | sed 's/"//g; s/+dev.*/-dev/g' | xargs)
+          tags: ${{ vars.MENUFLOW_IMAGE }}:v${TAG_VERSION}
+      -
         name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ vars.MENUFLOW_IMAGE }}
-
+          tags: ${{ vars.MENUFLOW_IMAGE }}:${{ vars.TAG_TESTING }}
       -
         # Download updated docker image to testing server
         name: Connect to server and update docker image
@@ -100,9 +116,11 @@ jobs:
           [[ -e ~/.ssh ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
           ssh -tt ${{ secrets.HOST_TESTING }} "echo '** Connected **'"
 
-          echo "** Download updated docker image **"
+          echo "** Download updated Testing docker image **"
           # Download updated docker image to testing server
-          ssh -tt ${{ secrets.HOST_TESTING }} "docker pull ${{ vars.MENUFLOW_IMAGE }}"
+          ssh -tt ${{ secrets.HOST_TESTING }} " \
+            docker pull ${{ vars.MENUFLOW_IMAGE }}:${{ vars.TAG_TESTING }} \
+          "
 
           echo "** Update menuflow image in registered stacks **"
           for stack in  ${{ vars.STACKS }}; do

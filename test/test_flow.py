@@ -3,7 +3,8 @@ import pytest
 
 nest_asyncio.apply()
 
-from menuflow import Flow, Room
+from menuflow.flow import Flow
+from menuflow.room import Room
 
 
 # @pytest.mark.asyncio

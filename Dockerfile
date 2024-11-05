@@ -20,7 +20,11 @@ RUN apk add --virtual .build-deps python3-dev libffi-dev build-base \
       && apk del .build-deps
 
 COPY . /opt/menuflow
-RUN cp menuflow/example-config.yaml .
+RUN apk add --no-cache git \
+      && python3 setup.py --version \
+      && pip3 install .[all] \
+      && cp menuflow/example-config.yaml . \
+      && rm -rf menuflow .git build
 
 VOLUME /data
 
