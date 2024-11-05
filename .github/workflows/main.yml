@@ -58,6 +58,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      -
+        name: Get the latest version
+        run: |
+          python setup.py --version
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -74,8 +82,7 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ${{ vars.MENUFLOW_IMAGE }}
-
+          tags: ${{ vars.MENUFLOW_IMAGE }}:${{ vars.TAG_TESTING }}
       -
         # Download updated docker image to testing server
         name: Connect to server and update docker image
@@ -100,9 +107,11 @@ jobs:
           [[ -e ~/.ssh ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
           ssh -tt ${{ secrets.HOST_TESTING }} "echo '** Connected **'"
 
-          echo "** Download updated docker image **"
+          echo "** Download updated Testing docker image **"
           # Download updated docker image to testing server
-          ssh -tt ${{ secrets.HOST_TESTING }} "docker pull ${{ vars.MENUFLOW_IMAGE }}"
+          ssh -tt ${{ secrets.HOST_TESTING }} " \
+            docker pull ${{ vars.MENUFLOW_IMAGE }}:${{ vars.TAG_TESTING }} \
+          "
 
           echo "** Update menuflow image in registered stacks **"
           for stack in  ${{ vars.STACKS }}; do

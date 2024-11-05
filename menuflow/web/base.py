@@ -5,6 +5,7 @@ from aiohttp import web
 from ..config import Config
 from ..flow_utils import FlowUtils
 from ..utils import Util
+from ..version import version
 
 _config: Config | None = None
 _util: Util | None = None
@@ -36,5 +37,5 @@ def get_flow_utils() -> FlowUtils:
 
 
 @routes.get("/version")
-async def version(_: web.Request) -> web.Response:
-    return web.json_response({"version": "0.3.5"})
+async def get_version(_: web.Request) -> web.Response:
+    return web.json_response({"version": version})

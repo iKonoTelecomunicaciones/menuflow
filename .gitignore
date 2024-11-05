@@ -14,3 +14,6 @@ volumes
 settings.json
 .vscode
 *bin
+# Version files
+menuflow/version.py
+menuflow/__init__.py

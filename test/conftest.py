@@ -4,10 +4,12 @@ import pytest_asyncio
 from mautrix.client import Client
 from pytest_mock import MockerFixture
 
-from menuflow import Flow, Room, Util
 from menuflow.config import Config
 from menuflow.db import Route
+from menuflow.flow import Flow
 from menuflow.nodes import Base, Input, Location, Message, Switch
+from menuflow.room import Room
+from menuflow.utils import Util
 
 
 @pytest_asyncio.fixture
