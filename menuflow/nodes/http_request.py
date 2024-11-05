@@ -8,7 +8,7 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import HTTPRequest as HTTPRequestModel
 from ..room import Room
-from ..utils import Nodes, Util
+from ..utils import Nodes
 from .switch import Switch
 
 if TYPE_CHECKING:
@@ -160,7 +160,8 @@ class HTTPRequest(Switch):
 
         try:
             response_data: Dict = await response.json()
-            response_data.update({"status": response.status})
+            if response_data and isinstance(response_data, dict):
+                response_data.update({"status": response.status})
         except ContentTypeError:
             response_data = {}
 
