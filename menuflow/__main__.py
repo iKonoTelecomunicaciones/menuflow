@@ -15,6 +15,7 @@ from .flow_utils import FlowUtils
 from .menu import MenuClient
 from .repository.middlewares import EmailServer
 from .server import MenuFlowServer
+from .version import version
 from .web.management_api import ManagementAPI
 
 
@@ -28,7 +29,7 @@ class MenuFlow(Program):
 
     module = "menuflow"
     name = "menuflow"
-    version = "0.1.0"
+    version = version
     command = "python -m menuflow"
 
     description = "A manager of bots that have conversation flows."
