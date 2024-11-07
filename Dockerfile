@@ -24,7 +24,7 @@ RUN apk add --no-cache git \
       && python3 setup.py --version \
       && pip3 install .[all] \
       && cp menuflow/example-config.yaml . \
-      && rm -rf menuflow .git build
+      && rm -rf .git build
 
 VOLUME /data
 
