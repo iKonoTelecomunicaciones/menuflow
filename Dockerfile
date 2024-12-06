@@ -34,11 +34,10 @@ RUN pip install --no-cache-dir -r requirements-dev.txt
 
 COPY . ./
 
-RUN rm -rf .git/ build/
 RUN python setup.py --version && \
     pip install --no-cache-dir .[all] && \
     cp menuflow/example-config.yaml . && \
-    rm -rf build
+    rm -rf build .git
 
 ENTRYPOINT bash -c "watchmedo auto-restart --recursive --pattern=*.py \
            --ignore-patterns=__init__.py;version.py --directory=. -- /opt/menuflow/run.sh dev"
@@ -48,10 +47,9 @@ FROM base AS runtime
 
 COPY . ./
 
-RUN rm -rf .git/ build/
 RUN python setup.py --version && \
     pip install --no-cache-dir .[all] && \
     cp menuflow/example-config.yaml . && \
-    rm -rf build
+    rm -rf build .git
 
 CMD ["/opt/menuflow/run.sh"]
