@@ -43,6 +43,10 @@ FROM base AS runtime
 
 COPY . ./
 
+RUN ls -la
+RUN pwd
+RUN git tag
+
 RUN python setup.py --version && \
     pip install --no-cache-dir .[all] && \
     cp menuflow/example-config.yaml . && \

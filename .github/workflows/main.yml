@@ -51,7 +51,7 @@ jobs:
         pytest -vv
 
   docker:
-    if: "github.ref_name == 'main'"
+    #if: "github.ref_name == 'main'"
     runs-on: ubuntu-latest
     needs: [lint, test]
     environment: deploy
