@@ -65,7 +65,7 @@ jobs:
       -
         name: Get the latest version
         run: |
-          git fetch --tags
+          git fetch -q --all
           python setup.py --version
       -
         name: Set up Docker Buildx
