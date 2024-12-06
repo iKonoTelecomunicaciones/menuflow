@@ -20,8 +20,6 @@ COPY requirements.txt ./
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN git fetch -q --all
-
 VOLUME [ "/data" ]
 
 #==================================== Dev Stage ==========================================
@@ -33,7 +31,7 @@ RUN pip install --no-cache-dir -r requirements-dev.txt
 
 COPY . ./
 
-RUN python setup.py --version && \
+RUN git fetch -q --all && python setup.py --version && \
     pip install --no-cache-dir .[all] && \
     cp menuflow/example-config.yaml . && \
     rm -rf .git build
@@ -45,7 +43,7 @@ FROM base AS runtime
 
 COPY . ./
 
-RUN python setup.py --version && \
+RUN git fetch -q --all && python setup.py --version && \
     pip install --no-cache-dir .[all] && \
     cp menuflow/example-config.yaml . && \
     rm -rf .git build
