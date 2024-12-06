@@ -12,7 +12,6 @@ if [ ! -f /data/config.yaml ]; then
 fi
 
 if [ "$1" = "dev" ]; then
-	pip install --ignore-installed -r requirements-dev.txt
 	# Configure git to use the safe directory
 	if ! [ $(git config --global --get safe.directory) ]; then
 		echo "Setting safe.directory config to /opt/menuflow"
@@ -20,7 +19,6 @@ if [ "$1" = "dev" ]; then
 	fi
 	# Getting the version from git repository
 	python3 setup.py --version
-    watchmedo auto-restart -R -p="*.py" -d="." /opt/menuflow/run.sh
 fi
 
 exec python3 -m menuflow -c /data/config.yaml
