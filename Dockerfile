@@ -44,7 +44,6 @@ FROM base AS runtime
 
 COPY . /opt/menuflow
 
-RUN git describe --abbrev=0 --tags
 RUN python setup.py --version && \
     pip install --no-cache-dir .[all] && \
     cp menuflow/example-config.yaml . && \
