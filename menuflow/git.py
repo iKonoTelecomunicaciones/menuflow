@@ -36,6 +36,7 @@ def run(cmd):
 # Get the latest tag from the git repository
 def get_latest_tag():
     # Run the 'git describe --abbrev=0 --tags' command to get the latest development tag
+    run(["git", "fetch", "-q", "--tags"])
     return run(["git", "describe", "--abbrev=0", "--tags"])
 
 
