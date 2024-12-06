@@ -17,6 +17,8 @@ if [ "$1" = "dev" ]; then
 		echo "Setting safe.directory config to /opt/menuflow"
 		git config --global --add safe.directory /opt/menuflow
 	fi
+	# Getting the version from git repository
+	python3 setup.py --version
 fi
 
 exec python3 -m menuflow -c /data/config.yaml

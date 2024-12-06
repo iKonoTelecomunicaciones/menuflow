@@ -9,8 +9,8 @@ RUN apt-get update && \
       python3-setuptools \
       python3-wheel \
       libmagic1 && \
-      apt-get clean && \
-      rm -rf /var/lib/apt/lists/*
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN python -m pip install --upgrade --no-cache-dir pip
 
@@ -24,8 +24,8 @@ VOLUME [ "/data" ]
 FROM base AS dev
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    inotify-tools && \
+      git \
+      inotify-tools && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY requirements-dev.txt ./
@@ -34,18 +34,21 @@ RUN pip install --no-cache-dir -r requirements-dev.txt
 
 COPY . ./
 
+RUN rm -rf .git/ build/
 RUN python setup.py --version && \
     pip install --no-cache-dir .[all] && \
     cp menuflow/example-config.yaml . && \
     rm -rf build
 
-ENTRYPOINT ["watchmedo", "auto-restart", "--recursive", "--pattern=*.py", "--directory=.", "--", "/opt/menuflow/run.sh", "dev"]
+ENTRYPOINT bash -c "watchmedo auto-restart --recursive --pattern=*.py \
+           --ignore-patterns=__init__.py;version.py --directory=. -- /opt/menuflow/run.sh dev"
 
 #==================================== Runtime Stage ==========================================
 FROM base AS runtime
 
 COPY . ./
 
+RUN rm -rf .git/ build/
 RUN python setup.py --version && \
     pip install --no-cache-dir .[all] && \
     cp menuflow/example-config.yaml . && \
