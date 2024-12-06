@@ -8,7 +8,9 @@ RUN apt-get update && \
       python3-pip \
       python3-setuptools \
       python3-wheel \
-      libmagic1 && \
+      libmagic1 \
+      git \
+      inotify-tools && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -23,11 +25,6 @@ VOLUME [ "/data" ]
 #==================================== Dev Stage ==========================================
 FROM base AS dev
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      git \
-      inotify-tools && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
 COPY requirements-dev.txt ./
 
 RUN pip install --no-cache-dir -r requirements-dev.txt
@@ -37,7 +34,7 @@ COPY . ./
 RUN python setup.py --version && \
     pip install --no-cache-dir .[all] && \
     cp menuflow/example-config.yaml . && \
-    rm -rf build .git
+    rm -rf .git build
 
 ENTRYPOINT bash -c "watchmedo auto-restart --recursive --pattern=*.py \
            --ignore-patterns=__init__.py;version.py --directory=. -- /opt/menuflow/run.sh dev"
@@ -50,6 +47,6 @@ COPY . ./
 RUN python setup.py --version && \
     pip install --no-cache-dir .[all] && \
     cp menuflow/example-config.yaml . && \
-    rm -rf build .git
+    rm -rf .git build
 
 CMD ["/opt/menuflow/run.sh"]
