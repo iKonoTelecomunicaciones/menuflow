@@ -36,9 +36,8 @@ RUN python setup.py --version && \
     cp menuflow/example-config.yaml . && \
     rm -rf .git build
 
-ENTRYPOINT bash -c "watchmedo auto-restart --recursive --pattern=*.py \
-           --ignore-patterns=__init__.py;version.py --directory=. -- /opt/menuflow/run.sh dev"
 
+CMD ["/opt/menuflow/run.sh", "dev"]
 #==================================== Runtime Stage ==========================================
 FROM base AS runtime
 
