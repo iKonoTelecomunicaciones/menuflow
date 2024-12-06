@@ -32,7 +32,7 @@ RUN pip install --no-cache-dir -r requirements-dev.txt
 
 COPY . /opt/menuflow
 
-RUN git fetch -q --all && python setup.py --version && \
+RUN python setup.py --version && \
     pip install --no-cache-dir .[all] && \
     cp menuflow/example-config.yaml . && \
     rm -rf .git build
@@ -44,8 +44,9 @@ FROM base AS runtime
 
 COPY . /opt/menuflow
 
+RUN git fetch -q --all
 RUN git describe --abbrev=0 --tags
-RUN git fetch -q --all && python setup.py --version && \
+RUN python setup.py --version && \
     pip install --no-cache-dir .[all] && \
     cp menuflow/example-config.yaml . && \
     rm -rf .git build
