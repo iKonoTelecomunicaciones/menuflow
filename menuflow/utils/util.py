@@ -216,10 +216,13 @@ class Util:
             # First, fix any malformed format
             value = cls.fix_malformed_json(value)
             try:
-                # Try to load as JSON
+                # Try to convert the string to JSON
                 converted = json.loads(value)
-                # If the result is a dictionary or a list, apply the recursive conversion
-                return cls.convert_to_json(converted)
+                # If the result is a dictionary or list, apply recursive conversion
+                if isinstance(converted, (dict, list)):
+                    return cls.convert_to_json(converted)
+                # If not, return the original string (numbers in strings are not modified)
+                return value
             except (json.JSONDecodeError, TypeError):
                 # If the conversion to JSON fails, return the original value
                 return value
