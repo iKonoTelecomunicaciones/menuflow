@@ -23,11 +23,11 @@ class Location(Message):
         self.content: Dict = location_node_data
 
     @property
-    def longitude(self) -> str:
+    def longitude(self) -> float:
         return self.render_data(self.content.get("longitude", ""))
 
     @property
-    def latitude(self) -> str:
+    def latitude(self) -> float:
         return self.render_data(self.content.get("latitude", ""))
 
     async def run(self):
