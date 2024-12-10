@@ -1,31 +1,52 @@
-FROM alpine:3.18
+#==================================== Base Stage ==========================================
+FROM python:3.12.3-slim AS base
 
-RUN apk add --no-cache \
-      python3 py3-pip py3-setuptools py3-wheel \
-      py3-pillow \
-      py3-virtualenv \
-      py3-aiohttp \
-      py3-magic \
-      py3-ruamel.yaml \
-      py3-commonmark \
-      bash \
-      curl \
-      su-exec
-
-COPY requirements.txt /opt/menuflow/requirements.txt
 WORKDIR /opt/menuflow
-RUN apk add --virtual .build-deps python3-dev libffi-dev build-base \
-      && pip install --upgrade pip \
-      && pip3 install -r requirements.txt \
-      && apk del .build-deps
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      python3-pip \
+      python3-setuptools \
+      python3-wheel \
+      libmagic1 \
+      git \
+      inotify-tools && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN python -m pip install --upgrade --no-cache-dir pip
+
+COPY requirements.txt ./
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+
+VOLUME [ "/data" ]
+
+#==================================== Dev Stage ==========================================
+FROM base AS dev
+
+COPY requirements-dev.txt ./
+
+RUN pip install --no-cache-dir -r requirements-dev.txt
 
 COPY . /opt/menuflow
-RUN apk add --no-cache git \
-      && python3 setup.py --version \
-      && pip3 install .[all] \
-      && cp menuflow/example-config.yaml . \
-      && rm -rf .git build
 
-VOLUME /data
+RUN python setup.py --version && \
+    pip install --no-cache-dir .[all] && \
+    cp menuflow/example-config.yaml . && \
+    rm -rf .git build
+
+
+CMD ["/opt/menuflow/run.sh", "dev"]
+#==================================== Runtime Stage ==========================================
+FROM base AS runtime
+
+COPY . /opt/menuflow
+
+RUN python setup.py --version && \
+    pip install --no-cache-dir .[all] && \
+    cp menuflow/example-config.yaml . && \
+    rm -rf .git build
 
 CMD ["/opt/menuflow/run.sh"]
