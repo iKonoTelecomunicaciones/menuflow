@@ -144,25 +144,30 @@ class Base:
                 return
 
         copy_variables = self.default_variables | self.room.all_variables
+        clear_variables = dumps(copy_variables).replace("\\n", "ik-line-break")
         try:
-            try:
-                # if save variables have a string with \n,
-                # it will be replaced by ik-line-break to avoid errors when dict is dumped
-                # and before return, it will be replaced by \n again to keep the original string
-                clear_variables = dumps(copy_variables).replace("\\n", "ik-line-break")
-                data = data_template.render(**loads(clear_variables))
-                data = data.replace("ik-line-break", "\\n")
-                data = convert_to_bool(Util.convert_to_json(data))
-                return data
-            except JSONDecodeError:
-                data = data_template.render(**copy_variables)
-                return convert_to_bool(data)
-            except KeyError:
-                data = loads(data_template.render())
-                data = convert_to_bool(data)
-                return data
+            # if save variables have a string with \n,
+            # it will be replaced by ik-line-break to avoid errors when dict is dumped
+            # and before return, it will be replaced by \n again to keep the original string
+            temp_rendered = data_template.render(**loads(clear_variables))
+            temp_rendered = temp_rendered.replace("ik-line-break", "\\n")
+
+            temp_sanitized = convert_to_bool(Util.convert_to_json(temp_rendered))
+            if isinstance(temp_sanitized, str):
+                temp_sanitized = loads(temp_rendered)
+
+            return temp_sanitized
+        except JSONDecodeError:
+            temp_rendered = data_template.render(**loads(clear_variables))
+            temp_rendered = temp_rendered.replace("ik-line-break", "\\n")
+            return convert_to_bool(temp_rendered)
+        except KeyError:
+            data = loads(data_template.render())
+            data = convert_to_bool(data)
+            return data
         except Exception as e:
             self.log.exception(e)
+            return
 
     async def get_o_connection(self) -> str:
         """It returns the ID of the next node to be executed.
