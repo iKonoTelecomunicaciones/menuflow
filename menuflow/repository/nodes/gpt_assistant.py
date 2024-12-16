@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import List
+
 from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
 
@@ -71,3 +73,4 @@ class GPTAssistant(Switch):
     validation: str = ib(default=None)
     validation_attempts: int = ib(default=None)
     inactivity_options: InactivityOptions = ib(default=None)
+    middlewares: List = ib(default=None)

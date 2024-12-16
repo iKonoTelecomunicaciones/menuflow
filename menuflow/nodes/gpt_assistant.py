@@ -3,16 +3,20 @@ import json
 import re
 from asyncio import create_task, sleep
 from datetime import datetime
-from typing import Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import openai
-from mautrix.types import MessageEvent, RoomID
+from mautrix.types import MessageEvent, MessageType, RoomID
+from mautrix.util.magic import mimetype
 
 from ..db.route import RouteState
 from ..repository import GPTAssistant as GPTAssistantModel
 from ..room import Room
-from ..utils import Util
+from ..utils import Middlewares, Util
 from .switch import Switch
+
+if TYPE_CHECKING:
+    from ..middlewares import ASRMiddleware, TTMMiddleware
 
 
 class GPTAssistant(Switch):
@@ -31,6 +35,7 @@ class GPTAssistant(Switch):
         self.content: Dict = gpt_assistant_node_data
         self.client = openai.OpenAI(api_key=self.api_key)
         self.setup_assistant()
+        self.middlewares: Optional[List[ASRMiddleware, TTMMiddleware]] = []
 
     @property
     def name(self) -> str:
@@ -82,11 +87,40 @@ class GPTAssistant(Switch):
 
         self.thread = self.client.beta.threads.create()
 
-    def add_message(self, content: str):
+    async def process_message(self, evt: MessageEvent) -> Union[str, List[Dict], None]:
+        if evt.content.msgtype == MessageType.TEXT:
+            return evt.content.body
+        elif evt.content.msgtype == MessageType.IMAGE:
+            matrix_file = await self.room.matrix_client.download_media(evt.content.url)
+            file = self.client.files.create(
+                file=(evt.content.body, matrix_file, mimetype(matrix_file)), purpose="vision"
+            )
+            return [{"type": "image_file", "image_file": {"file_id": file.id}}]
+        elif evt.content.msgtype == MessageType.AUDIO:
+            if not self.middlewares:
+                return
+
+            middlewares_sorted = {
+                Middlewares(middleware.type): middleware for middleware in self.middlewares
+            }
+
+            audio_name = evt.content.file or "audio.ogg"
+            _, text = await middlewares_sorted[Middlewares.ASR].run(
+                audio_url=evt.content.url, audio_name=audio_name
+            )
+
+            return text
+        return
+
+    async def add_message(self, evt: MessageEvent):
+        message_content = await self.process_message(evt)
+        if not message_content:
+            return
+
         self.client.beta.threads.messages.create(
             thread_id=self.thread.id,
             role="user",
-            content=content,
+            content=message_content,
         )
 
     async def run_assistant(self, instructions: Optional[str] = None) -> str:
@@ -131,8 +165,7 @@ class GPTAssistant(Switch):
                 self.log.warning("A problem occurred getting message event.")
                 return
 
-            incoming_message = evt.content.body
-            self.add_message(str(incoming_message))
+            await self.add_message(evt)
             assistant_resp = await self.run_assistant()
             response = int(assistant_resp) if assistant_resp.isdigit() else assistant_resp
             if json_str := self.json_in_text(response):
@@ -155,7 +188,7 @@ class GPTAssistant(Switch):
 
             if not await self.room.get_variable(self.variable):
                 if self.initial_info:
-                    self.add_message(self.initial_info)
+                    await self.add_message(self.initial_info)
                 assistant_resp = await self.run_assistant()
                 response = int(assistant_resp) if assistant_resp.isdigit() else assistant_resp
                 if json_str := self.json_in_text(response):

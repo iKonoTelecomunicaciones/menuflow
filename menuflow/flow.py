@@ -221,6 +221,7 @@ class Flow:
                 delay_node_data=node_data, room=room, default_variables=self.flow_variables
             )
         elif node_data.get("type") == "gpt_assistant":
+            node_initialized = None
             if GPTAssistant.assistant_cache.get((room.room_id, room.route.id)):
                 node_initialized = GPTAssistant.assistant_cache.get((room.room_id, room.route.id))
             else:
@@ -230,6 +231,12 @@ class Flow:
                     default_variables=self.flow_variables,
                 )
                 GPTAssistant.assistant_cache[(room.room_id, room.route.id)] = node_initialized
+
+            if node_data.get("middlewares"):
+                middlewares = []
+                for middleware in node_data.get("middlewares"):
+                    middlewares.append(self.middleware(middleware, room=room))
+                node_initialized.middlewares = middlewares
         else:
             return
 
