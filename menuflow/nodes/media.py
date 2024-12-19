@@ -71,9 +71,18 @@ class Media(Message):
 
         """
         resp = await self.session.get(self.url)
-        if resp.headers.get("Content-Type") == "application/json":
+        if resp.headers.get("Content-Type") in (
+            "application/json",
+            "application/text",
+            "application/octet-stream",
+        ):
+            if resp.headers.get("Content-Type") == "application/octet-stream":
+                base64_data = await resp.read()
+            else:
+                base64_data = await resp.text()
+
             try:
-                data = base64.b64decode(await resp.text())
+                data = base64.b64decode(base64_data)
             except Exception as e:
                 self.log.exception(f"error {e}")
                 return
