@@ -163,7 +163,7 @@ class HTTPRequest(Switch):
             if response_data and isinstance(response_data, dict):
                 response_data.update({"status": response.status})
         except ContentTypeError:
-            response_data = {}
+            response_data = await response.text()
 
         if isinstance(response_data, dict) or isinstance(response_data, list):
             if self.http_variables:
