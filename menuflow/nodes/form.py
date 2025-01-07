@@ -47,7 +47,7 @@ class FormInput(Base):
     @property
     def form_message_content(self) -> FormMessage:
         form_message = FormMessage(
-            msgtype="m.form_message",
+            msgtype="m.form",
             interactive_message=FormMessageContent(
                 template_name=self.template_name,
                 language=self.language,
