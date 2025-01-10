@@ -44,6 +44,7 @@ class GPTAssistant(Switch):
           variable: opt
           validation: '{{ opt.isdigit() }}'
           validation_attempts: 3
+          group_messages_timeout: 10
           inactivity_options:
             chat_timeout: 20 #seconds
             warning_message: "Message"
@@ -74,3 +75,4 @@ class GPTAssistant(Switch):
     validation_attempts: int = ib(default=None)
     inactivity_options: InactivityOptions = ib(default=None)
     middlewares: List = ib(default=None)
+    group_messages_timeout: int = ib(default=None)

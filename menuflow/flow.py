@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, NewType, Optional
+from typing import Dict, List, Optional, Union
 
 from mautrix.util.logging import TraceLogger
 
@@ -29,26 +29,23 @@ from .repository import Flow as FlowModel
 from .room import Room
 from .utils import Middlewares, Util
 
-Node = NewType(
-    "Node",
-    (
-        CheckTime,
-        Email,
-        HTTPRequest,
-        Input,
-        InteractiveInput,
-        InviteUser,
-        Leave,
-        Location,
-        Media,
-        Message,
-        SetVars,
-        Subroutine,
-        Switch,
-        Delay,
-        GPTAssistant,
-    ),
-)
+Node = Union[
+    CheckTime,
+    Email,
+    HTTPRequest,
+    Input,
+    InteractiveInput,
+    InviteUser,
+    Leave,
+    Location,
+    Media,
+    Message,
+    SetVars,
+    Subroutine,
+    Switch,
+    Delay,
+    GPTAssistant,
+]
 
 
 class Flow:

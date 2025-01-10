@@ -24,11 +24,13 @@ from .user import User
 from .utils import Util
 
 if TYPE_CHECKING:
-    from .flow import Flow
+    from .flow import Flow, Node
     from .repository import FlowUtils
 
 
 class MatrixHandler(MatrixClient):
+    message_group_by_room: Dict[RoomID, list[MessageEvent]] = {}
+
     def __init__(
         self, config: Config, flow: Flow, flow_utils: Optional[FlowUtils] = None, *args, **kwargs
     ) -> None:
@@ -222,6 +224,38 @@ class MatrixHandler(MatrixClient):
 
         await self.algorithm(room=room, evt=message)
 
+    async def group_message(self, room: Room, message: MessageEvent, node: Node) -> bool:
+        """This function groups messages together based on the group_messages_timeout parameter.
+
+        Parameters
+        ----------
+        room_id : RoomID
+            The ID of the Matrix room.
+        message : MessageEvent
+            The message event object.
+        node : Node
+            The node object.
+
+        Returns
+        -------
+        bool
+            Returns True if the timeout is done, otherwise False.
+        """
+
+        message_group = self.message_group_by_room.setdefault(room.room_id, [])
+        message_group.append(message)
+
+        async def run_node():
+            await node.run(message_group)
+            await self.algorithm(room=room)
+
+        def run_sync():
+            asyncio.create_task(run_node())
+
+        if len(message_group) == 1:
+            loop = asyncio.get_event_loop()
+            loop.call_later(node.group_messages_timeout, run_sync)
+
     async def algorithm(self, room: Room, evt: Optional[MessageEvent] = None) -> None:
         """The algorithm function is the main function that runs the flow.
         It takes a room and an event as parameters
@@ -244,7 +278,11 @@ class MatrixHandler(MatrixClient):
         self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.route.state}]")
 
         if type(node) in (Input, InteractiveInput, GPTAssistant):
-            await node.run(evt=evt)
+            if isinstance(node, GPTAssistant) and room.route.state == RouteState.INPUT:
+                await self.group_message(room=room, message=evt, node=node)
+                return
+
+            await node.run(evt)
             if room.route.state == RouteState.INPUT:
                 return
         else:
