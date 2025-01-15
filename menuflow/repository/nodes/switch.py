@@ -14,6 +14,12 @@ class Case(SerializableAttrs):
 
 
 @dataclass
+class ValidationFail(SerializableAttrs):
+    message: str = ib(factory=str)
+    attempts: int = ib(factory=int)
+
+
+@dataclass
 class Switch(FlowObject):
     """
     ## Switch
@@ -30,7 +36,9 @@ class Switch(FlowObject):
     - id: switch-1
       type: switch
       validation: '{{ opt }}'
-      validation_attempts: 3
+      validation_fail:
+        message: "Please enter a valid option"
+        attempts: 3
       cases:
       - id: 1
         o_connection: m1
@@ -44,6 +52,9 @@ class Switch(FlowObject):
     - id: switch-2
       type: switch
       variable: route.opt
+      validation_fail:
+        message: "Please enter a valid option"
+        attempts: 3
       cases:
       - case: "{% if route.opt == 1 %}True{% else %}False{% endif %}"
         o_connection: m1
@@ -62,5 +73,5 @@ class Switch(FlowObject):
     """
 
     validation: str = ib(default=None)
-    validation_attempts: int = ib(default=None)
+    validation_fail: ValidationFail = ib(default=None)
     cases: List[Case] = ib(factory=list)

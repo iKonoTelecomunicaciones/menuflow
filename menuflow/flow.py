@@ -12,6 +12,7 @@ from .nodes import (
     CheckTime,
     Delay,
     Email,
+    FormInput,
     GPTAssistant,
     HTTPRequest,
     Input,
@@ -45,6 +46,7 @@ Node = Union[
     Switch,
     Delay,
     GPTAssistant,
+    FormInput,
 ]
 
 
@@ -234,6 +236,10 @@ class Flow:
                 for middleware in node_data.get("middlewares"):
                     middlewares.append(self.middleware(middleware, room=room))
                 node_initialized.middlewares = middlewares
+        elif node_data.get("type") == "form":
+            node_initialized = FormInput(
+                form_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
         else:
             return
 
