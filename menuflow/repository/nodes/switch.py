@@ -14,6 +14,12 @@ class Case(SerializableAttrs):
 
 
 @dataclass
+class ValidationFail(SerializableAttrs):
+    message: str = ib(factory=str)
+    attempts: int = ib(factory=int)
+
+
+@dataclass
 class Switch(FlowObject):
     """
     ## Switch
@@ -67,5 +73,5 @@ class Switch(FlowObject):
     """
 
     validation: str = ib(default=None)
-    validation_fail: int = ib(default=None)
+    validation_fail: ValidationFail = ib(default=None)
     cases: List[Case] = ib(factory=list)

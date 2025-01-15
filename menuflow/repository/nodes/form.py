@@ -5,7 +5,7 @@ from typing import Dict, List
 from attr import dataclass, ib
 from mautrix.types import BaseMessageEventContent, SerializableAttrs
 
-from ..flow_object import FlowObject
+from .input import Input
 from .switch import Case
 
 
@@ -36,7 +36,7 @@ class InactivityOptions(SerializableAttrs):
 
 
 @dataclass
-class Form(FlowObject):
+class Form(Input):
     """
     ## Form
 
