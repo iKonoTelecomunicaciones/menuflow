@@ -74,6 +74,10 @@ class GPTAssistant(Switch):
         self.attempts: int = data.get("attempts", 0)
         return data
 
+    @property
+    def group_messages_timeout(self) -> int:
+        return self.render_data(self.content.get("group_messages_timeout", 0))
+
     def setup_assistant(self):
         if self.assistant_id:
             self.assistant = self.client.beta.assistants.retrieve(self.assistant_id)
@@ -87,15 +91,16 @@ class GPTAssistant(Switch):
 
         self.thread = self.client.beta.threads.create()
 
-    async def process_message(self, evt: MessageEvent) -> Union[str, List[Dict], None]:
-        if evt.content.msgtype == MessageType.TEXT:
-            return evt.content.body
+    async def process_message(self, evt: Union[MessageEvent, str]) -> Union[str, List[Dict], None]:
+        if isinstance(evt, str) or evt.content.msgtype == MessageType.TEXT:
+            message = evt if isinstance(evt, str) else evt.content.body
+            return {"type": "text", "text": message}
         elif evt.content.msgtype == MessageType.IMAGE:
             matrix_file = await self.room.matrix_client.download_media(evt.content.url)
             file = self.client.files.create(
                 file=(evt.content.body, matrix_file, mimetype(matrix_file)), purpose="vision"
             )
-            return [{"type": "image_file", "image_file": {"file_id": file.id}}]
+            return {"type": "image_file", "image_file": {"file_id": file.id}}
         elif evt.content.msgtype == MessageType.AUDIO:
             if not self.middlewares:
                 return
@@ -109,11 +114,11 @@ class GPTAssistant(Switch):
                 audio_url=evt.content.url, audio_name=audio_name
             )
 
-            return text
+            return {"type": "text", "text": text}
         return
 
-    async def add_message(self, evt: MessageEvent):
-        message_content = await self.process_message(evt)
+    async def add_message(self, messages: List[Union[MessageEvent, str]]):
+        message_content = [await self.process_message(event) for event in messages]
         if not message_content:
             return
 
@@ -149,7 +154,7 @@ class GPTAssistant(Switch):
             json_str = html.unescape(json_str)
             return json_str
 
-    async def run(self, evt: Optional[MessageEvent] = None):
+    async def run(self, messages: Optional[List[MessageEvent]] = None):
         """If the room is in input mode, then set the variable.
         Otherwise, show the message and enter input mode
 
@@ -161,11 +166,11 @@ class GPTAssistant(Switch):
         """
 
         if self.room.route.state == RouteState.INPUT:
-            if not evt:
+            if not messages:
                 self.log.warning("A problem occurred getting message event.")
                 return
 
-            await self.add_message(evt)
+            await self.add_message(messages)
             assistant_resp = await self.run_assistant()
             response = int(assistant_resp) if assistant_resp.isdigit() else assistant_resp
             if json_str := self.json_in_text(response):
@@ -188,7 +193,8 @@ class GPTAssistant(Switch):
 
             if not await self.room.get_variable(self.variable):
                 if self.initial_info:
-                    await self.add_message(self.initial_info)
+                    await self.add_message([self.initial_info])
+
                 assistant_resp = await self.run_assistant()
                 response = int(assistant_resp) if assistant_resp.isdigit() else assistant_resp
                 if json_str := self.json_in_text(response):
