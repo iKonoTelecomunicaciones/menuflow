@@ -282,6 +282,9 @@ class MatrixHandler(MatrixClient):
                 await self.group_message(room=room, message=evt, node=node)
                 return
 
+            if room.room_id in self.message_group_by_room:
+                del self.message_group_by_room[room.room_id]
+
             await node.run(evt)
             if room.route.state == RouteState.INPUT:
                 return
