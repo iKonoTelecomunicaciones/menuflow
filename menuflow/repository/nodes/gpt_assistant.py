@@ -43,7 +43,9 @@ class GPTAssistant(Switch):
           initial_info: "{{ route.context }}, {{ route.external.user_name }}"
           variable: opt
           validation: '{{ opt.isdigit() }}'
-          validation_attempts: 3
+          validation_fail:
+            message: "Please enter a valid option"
+            attempts: 3
           group_messages_timeout: 10
           inactivity_options:
             chat_timeout: 20 #seconds
