@@ -29,7 +29,9 @@ class InteractiveInput(Input):
           type: interactive_input
           variable: opt
           validation: '{{ opt }}'
-          validation_attempts: 3
+          validation_fail:
+            message: "Please enter a valid option"
+            attempts: 3
           inactivity_options:
               chat_timeout: 20 #seconds
               warning_message: "Message"
@@ -70,7 +72,9 @@ class InteractiveInput(Input):
             type: interactive_input
             variable: opt
             validation: '{{ opt }}'
-            validation_attempts: 3
+            validation_fail:
+              message: "Please enter a valid option"
+              attempts: 3
             inactivity_options:
                 chat_timeout: 20 #seconds
                 warning_message: "Message"
