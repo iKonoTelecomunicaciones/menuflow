@@ -1,5 +1,6 @@
 import html
 import json
+import mimetypes
 import re
 from asyncio import create_task, sleep
 from datetime import datetime
@@ -97,8 +98,12 @@ class GPTAssistant(Switch):
             return {"type": "text", "text": message}
         elif evt.content.msgtype == MessageType.IMAGE:
             matrix_file = await self.room.matrix_client.download_media(evt.content.url)
+            file_name = (
+                evt.content.body or f"image.{mimetypes.guess_extension(mimetype(matrix_file))}"
+            )
+
             file = self.client.files.create(
-                file=(evt.content.body, matrix_file, mimetype(matrix_file)), purpose="vision"
+                file=(file_name, matrix_file, mimetype(matrix_file)), purpose="vision"
             )
             return {"type": "image_file", "image_file": {"file_id": file.id}}
         elif evt.content.msgtype == MessageType.AUDIO:
