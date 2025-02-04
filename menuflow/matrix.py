@@ -11,6 +11,7 @@ from mautrix.types import (
     MemberStateEventContent,
     MessageEvent,
     MessageType,
+    RelationType,
     RoomID,
     StateUnsigned,
     StrippedStateEvent,
@@ -186,7 +187,11 @@ class MatrixHandler(MatrixClient):
         )
 
         # Message edits are ignored
-        if message.content._relates_to and message.content._relates_to.rel_type:
+        if (
+            message.content._relates_to
+            and message.content._relates_to.rel_type
+            and message.content._relates_to.rel_type == RelationType.REPLACE
+        ):
             return
 
         # Ignore bot messages
