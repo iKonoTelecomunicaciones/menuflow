@@ -49,7 +49,7 @@ class FlowBackup(SerializableAttrs):
         return await cls.db.fetchval(q, flow_id)
 
     @classmethod
-    async def delete_orldest_by_flow_id(cls, flow_id: int):
+    async def delete_oldest_by_flow_id(cls, flow_id: int):
         q = "DELETE FROM flow_backup WHERE created_at = (SELECT MIN(created_at) FROM flow_backup WHERE flow_id=$1)"
         await cls.db.execute(q, flow_id)
 
