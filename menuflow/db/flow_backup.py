@@ -33,9 +33,11 @@ class FlowBackup(SerializableAttrs):
         )
 
     @classmethod
-    async def all_by_flow_id(cls, flow_id: int, limit: int = 10) -> list["FlowBackup"]:
-        q = "SELECT id, flow_id, flow, created_at FROM flow_backup where flow_id=$1 ORDER BY created_at ASC limit $2"
-        rows = await cls.db.fetch(q, flow_id, limit)
+    async def all_by_flow_id(
+        cls, flow_id: int, offset: int = 0, limit: int = 10
+    ) -> list["FlowBackup"]:
+        q = "SELECT id, flow_id, flow, created_at FROM flow_backup where flow_id=$1 ORDER BY created_at ASC limit $2 offset $3"
+        rows = await cls.db.fetch(q, flow_id, limit, offset)
         if not rows:
             return []
 
@@ -50,6 +52,15 @@ class FlowBackup(SerializableAttrs):
     async def delete_orldest_by_flow_id(cls, flow_id: int):
         q = "DELETE FROM flow_backup WHERE created_at = (SELECT MIN(created_at) FROM flow_backup WHERE flow_id=$1)"
         await cls.db.execute(q, flow_id)
+
+    @classmethod
+    async def get_by_id(cls, id: int) -> Union["FlowBackup", None]:
+        q = "SELECT id, flow_id, flow, created_at FROM flow_backup WHERE id=$1"
+        row = await cls.db.fetchrow(q, id)
+        if not row:
+            return None
+
+        return cls._from_row(row)
 
     async def insert(self):
         q = "INSERT INTO flow_backup (flow_id, flow) VALUES ($1, $2)"
