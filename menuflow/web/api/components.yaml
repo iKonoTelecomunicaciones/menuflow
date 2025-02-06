@@ -281,9 +281,12 @@ components:
     GetAllBackupsOk:
       type: object
       properties:
+        count:
+          type: integer
         flows:
           type: array
       example:
+        count: 2
         flows:
           - id: 1
             flow_id: 1
