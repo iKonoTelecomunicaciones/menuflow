@@ -28,7 +28,7 @@ components:
         detail:
           type: object
       example:
-        :wqvalue:
+        value:
           detail:
             message: Flow created successfully.
             data:
@@ -277,6 +277,64 @@ components:
       example:
         detail:
           message: Invalid action provided.
+
+    GetAllBackupsOk:
+      type: object
+      properties:
+        count:
+          type: integer
+        flows:
+          type: array
+      example:
+        count: 2
+        flows:
+          - id: 1
+            flow_id: 1
+            flow:
+              menu:
+                flow_variables:
+                  variable_1: value_1
+                  variable_2: value_2
+                nodes:
+                  - id: message_1
+                    type: message
+                    message: message_1
+                    o_connection: message_2
+          - id: 2
+            flow_id: 1
+            flow:
+              menu:
+                flow_variables:
+                  variable_1: value_1
+                  variable_2: value_2
+                nodes:
+                  - id: message_1
+                    type: message
+                    message: message_1
+                    o_connection: message_2
+
+    GetOneBackupOk:
+      type: object
+      properties:
+        id:
+          type: integer
+        flow_id:
+          type: integer
+        flow:
+          type: object
+      example:
+        id: 1
+        flow_id: 1
+        flow:
+          menu:
+            flow_variables:
+              variable_1: value_1
+              variable_2: value_2
+            nodes:
+              - id: message_1
+                type: message
+                message: message_1
+                o_connection: message_2
 
   responses:
     GetEmailServersSuccess:
@@ -535,3 +593,61 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ClientNotFound"
+
+    GetFlowBackupsSuccess:
+      description: Get flow backups success.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/GetAllBackupsOk"
+              - $ref: "#/components/schemas/GetOneBackupOk"
+          examples:
+            GetAllBackups:
+              value:
+                flows:
+                  - id: 1
+                    flow_id: 1
+                    flow:
+                      menu:
+                        flow_variables:
+                          variable_1: value_1
+                          variable_2: value_2
+                        nodes:
+                          - id: message_1
+                            type: message
+                            message: message_1
+                            o_connection: message_2
+                  - id: 2
+                    flow_id: 1
+                    flow:
+                      menu:
+                        flow_variables:
+                          variable_1: value_1
+                          variable_2: value_2
+                        nodes:
+                          - id: message_1
+                            type: message
+                            message: message_1
+                            o_connection: message_2
+            GetOneBackup:
+              value:
+                id: 1
+                flow_id: 1
+                flow:
+                  menu:
+                    flow_variables:
+                      variable_1: value_1
+                      variable_2: value_2
+                    nodes:
+                      - id: message_1
+                        type: message
+                        message: message_1
+                        o_connection: message_2
+
+    GetFlowBackupsNotFound:
+      description: Get flow backups not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/FlowNotFound"

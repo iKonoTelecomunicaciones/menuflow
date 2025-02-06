@@ -8,6 +8,7 @@ from aiohttp import web
 from ...config import Config
 from ...db.client import Client as DBClient
 from ...db.flow import Flow as DBFlow
+from ...db.flow_backup import FlowBackup
 from ...menu import MenuClient
 from ..base import get_config, routes
 from ..responses import resp
@@ -69,6 +70,9 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
 
     if flow_id:
         flow = await DBFlow.get_by_id(flow_id)
+        if flow.flow != incoming_flow:
+            await flow.backup_flow(config)
+
         flow.flow = incoming_flow
         await flow.update()
 
@@ -132,3 +136,64 @@ async def get_flow(request: web.Request) -> web.Response:
         data = {"flows": flows}
 
     return resp.ok(data)
+
+
+@routes.get("/v1/flow/{flow_id}/backup", allow_head=False)
+async def get_backup(request: web.Request) -> web.Response:
+    """
+    ---
+    summary: Get flow backups by flow ID.
+    tags:
+        - Flow
+
+    parameters:
+        - in: path
+          name: flow_id
+          description: The flow ID to get the backups.
+          required: true
+          schema:
+            type: integer
+
+        - in: query
+          name: limit
+          description: The limit of backups to get.
+          schema:
+            type: integer
+
+        - in: query
+          name: offset
+          description: The offset of backups to get.
+          schema:
+            type: integer
+
+        - in: query
+          name: backup_id
+          description: The backup ID to get.
+          schema:
+              type: integer
+
+    responses:
+        '200':
+            $ref: '#/components/responses/GetFlowBackupsSuccess'
+        '404':
+            $ref: '#/components/responses/GetFlowBackupsNotFound'
+
+    """
+    offset = int(request.query.get("offset", 0))
+    limit = int(request.query.get("limit", 10))
+    backup_id = request.query.get("backup_id", None)
+
+    flow_id = int(request.match_info["flow_id"])
+    flow = await DBFlow.get_by_id(int(flow_id))
+    if not flow:
+        return resp.not_found(f"Flow with ID {flow_id} not found")
+
+    if backup_id:
+        backup = await FlowBackup.get_by_id(int(backup_id))
+        if not backup:
+            return resp.not_found(f"Backup with ID {backup_id} not found")
+        return resp.ok(backup.to_dict())
+
+    count = await FlowBackup.get_count_by_flow_id(flow_id=flow_id)
+    backups = await FlowBackup.all_by_flow_id(flow_id=flow_id, offset=offset, limit=limit)
+    return resp.ok({"count": count, "backups": [backup.to_dict() for backup in backups]})
