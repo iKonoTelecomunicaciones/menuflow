@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, cast
 
 from mautrix.client import Client as MatrixClient
 from mautrix.types import EventType, RoomID, StateEventContent, UserID
+from mautrix.types.util.obj import Obj
 from mautrix.util.async_getter_lock import async_getter_lock
 from mautrix.util.logging import TraceLogger
 
@@ -162,7 +163,11 @@ class Room(DBRoom):
         )
 
         new_variables = self._variables if scope == "room" else self.route._variables
-        new_variables[key] = value
+        if isinstance(value, Obj):
+            new_variables[key] = value.serialize()
+        else:
+            new_variables[key] = value
+
         if scope == "room":
             self.variables = json.dumps(new_variables)
         else:
