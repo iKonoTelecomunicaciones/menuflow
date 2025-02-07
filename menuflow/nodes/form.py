@@ -108,7 +108,7 @@ class FormInput(Input):
             if self.inactivity_options:
                 await Util.cancel_task(task_name=self.room.room_id)
 
-            self.room.set_variable(self.variable, evt.content.get("form_data"))
+            await self.room.set_variable(self.variable, evt.content.get("form_data"))
             o_connection = await self.__update_menu("submitted")
 
             await send_node_event(
