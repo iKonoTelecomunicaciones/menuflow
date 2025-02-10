@@ -68,6 +68,6 @@ class Flow(SerializableAttrs):
     async def backup_flow(self, config: Config) -> None:
         backup_count = await FlowBackup.get_count_by_flow_id(self.id)
         if backup_count >= config["menuflow.backup_limit"]:
-            await FlowBackup.delete_orldest_by_flow_id(self.id)
+            await FlowBackup.delete_oldest_by_flow_id(self.id)
 
         await FlowBackup(flow_id=self.id, flow=self.flow).insert()
