@@ -44,6 +44,9 @@ class User(DBUser):
             The user object
 
         """
+        if not mxid:
+            return None
+
         try:
             return cls.by_mxid[mxid]
         except KeyError:

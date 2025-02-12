@@ -4,10 +4,11 @@ import json
 from asyncio import Future, Lock
 from collections import defaultdict
 from logging import getLogger
+from re import match
 from typing import Any, Dict, List, Optional, cast
 
 from mautrix.client import Client as MatrixClient
-from mautrix.types import EventType, RoomID, StateEventContent, UserID
+from mautrix.types import EventType, Member, RoomID, StateEvent, StateEventContent, UserID
 from mautrix.types.util.obj import Obj
 from mautrix.util.async_getter_lock import async_getter_lock
 from mautrix.util.logging import TraceLogger
@@ -22,6 +23,10 @@ class Room(DBRoom):
     by_room_id: Dict[(RoomID, UserID), "Room"] = {}
     pending_invites: Dict[RoomID, Future] = {}
     _async_get_locks: dict[Any, Lock] = defaultdict(lambda: Lock())
+    # Pattern to match the customer's Mxid
+    __customer_pattern: str = r"^@.+_([0-9]{8,}):.+$"
+    # Pattern to match the ghost's id
+    __ghost_pattern: str = r"^([0-9]{8,})@s\..+$"
 
     config: Config
     log: TraceLogger = getLogger("menuflow.room")
@@ -40,18 +45,99 @@ class Room(DBRoom):
         self.matrix_client: MatrixClient = None
 
     @property
-    async def creator(self) -> Dict:
-        """This function retrieves the creator of a Matrix room.
+    async def get_ghost_number(self) -> str | None:
+        """
+        This function retrieves the ghost's phone number from the room's state events.
 
         Returns
         -------
-            The `creator` of the Matrix room is being returned as a string.
+            The ghost's phone number is being returned as a string or None.
+        """
+        # Get the m.bridge state event and get the customer's Mxid
+        statesEvents: list[StateEvent] = await self.matrix_client.get_state(room_id=self.room_id)
+        # Create the m.bridge event type to filter the state events
+        bridgeEvent: EventType = EventType(t="m.bridge", t_class=EventType.Class.STATE)
+        # Get the m.bridge state event
+        bridgeStateEvent: StateEvent = next(
+            (event for event in statesEvents if event.type == bridgeEvent),
+            None,
+        )
+
+        # Check if the m.bridge state event has the customer's Mxid
+        if bridgeStateEvent and bridgeStateEvent.content:
+            bridgeChannel = bridgeStateEvent.content.channel
+
+            # Check if the bridge channel's id is a ghost Mxid
+            if (
+                bridgeChannel
+                and bridgeChannel.id
+                and bool(match(pattern=self.__ghost_pattern, string=bridgeChannel.id))
+            ):
+                self.log.debug(f"Customer {bridgeChannel.id} is a ghost Mxid")
+                # Get the phone number from the ghost Mxid
+                return bridgeChannel.id.split("@")[0]
+
+        return
+
+    async def get_customer_mxid_by_phone(self, phone_number: str) -> str | None:
+        """
+        This function retrieves the customer's Mxid using the phone number.
+
+        Parameters
+        ----------
+        phone_number : str
+            The phone number of the customer.
+
+        Returns
+        -------
+            The customer's Mxid is being returned as a string or None.
+        """
+        # Get the members of the room
+        members: list[Member] = await self.matrix_client.get_members(room_id=self.room_id)
+
+        # Get the customer's Mxid using the phone number
+        for member in members:
+            member_mxid: str = member.state_key
+            if member_mxid and bool(match(pattern=self.__customer_pattern, string=member_mxid)):
+                # Get the phone number from the customer's Mxid, it is like
+                # @whatsapp_12345678:domain so we need to split it to get the phone number
+                member_phone: str = member_mxid.split("_")[1].split(":")[0]
+                if member_phone == phone_number:
+                    # Return the customer's Mxid
+                    return member_mxid
+
+        return
+
+    @property
+    async def customer_mxid(self) -> UserID | None:
+        """This function retrieves the customer of a Matrix room.
+
+        Returns
+        -------
+            The `customer` of the Matrix room is being returned as a string.
 
         """
+        # Search the creator in the room's state events
         created_room_event: StateEventContent = await self.matrix_client.get_state_event(
-            self.room_id, event_type=EventType.ROOM_CREATE
+            room_id=self.room_id, event_type=EventType.ROOM_CREATE
         )
-        return created_room_event.get("creator")
+
+        # Get the creator of the room
+        room_creator = created_room_event.get("creator")
+
+        # Check if the creator is the customer
+        if room_creator and bool(match(pattern=self.__customer_pattern, string=room_creator)):
+            self.log.debug(f"Creator {room_creator} is a customer")
+            return room_creator
+
+        # Get the ghost's phone number
+        ghost_number: str = await self.get_ghost_number
+
+        if not ghost_number:
+            return
+
+        # Return the customer's Mxid using the phone number
+        return await self.get_customer_mxid_by_phone(phone_number=ghost_number)
 
     @property
     def all_variables(self) -> Dict:

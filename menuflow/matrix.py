@@ -15,6 +15,7 @@ from mautrix.types import (
     RoomID,
     StateUnsigned,
     StrippedStateEvent,
+    UserID,
 )
 
 from .config import Config
@@ -150,8 +151,9 @@ class MatrixHandler(MatrixClient):
             await room.set_variable("bot_mxid", self.mxid)
 
         if not await room.get_variable(variable_id="customer_mxid"):
-            await User.get_by_mxid(mxid=await room.creator)
-            await room.set_variable("customer_mxid", await room.creator)
+            user_mxid: UserID | None = await room.customer_mxid
+            await User.get_by_mxid(mxid=user_mxid)
+            await room.set_variable(variable_id="customer_mxid", value=user_mxid)
 
     async def handle_join(self, evt: StrippedStateEvent):
         if evt.room_id in Room.pending_invites:
