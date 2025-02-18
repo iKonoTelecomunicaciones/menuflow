@@ -45,6 +45,7 @@ class User(DBUser):
 
         """
         if not mxid:
+            cls.log.error("Trying to get the user using his mxid, but the mxid was not provided.")
             return None
 
         try:

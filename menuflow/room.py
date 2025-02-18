@@ -24,9 +24,9 @@ class Room(DBRoom):
     pending_invites: Dict[RoomID, Future] = {}
     _async_get_locks: dict[Any, Lock] = defaultdict(lambda: Lock())
     # Pattern to match the customer's Mxid
-    __customer_pattern: str = r"^@.+_([0-9]{8,}):.+$"
+    __customer_pattern: str = r"^@.+_(?P<customer_phone>[0-9]{8,}):.+$"
     # Pattern to match the ghost's id
-    __ghost_pattern: str = r"^([0-9]{8,})@s\..+$"
+    __ghost_pattern: str = r"^(?P<customer_phone>[0-9]{8,})@s\..+$"
 
     config: Config
     log: TraceLogger = getLogger("menuflow.room")
@@ -66,16 +66,13 @@ class Room(DBRoom):
         # Check if the m.bridge state event has the customer's Mxid
         if bridgeStateEvent and bridgeStateEvent.content:
             bridgeChannel = bridgeStateEvent.content.channel
+            match_ghost = match(pattern=self.__ghost_pattern, string=bridgeChannel.id or "")
 
             # Check if the bridge channel's id is a ghost Mxid
-            if (
-                bridgeChannel
-                and bridgeChannel.id
-                and bool(match(pattern=self.__ghost_pattern, string=bridgeChannel.id))
-            ):
+            if bridgeChannel and bridgeChannel.id and bool(match_ghost):
                 self.log.debug(f"Customer {bridgeChannel.id} is a ghost Mxid")
                 # Get the phone number from the ghost Mxid
-                return bridgeChannel.id.split("@")[0]
+                return match_ghost.group("customer_phone")
 
         return
 
@@ -98,10 +95,11 @@ class Room(DBRoom):
         # Get the customer's Mxid using the phone number
         for member in members:
             member_mxid: str = member.state_key
-            if member_mxid and bool(match(pattern=self.__customer_pattern, string=member_mxid)):
-                # Get the phone number from the customer's Mxid, it is like
-                # @whatsapp_12345678:domain so we need to split it to get the phone number
-                member_phone: str = member_mxid.split("_")[1].split(":")[0]
+            match_customer = match(pattern=self.__customer_pattern, string=member_mxid)
+            if member_mxid and bool(match_customer):
+                # Get the phone number from the customer's Mxid (it is like
+                # @whatsapp_12345678:domain)
+                member_phone: str = match_customer.group("customer_phone")
                 if member_phone == phone_number:
                     # Return the customer's Mxid
                     return member_mxid
@@ -125,12 +123,13 @@ class Room(DBRoom):
         # Get the creator of the room
         room_creator = created_room_event.get("creator")
 
-        # Check if the creator is the customer
+        # Check if the creator is the customer. This is valid for whatsapp mautrix bridge
+        # version < 0.11.0
         if room_creator and bool(match(pattern=self.__customer_pattern, string=room_creator)):
             self.log.debug(f"Creator {room_creator} is a customer")
             return room_creator
 
-        # Get the ghost's phone number
+        # Get the ghost's phone numbe. This is valid for whatsapp mautrix bridge version >= 0.11.0
         ghost_number: str = await self.get_ghost_number
 
         if not ghost_number:
