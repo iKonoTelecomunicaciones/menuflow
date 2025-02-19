@@ -44,6 +44,10 @@ class User(DBUser):
             The user object
 
         """
+        if not mxid:
+            cls.log.error("Trying to get the user using his mxid, but the mxid was not provided.")
+            return None
+
         try:
             return cls.by_mxid[mxid]
         except KeyError:
