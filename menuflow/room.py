@@ -53,24 +53,23 @@ class Room(DBRoom):
         -------
             The ghost's phone number is being returned as a string or None.
         """
-        # Get the m.bridge state event and get the customer's Mxid
-        statesEvents: list[StateEvent] = await self.matrix_client.get_state(room_id=self.room_id)
         # Create the m.bridge event type to filter the state events
-        bridgeEvent: EventType = EventType(t="m.bridge", t_class=EventType.Class.STATE)
-        # Get the m.bridge state event
-        bridgeStateEvent: StateEvent = next(
-            (event for event in statesEvents if event.type == bridgeEvent),
-            None,
+        bridge_event: EventType = EventType(t="m.bridge", t_class=EventType.Class.STATE)
+        # Get the m.bridge state event and get the customer's Mxid
+        bridge_state_event: list[StateEvent] = await self.matrix_client.get_state_event(
+            room_id=self.room_id, event_type=bridge_event
         )
 
+        self.log.critical(f"Bridge state event: {bridge_state_event}")
+
         # Check if the m.bridge state event has the customer's Mxid
-        if bridgeStateEvent and bridgeStateEvent.content:
-            bridgeChannel = bridgeStateEvent.content.channel
-            match_ghost = match(pattern=self.__ghost_pattern, string=bridgeChannel.id or "")
+        if bridge_state_event and bridge_state_event.channel:
+            bridge_channel = bridge_state_event.channel
+            match_ghost = match(pattern=self.__ghost_pattern, string=bridge_channel.id or "")
 
             # Check if the bridge channel's id is a ghost Mxid
-            if bridgeChannel and bridgeChannel.id and bool(match_ghost):
-                self.log.debug(f"Customer {bridgeChannel.id} is a ghost Mxid")
+            if bridge_channel and bridge_channel.id and bool(match_ghost):
+                self.log.debug(f"Customer {bridge_channel.id} is a ghost Mxid")
                 # Get the phone number from the ghost Mxid
                 return match_ghost.group("customer_phone")
 
@@ -131,7 +130,6 @@ class Room(DBRoom):
 
         # Get the ghost's phone numbe. This is valid for whatsapp mautrix bridge version >= 0.11.0
         ghost_number: str = await self.get_ghost_number
-
         if not ghost_number:
             return
 
