@@ -155,6 +155,10 @@ class MatrixHandler(MatrixClient):
             await User.get_by_mxid(mxid=user_mxid)
             await room.set_variable(variable_id="customer_mxid", value=user_mxid)
 
+        if not await room.get_variable(variable_id="puppet_mxid"):
+            puppet_mxid: str = await room.get_puppet_mxid
+            await room.set_variable(variable_id="puppet_mxid", value=puppet_mxid)
+
     async def handle_join(self, evt: StrippedStateEvent):
         if evt.room_id in Room.pending_invites:
             if not Room.pending_invites[evt.room_id].done():

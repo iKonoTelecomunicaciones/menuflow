@@ -27,6 +27,8 @@ class Room(DBRoom):
     _customer_pattern: str = r"^@.+_(?P<customer_phone>[0-9]{8,}):.+$"
     # Pattern to match the ghost's id
     _ghost_pattern: str = r"^(?P<customer_phone>[0-9]{8,})@s\..+$"
+    # Pattern to match the puppet's Mxid
+    _puppet_pattern: str = r"^@acd[0-9]+:.+$.*$"
 
     config: Config
     log: TraceLogger = getLogger("menuflow.room")
@@ -133,6 +135,28 @@ class Room(DBRoom):
 
         # Return the customer's Mxid using the phone number
         return await self.get_customer_mxid_by_phone(phone_number=ghost_number)
+
+    @property
+    async def get_puppet_mxid(self) -> str:
+        """
+        This function retrieves the puppet's Mxid from the room's state events.
+
+        Returns
+        -------
+            The puppet's Mxid is being returned as a string.
+        """
+        # Get the members of the room
+        members: list[Member] = await self.matrix_client.get_members(room_id=self.room_id)
+
+        # Get the puppet's Mxid
+        for member in members:
+            member_mxid: str = member.state_key
+            match_puppet = match(pattern=self._puppet_pattern, string=member_mxid)
+            if member_mxid and bool(match_puppet):
+                self.log.debug(f"Member {member_mxid} is a puppet Mxid")
+                return member_mxid
+
+        return
 
     @property
     def all_variables(self) -> Dict:
