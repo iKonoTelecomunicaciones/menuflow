@@ -24,9 +24,9 @@ class Room(DBRoom):
     pending_invites: Dict[RoomID, Future] = {}
     _async_get_locks: dict[Any, Lock] = defaultdict(lambda: Lock())
     # Pattern to match the customer's Mxid
-    __customer_pattern: str = r"^@.+_(?P<customer_phone>[0-9]{8,}):.+$"
+    _customer_pattern: str = r"^@.+_(?P<customer_phone>[0-9]{8,}):.+$"
     # Pattern to match the ghost's id
-    __ghost_pattern: str = r"^(?P<customer_phone>[0-9]{8,})@s\..+$"
+    _ghost_pattern: str = r"^(?P<customer_phone>[0-9]{8,})@s\..+$"
 
     config: Config
     log: TraceLogger = getLogger("menuflow.room")
@@ -60,12 +60,10 @@ class Room(DBRoom):
             room_id=self.room_id, event_type=bridge_event
         )
 
-        self.log.critical(f"Bridge state event: {bridge_state_event}")
-
         # Check if the m.bridge state event has the customer's Mxid
         if bridge_state_event and bridge_state_event.channel:
             bridge_channel = bridge_state_event.channel
-            match_ghost = match(pattern=self.__ghost_pattern, string=bridge_channel.id or "")
+            match_ghost = match(pattern=self._ghost_pattern, string=bridge_channel.id or "")
 
             # Check if the bridge channel's id is a ghost Mxid
             if bridge_channel and bridge_channel.id and bool(match_ghost):
@@ -94,7 +92,7 @@ class Room(DBRoom):
         # Get the customer's Mxid using the phone number
         for member in members:
             member_mxid: str = member.state_key
-            match_customer = match(pattern=self.__customer_pattern, string=member_mxid)
+            match_customer = match(pattern=self._customer_pattern, string=member_mxid)
             if member_mxid and bool(match_customer):
                 # Get the phone number from the customer's Mxid (it is like
                 # @whatsapp_12345678:domain)
@@ -124,7 +122,7 @@ class Room(DBRoom):
 
         # Check if the creator is the customer. This is valid for whatsapp mautrix bridge
         # version < 0.11.0
-        if room_creator and bool(match(pattern=self.__customer_pattern, string=room_creator)):
+        if room_creator and bool(match(pattern=self._customer_pattern, string=room_creator)):
             self.log.debug(f"Creator {room_creator} is a customer")
             return room_creator
 
