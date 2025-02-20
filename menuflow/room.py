@@ -28,7 +28,7 @@ class Room(DBRoom):
     # Pattern to match the ghost's id
     _ghost_pattern: str = r"^(?P<customer_phone>[0-9]{8,})@s\..+$"
     # Pattern to match the puppet's Mxid
-    _puppet_pattern: str = r"^@acd[0-9]+:.+$.*$"
+    _puppet_pattern: str = r"^@acd[0-9]+:.+$"
 
     config: Config
     log: TraceLogger = getLogger("menuflow.room")
