@@ -134,14 +134,12 @@ class Base:
 
         """
 
-        if isinstance(data, str):
+        try:
+            data = data if isinstance(data, str) else dumps(data)
             data_template = jinja_env.from_string(data)
-        else:
-            try:
-                data_template = jinja_env.from_string(dumps(data))
-            except Exception as e:
-                self.log.exception(e)
-                return
+        except Exception as e:
+            self.log.exception(e)
+            return
 
         copy_variables = self.default_variables | self.room.all_variables
         clear_variables = dumps(copy_variables).replace("\\n", "ik-line-break")
