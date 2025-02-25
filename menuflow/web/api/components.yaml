@@ -1,5 +1,18 @@
 components:
   schemas:
+    # Base schemas
+    BaseResponseDetailMessage:
+      type: object
+      properties:
+        detail:
+          type: object
+          properties:
+            message:
+              type: string
+              example: "Default message"
+    # End of base schemas
+
+    # Schemas
     GetEmailServersOk:
       type: object
       properties:
@@ -336,6 +349,47 @@ components:
                 message: message_1
                 o_connection: message_2
 
+    CheckTemplateOk:
+      type: object
+      properties:
+        rendered:
+          type: string
+      example:
+        rendered: "Hello world!"
+
+    InvalidVariablesFormat:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponseDetailMessage"
+      example:
+        detail:
+          message: The format of the variables is not valid
+
+    TemplateRequired:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponseDetailMessage"
+      example:
+        detail:
+          message: Template is required
+
+    # Error schemas
+    ErrorReadingData:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponseDetailMessage"
+      example:
+        detail:
+          message: "Error reading data: 'error_message'"
+
+    ErrorSyntaxTemplate:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponseDetailMessage"
+      example:
+        detail:
+          message: "Syntax error in template: 'error_message'"
+    # End of error schemas
+
+  # End of schemas
+
+  # Responses
   responses:
     GetEmailServersSuccess:
       description: Get email servers success.
@@ -350,6 +404,44 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/GetMiddlewaresOk"
+
+    CheckTemplateSuccess:
+      description: Check template success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CheckTemplateOk"
+
+    CheckTemplateUnprocessable:
+      description: Check template unprocessable.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorSyntaxTemplate"
+
+    CheckTemplateBadRequest:
+      description: Check template bad request.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/ErrorReadingData"
+              - $ref: "#/components/schemas/InvalidVariablesFormat"
+              - $ref: "#/components/schemas/TemplateRequired"
+          examples:
+            ErrorReadingData:
+              value:
+                detail:
+                  message: "Error reading data: 'error_message'"
+            InvalidVariablesFormat:
+              value:
+                detail:
+                  message: The format of the variables is not valid
+            TemplateRequired:
+              value:
+                detail:
+                  message: Template is required
+
 
     CreateUpdateFlowSuccess:
       description: Create or update flow success.
@@ -651,3 +743,5 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/FlowNotFound"
+
+  # End of responses

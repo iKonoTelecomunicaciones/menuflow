@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from http import HTTPStatus
+from logging import Logger, getLogger
 from typing import Dict, Optional
 
 from aiohttp import web
+
+log: Logger = getLogger("menuflow.api.responses")
 
 
 class _Response:
@@ -69,14 +72,16 @@ class _Response:
             status=HTTPStatus.CONFLICT,
         )
 
-    def ok(self, data: Optional[Dict] = {}) -> web.Response:
+    def ok(self, data: Optional[Dict] = {}, uuid: str = "") -> web.Response:
+        log.debug(f"({uuid}) -> {data}")
         return web.json_response(data, status=HTTPStatus.OK)
 
     @staticmethod
     def created(data: dict) -> web.Response:
         return web.json_response(data, status=HTTPStatus.CREATED)
 
-    def bad_request(self, message: str) -> web.Response:
+    def bad_request(self, message: str, uuid: str = "") -> web.Response:
+        log.debug(f"({uuid}) -> {message}")
         return web.json_response(
             {"detail": {"message": message}},
             status=HTTPStatus.BAD_REQUEST,
@@ -94,6 +99,15 @@ class _Response:
                 "detail": {"message": message},
             },
             status=HTTPStatus.NOT_FOUND,
+        )
+
+    def unprocessable_entity(self, message: str, uuid: str = "") -> web.Response:
+        log.debug(f"({uuid}) -> {message}")
+        return web.json_response(
+            {
+                "detail": {"message": message},
+            },
+            status=HTTPStatus.UNPROCESSABLE_ENTITY,
         )
 
 
