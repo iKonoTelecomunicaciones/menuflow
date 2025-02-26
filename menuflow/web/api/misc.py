@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import traceback
 from logging import Logger, getLogger
 
 import yaml
 from aiohttp import web
-from jinja2.exceptions import TemplateSyntaxError
+from jinja2.exceptions import TemplateSyntaxError, UndefinedError
 
 from ...flow_utils import FlowUtils
 from ...jinja.jinja_template import jinja_env
@@ -70,13 +71,15 @@ async def check_jinja_template(request: web.Request) -> web.Response:
                     properties:
                         template:
                             type: string
+                            description: The jinja template to be checked
+                            example: "Hello {{ name }}"
                         variables:
                             type: string
+                            description: >
+                                The variables to be used in the template, in `yaml` or `json` format
+                            example: "{'name': 'world'}"
                     required:
                         - template
-                example:
-                    template: "Hello {{ name }}"
-                    variables: "{'name': 'world'}"
     responses:
         '200':
             $ref: '#/components/responses/CheckTemplateSuccess'
@@ -107,16 +110,32 @@ async def check_jinja_template(request: web.Request) -> web.Response:
         except Exception as e:
             log.exception(e)
             return resp.bad_request(f"Error format variables: {e}", trace_id)
-
-    if not isinstance(dict_variables, dict):
-        return resp.bad_request("The format of the variables is not valid", trace_id)
+        else:
+            if not isinstance(dict_variables, dict):
+                return resp.bad_request("The format of the variables is not valid", trace_id)
 
     try:
         template = jinja_env.from_string(template)
         temp_rendered = template.render(**dict_variables) if variables else template.render()
     except TemplateSyntaxError as e:
         log.exception(e)
-        return resp.unprocessable_entity(str(e), trace_id)
+        return resp.unprocessable_entity(
+            f"func_name: {e.name}, \nfilename: {e.filename if e.filename else '<template>'}, \nline: {e.lineno}, \nerror: {e.message}",
+            trace_id,
+        )
+    except UndefinedError as e:
+        log.exception(e)
+        tb_list = traceback.extract_tb(e.__traceback__)
+        traceback_info = tb_list[-1]
+
+        func_name = traceback_info.name
+        filename = traceback_info.filename
+        line = traceback_info.lineno
+
+        return resp.unprocessable_entity(
+            f"func_name: {func_name}, \nfilename: {filename}, \nline: {line}, \nerror: {e}",
+            trace_id,
+        )
     except Exception as e:
         log.exception(e)
         return resp.bad_request(str(e), trace_id)
