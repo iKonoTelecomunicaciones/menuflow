@@ -16,6 +16,7 @@ class FormMessageContent(SerializableAttrs):
     header_variables: Dict[str, str] = ib(default=None)
     button_variables: Dict[str, str] = ib(default=None)
     language: str = ib(default=None)
+    flow_action: dict[str, str | list] = ib(default=None)
 
 
 @dataclass
@@ -56,6 +57,10 @@ class Form(Input):
         - opt
       button_variables:
         - opt
+      flow_action:
+        screen: screen_name
+        data:
+          visible: true
       variable: opt
       validation_fail:
         message: "Message"
@@ -83,3 +88,4 @@ class Form(Input):
     variable: str = ib(default=None)
     inactivity_options: InactivityOptions = ib(default=None)
     cases: List[Case] = ib(factory=list)
+    flow_action: dict[str, str | list] = ib(default=None)

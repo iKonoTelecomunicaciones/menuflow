@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from markdown import markdown
 from mautrix.types import Format, MessageEvent, MessageType, TextMessageEventContent
@@ -17,12 +17,12 @@ from .input import Input
 class FormInput(Input):
     fail_attempts_by_room = {}
 
-    def __init__(self, form_node_data: Form, room: Room, default_variables: Dict) -> None:
+    def __init__(self, form_node_data: Form, room: Room, default_variables: dict) -> None:
         Input.__init__(self, form_node_data, room, default_variables)
         self.content = form_node_data
 
     @property
-    def template_name(self) -> Dict[str, Any]:
+    def template_name(self) -> dict[str, Any]:
         return self.render_data(self.content.get("template_name", ""))
 
     @property
@@ -30,16 +30,20 @@ class FormInput(Input):
         return self.render_data(self.content.get("language", "en"))
 
     @property
-    def body_variables(self) -> List[str]:
+    def body_variables(self) -> list[str]:
         return self.render_data(self.content.get("body_variables", []))
 
     @property
-    def header_variables(self) -> Dict[str, Any]:
+    def header_variables(self) -> dict[str, Any]:
         return self.render_data(self.content.get("header_variables", []))
 
     @property
-    def button_variables(self) -> Dict[str, Any]:
+    def button_variables(self) -> dict[str, Any]:
         return self.render_data(self.content.get("button_variables", []))
+
+    @property
+    def flow_action(self) -> dict[str, str | list | dict]:
+        return self.render_data(self.content.get("flow_action", []))
 
     @property
     def form_message_content(self) -> FormMessage:
@@ -51,6 +55,7 @@ class FormInput(Input):
                 body_variables=self.body_variables,
                 header_variables=self.header_variables,
                 button_variables=self.button_variables,
+                flow_action=self.flow_action,
             ),
         )
         form_message.trim_reply_fallback()
@@ -84,7 +89,7 @@ class FormInput(Input):
 
         self.fail_attempts_by_room[self.room.room_id] = current_fail_attempts + 1
 
-    async def run(self, evt: Optional[MessageEvent]):
+    async def run(self, evt: MessageEvent | None):
         """Send WhhatApp flow and capture the response of it and save it as variables.
         if the MessageEvent is not m.form_response, wait for the user to send the response.
 
@@ -92,7 +97,7 @@ class FormInput(Input):
         ----------
         client : MatrixClient
             The MatrixClient object.
-        evt : Optional[MessageEvent]
+        evt : MessageEvent | None
             The event that triggered the node.
 
         """
