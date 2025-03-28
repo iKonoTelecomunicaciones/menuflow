@@ -2,7 +2,6 @@ import ast
 import html
 from typing import TYPE_CHECKING, Dict, List
 
-import jq
 from aiohttp import BasicAuth, ClientTimeout, ContentTypeError
 from jsonpath_ng import parse
 
@@ -190,29 +189,18 @@ class HTTPRequest(Switch):
             response_data = await response.text()
 
         if isinstance(response_data, dict) or isinstance(response_data, list):
-            self.log.critical(f"************************ Response data: {response_data}")
             if self.http_variables:
-                self.log.debug(f"Variables: {self.http_variables}")
                 for variable in self.http_variables:
-                    data_match = None
-                    try:
-                        jq.compile(self.http_variables[variable])
-                        self.log.info(f"****** Eureka: format jq: {self.http_variables[variable]}")
-                        data_match = jq.all(self.http_variables[variable], response_data)
-                    except Exception as e:
-                        self.log.warning("$$$$$$ Variable not is jq format.... Old format start")
-                        expr = parse(self.http_variables[variable])
-                        data_match: List = [match.value for match in expr.find(response_data)]
-                    finally:
-                        if not data_match:
-                            continue
+                    expr = parse(self.http_variables[variable])
+                    data_match: List = [match.value for match in expr.find(response_data)]
 
-                        try:
-                            variables[variable] = (
-                                data_match if len(data_match) > 1 else data_match[0]
-                            )
-                        except KeyError:
-                            pass
+                    if not data_match:
+                        continue
+
+                    try:
+                        variables[variable] = data_match if len(data_match) > 1 else data_match[0]
+                    except KeyError:
+                        pass
 
             self.log.critical(f"************************ FINISHED Variables: {variables}")
         elif isinstance(response_data, str):
