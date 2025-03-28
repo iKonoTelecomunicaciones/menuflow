@@ -201,8 +201,6 @@ class HTTPRequest(Switch):
                         variables[variable] = data_match if len(data_match) > 1 else data_match[0]
                     except KeyError:
                         pass
-
-            self.log.critical(f"************************ FINISHED Variables: {variables}")
         elif isinstance(response_data, str):
             if self.http_variables:
                 for variable in self.http_variables:
