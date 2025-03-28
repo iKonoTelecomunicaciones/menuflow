@@ -4,12 +4,13 @@ from re import match
 from fuzzywuzzy import fuzz
 from jinja2 import BaseLoader, Environment
 from jinja2_ansible_filters import AnsibleCoreFiltersExtension
-from jinja2_matrix_filters import MatrixFiltersExtension
+
+from .matrix_filters import MatrixFilters
 
 jinja_env = Environment(
     autoescape=True,
     loader=BaseLoader,
-    extensions=[AnsibleCoreFiltersExtension, MatrixFiltersExtension],
+    extensions=[AnsibleCoreFiltersExtension, MatrixFilters],
 )
 
 jinja_env.globals.update(utcnow_isoformat=lambda: datetime.utcnow().isoformat())

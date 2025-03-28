@@ -252,8 +252,10 @@ class Input(Switch, Message):
                 await self.room.matrix_client.algorithm(room=self.room)
                 break
 
-            await self.room.matrix_client.send_text(
-                room_id=self.room.room_id, text=self.warning_message
-            )
+            if self.warning_message:
+                await self.room.matrix_client.send_text(
+                    room_id=self.room.room_id, text=self.warning_message
+                )
+
             await asyncio.sleep(self.time_between_attempts)
             count += 1
