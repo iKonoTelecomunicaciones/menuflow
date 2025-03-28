@@ -1,3 +1,5 @@
+import ast
+import html
 from typing import TYPE_CHECKING, Dict, List
 
 from aiohttp import BasicAuth, ClientTimeout, ContentTypeError
@@ -74,6 +76,27 @@ class HTTPRequest(Switch):
             }
         )
 
+    def parse_json_body(self, body: any) -> any:
+        if isinstance(body, dict):
+            for key, value in body.items():
+                body[key] = self.parse_json_body(value)
+            return body
+        elif isinstance(body, list):
+            return [self.parse_json_body(item) for item in body]
+        elif isinstance(body, str):
+            try:
+                evaluated_body = html.unescape(body.replace("'", '"'))
+                evaluated_body = ast.literal_eval(evaluated_body)
+            except Exception as e:
+                return body
+            else:
+                if type(evaluated_body) in [dict, list]:
+                    return self.parse_json_body(evaluated_body)
+                else:
+                    return body
+        else:
+            return body
+
     def prepare_request(self) -> Dict:
         request_body = {}
 
@@ -93,7 +116,7 @@ class HTTPRequest(Switch):
             request_body["data"] = self.data
 
         if self.json:
-            request_body["json"] = self.json
+            request_body["json"] = self.parse_json_body(self.json)
 
         return request_body
 
