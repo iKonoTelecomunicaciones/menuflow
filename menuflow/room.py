@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import ast
+import html
 import json
 from asyncio import Future, Lock
 from collections import defaultdict
@@ -261,6 +263,12 @@ class Room(DBRoom):
         except ValueError:
             scope = "route"
             key = variable_id
+
+        try:
+            value = html.unescape(value)
+            value = ast.literal_eval(value)
+        except Exception as e:
+            pass
 
         self.log.debug(
             f"Saving variable [{variable_id}] to room [{self.room_id}] in scope {scope} "
