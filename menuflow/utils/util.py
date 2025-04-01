@@ -4,15 +4,17 @@ from logging import getLogger
 from re import match, sub
 from typing import Dict
 
+import jq
 from mautrix.types import RoomID, UserID
 from mautrix.util.logging import TraceLogger
 
 from ..config import Config
 
+log: TraceLogger = getLogger("menuflow.util")
+
 
 class Util:
     config: Config
-    log: TraceLogger = getLogger("menuflow.util")
     _main_matrix_regex = "[\\w-]+:[\\w.-]"
 
     def __init__(self, config: Config):
@@ -103,7 +105,7 @@ class Util:
         task = self.get_tasks_by_name(task_name)
         if task:
             task.cancel()
-            self.log.debug(f"TASK CANCEL -> {task_name}")
+            log.debug(f"TASK CANCEL -> {task_name}")
 
     @classmethod
     def is_within_range(self, number: int, start: int, end: int) -> bool:
@@ -125,7 +127,7 @@ class Util:
         """
 
         if not (number and start and end):
-            self.log.warning("Validation parameters can not be None, range validation failed")
+            log.warning("Validation parameters can not be None, range validation failed")
             return False
 
         return start <= number <= end
@@ -229,3 +231,31 @@ class Util:
         else:
             # If it's not a string, list or dictionary, return the value as is
             return value
+
+
+class UtilLite:
+    @staticmethod
+    def jq_compile(filter: str, json_data: dict | list) -> list:
+        """
+        It compiles a jq filter and json data into a jq command.
+        Parameters
+        ----------
+        filter : str
+            The jq filter to be applied.
+        json_data : dict | list
+            The JSON data to be filtered.
+        Returns
+        -------
+            The filtered JSON data or None if the filter is empty.
+            If there is an error in the jq filter returns the filter.
+        """
+
+        compiled = jq.compile(filter)
+
+        try:
+            filtered_result = compiled.input(json_data).all()
+        except Exception as e:
+            log.exception(f"Error in jq filter: {e} with filter: {filter}")
+            filtered_result = [filter]
+
+        return filtered_result

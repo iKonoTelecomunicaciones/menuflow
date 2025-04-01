@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import ast
+import html
 import traceback
 from logging import Logger, getLogger
 
@@ -9,6 +11,7 @@ from jinja2.exceptions import TemplateSyntaxError, UndefinedError
 
 from ...flow_utils import FlowUtils
 from ...jinja.jinja_template import jinja_env
+from ...utils import UtilLite
 from ..base import get_flow_utils, routes
 from ..responses import resp
 from ..util import Util
@@ -139,5 +142,16 @@ async def check_jinja_template(request: web.Request) -> web.Response:
     except Exception as e:
         log.exception(e)
         return resp.bad_request(str(e), trace_id)
+
+    try:
+        temp_rendered = html.unescape(temp_rendered)
+        temp_rendered = ast.literal_eval(temp_rendered)
+    except Exception as e:
+        pass
+
+    try:
+        temp_rendered = UtilLite.jq_compile(temp_rendered, dict_variables)
+    except Exception as e:
+        log.debug("No jq filter found")
 
     return resp.ok({"rendered": temp_rendered}, trace_id)
