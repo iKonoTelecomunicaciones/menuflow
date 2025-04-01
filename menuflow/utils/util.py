@@ -235,7 +235,7 @@ class Util:
 
 class UtilLite:
     @staticmethod
-    def jq_compile(filter: str, json_data: dict | list) -> list:
+    def jq_compile(filter: str, json_data: dict | list) -> dict:
         """
         It compiles a jq filter and json data into a jq command.
         Parameters
@@ -246,16 +246,18 @@ class UtilLite:
             The JSON data to be filtered.
         Returns
         -------
-            The filtered JSON data or None if the filter is empty.
-            If there is an error in the jq filter returns the filter.
+            A dictionary containing the filtered result, error message if any, and status code.
         """
 
-        compiled = jq.compile(filter)
+        try:
+            compiled = jq.compile(filter)
+        except Exception as e:
+            return {"result": [], "error": str(e), "status": 400}
 
         try:
             filtered_result = compiled.input(json_data).all()
         except Exception as e:
             log.exception(f"Error in jq filter: {e} with filter: {filter}")
-            filtered_result = [filter]
+            return {"result": [], "error": str(e), "status": 421}
 
-        return filtered_result
+        return {"result": filtered_result, "error": None, "status": 200}

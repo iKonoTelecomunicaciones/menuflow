@@ -198,13 +198,17 @@ class HTTPRequest(Switch):
                         pass
                     break
                 else:
-                    try:
-                        data_match: List | None = UtilLite.jq_compile(
-                            filter=self.http_variables[variable], json_data=response_data
-                        )
-                    except Exception as e:
+                    jq_result = UtilLite.jq_compile(
+                        filter=self.http_variables[variable], json_data=response_data
+                    )
+
+                    if jq_result.get("status") == 400:
                         expr = parse(self.http_variables[variable])
                         data_match: List = [match.value for match in expr.find(response_data)]
+                    elif jq_result.get("status") == 421:
+                        data_match = jq_result
+                    else:
+                        data_match = jq_result.get("result")
 
                     try:
                         variables[variable] = (
