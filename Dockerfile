@@ -10,7 +10,8 @@ RUN apt-get update && \
       python3-wheel \
       libmagic1 \
       git \
-      inotify-tools && \
+      inotify-tools \
+      jq && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
