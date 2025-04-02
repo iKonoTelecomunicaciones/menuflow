@@ -349,6 +349,18 @@ components:
                 message: message_1
                 o_connection: message_2
 
+    CountriesSuccess:
+      type: object
+      properties:
+        countries:
+          type: array
+      example:
+        countries:
+          - name: "Colombia"
+            code: "CO"
+            languages: ["en_US", "es", "uk"]
+            subdivisions: []
+
     CheckTemplateOk:
       type: object
       properties:
@@ -385,6 +397,13 @@ components:
       example:
         detail:
           message: "Syntax error in template: 'error_message'"
+
+    ErrorGetCountries:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponseDetailMessage"
+      example:
+        detail:
+          message: "Error getting countries: 'error_message'"
     # End of error schemas
 
   # End of schemas
@@ -743,5 +762,25 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/FlowNotFound"
+
+    GetCountriesSuccess:
+      description: Get countries success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CountriesSuccess"
+
+    GetCountriesError:
+      description: Get countries error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorGetCountries"
+          examples:
+            ErrorGetCountries:
+              value:
+                detail:
+                  message: "Error reading data: 'error_message'"
+
 
   # End of responses

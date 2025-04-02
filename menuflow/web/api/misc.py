@@ -7,9 +7,12 @@ import yaml
 from aiohttp import web
 from jinja2.exceptions import TemplateSyntaxError, UndefinedError
 
+from ...config import Config
 from ...flow_utils import FlowUtils
 from ...jinja.jinja_template import jinja_env
-from ..base import get_flow_utils, routes
+from ...utils.errors import GettingDataError
+from ...utils.util import Util as Utils
+from ..base import get_config, get_flow_utils, routes
 from ..responses import resp
 from ..util import Util
 
@@ -141,3 +144,29 @@ async def check_jinja_template(request: web.Request) -> web.Response:
         return resp.bad_request(str(e), trace_id)
 
     return resp.ok({"rendered": temp_rendered}, trace_id)
+
+
+@routes.get("/v1/mis/countries")
+async def countries(request: web.Request) -> web.Response:
+    """
+    ---
+    summary: Return a list with a dictionary of countries with their respective code, languages
+        and categories
+    description: Return a list with a dictionary of countries
+    tags:
+        - Mis
+
+    responses:
+        '200':
+            $ref: '#/components/responses/GetCountriesSuccess'
+        '500':
+            $ref: '#/components/responses/GetCountriesError'
+    """
+    config: Config = get_config()
+
+    try:
+        countries = await Utils(config=config).get_countries()
+    except GettingDataError as e:
+        return resp.server_error(f"Error getting countries: {e}")
+
+    return resp.ok({"countries": countries})

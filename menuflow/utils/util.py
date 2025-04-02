@@ -4,10 +4,13 @@ from logging import getLogger
 from re import match, sub
 from typing import Dict
 
+import holidays
+from aiohttp import ClientResponse, ClientSession
 from mautrix.types import RoomID, UserID
 from mautrix.util.logging import TraceLogger
 
 from ..config import Config
+from .errors import GettingDataError
 
 
 class Util:
@@ -229,3 +232,71 @@ class Util:
         else:
             # If it's not a string, list or dictionary, return the value as is
             return value
+
+    @staticmethod
+    def parse_countries_data(languages, subdivisions, countries_data):
+        """
+        Parse the countries data from the World Bank API and return a list of dictionaries
+        with the countries' code, name, languages and subdivisions.
+
+        Parameters
+        ----------
+        languages : dict[str, list[str]]
+            A dictionary with the countries' code as key and a list of languages as value.
+        subdivisions : dict[str, list[str]]
+            A dictionary with the countries' code as key and a list of subdivisions as value.
+        countries_data : list[dict, list[dict]]
+            A list with the countries' data from the World Bank API.
+
+        Returns
+        -------
+            A list of dictionaries with the countries' code, name, languages and subdivisions.
+        """
+
+        if not countries_data:
+            return []
+
+        countries_with_name = [
+            {"id": country["iso2Code"], "name": country["name"]}
+            for country in countries_data[1]
+            if country["iso2Code"] in languages.keys()
+        ]
+
+        countries = [
+            {
+                "code": country["id"],
+                "name": country["name"],
+                "languages": languages.get(country["id"]),
+                "subdivisions": subdivisions.get(country["id"]),
+            }
+            for country in countries_with_name
+        ]
+
+        return countries
+
+    async def get_countries(self) -> list[dict]:
+        """
+        Fetch the countries data from the World Bank API and return a list of dictionaries
+        with the countries' code, name, languages and subdivisions.
+
+        Returns
+        -------
+            A list of dictionaries with the countries' code, name, languages and subdivisions.
+        """
+        languages: dict[str, list[str]] = holidays.list_localized_countries()
+        subdivisions: dict[str, list[str]] = holidays.list_supported_countries()
+        data: ClientResponse = await ClientSession().get(url=self.config["api.get_countries"])
+
+        if data.status != 200 or not data:
+            self.log.error(f"Error fetching countries data: {data.status}")
+            raise GettingDataError("Error fetching countries data")
+
+        try:
+            countries_data: list[dict, list[dict]] = await data.json()
+        except Exception as e:
+            self.log.error(f"Error parsing countries data: {e}")
+            raise GettingDataError("Error parsing countries data")
+
+        return self.parse_countries_data(
+            languages=languages, subdivisions=subdivisions, countries_data=countries_data
+        )

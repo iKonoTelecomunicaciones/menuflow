@@ -17,3 +17,4 @@ nats-py==2.7.2
 openai==1.57.4
 jsonpath-ng==1.6.1
 pillow==11.0.0
+holidays==0.69

@@ -88,6 +88,9 @@ nats:
     # Subject to publish messages
     subject: "menuflow.company_name"
 
+api:
+    get_countries: "https://api.worldbank.org/v2/country?format=json&per_page=300"
+
 # Python logging configuration.
 #
 # See section 16.7.2 of the Python documentation for more info:
