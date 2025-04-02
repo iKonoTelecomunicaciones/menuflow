@@ -233,7 +233,7 @@ class Util:
             return value
 
 
-class UtilLite:
+class ExtraUtils:
     @staticmethod
     def jq_compile(filter: str, json_data: dict | list) -> dict:
         """
@@ -250,14 +250,11 @@ class UtilLite:
         """
 
         try:
+            status = 400
             compiled = jq.compile(filter)
-        except Exception as e:
-            return {"result": [], "error": str(e), "status": 400}
-
-        try:
+            status = 421
             filtered_result = compiled.input(json_data).all()
-        except Exception as e:
-            log.exception(f"Error in jq filter: {e} with filter: {filter}")
-            return {"result": [], "error": str(e), "status": 421}
+        except Exception as error:
+            return {"result": [], "error": str(error), "status": status}
 
         return {"result": filtered_result, "error": None, "status": 200}

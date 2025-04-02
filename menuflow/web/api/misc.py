@@ -11,7 +11,7 @@ from jinja2.exceptions import TemplateSyntaxError, UndefinedError
 
 from ...flow_utils import FlowUtils
 from ...jinja.jinja_template import jinja_env
-from ...utils import UtilLite
+from ...utils import ExtraUtils
 from ..base import get_flow_utils, routes
 from ..responses import resp
 from ..util import Util
@@ -150,7 +150,7 @@ async def check_jinja_template(request: web.Request) -> web.Response:
         pass
 
     try:
-        temp_rendered = UtilLite.jq_compile(temp_rendered, dict_variables)
+        temp_rendered = ExtraUtils.jq_compile(temp_rendered, dict_variables)
     except Exception as e:
         log.debug("No jq filter found")
 

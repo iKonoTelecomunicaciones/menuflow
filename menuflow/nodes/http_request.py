@@ -2,7 +2,6 @@ import ast
 import html
 from typing import TYPE_CHECKING, Dict, List
 
-import jq
 from aiohttp import BasicAuth, ClientTimeout, ContentTypeError
 from jsonpath_ng import parse
 
@@ -11,7 +10,7 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import HTTPRequest as HTTPRequestModel
 from ..room import Room
-from ..utils import Nodes, UtilLite
+from ..utils import ExtraUtils, Nodes
 from .switch import Switch
 
 if TYPE_CHECKING:
@@ -198,19 +197,32 @@ class HTTPRequest(Switch):
                         pass
                     break
                 else:
-                    jq_result = UtilLite.jq_compile(
-                        filter=self.http_variables[variable], json_data=response_data
-                    )
-
-                    if jq_result.get("status") == 400:
-                        expr = parse(self.http_variables[variable])
-                        data_match: List = [match.value for match in expr.find(response_data)]
-                    elif jq_result.get("status") == 421:
-                        data_match = jq_result
+                    default_value = self.default_variables.get("flow").get("jq_default_value")
+                    if not self.default_variables.get("flow").get("jq_syntax"):
+                        try:
+                            data_match = []
+                            expr = parse(self.http_variables[variable])
+                            data_match: List = [match.value for match in expr.find(response_data)]
+                        except Exception as error:
+                            self.log.error(
+                                f"""Error parsing '{self.http_variables[variable]}' with jsonpath
+                                on variable '{variable}'. Set to default value ({default_value}).
+                                Error message: {error}"""
+                            )
                     else:
+                        jq_result: dict = ExtraUtils.jq_compile(
+                            self.http_variables[variable], response_data
+                        )
+                        if jq_result.get("status") != 200:
+                            self.log.error(
+                                f"""Error parsing '{self.http_variables[variable]}' with jq
+                                on variable '{variable}'. Set to default value ({default_value}).
+                                Error message: {jq_result.get("error")}"""
+                            )
                         data_match = jq_result.get("result")
 
                     try:
+                        data_match = default_value if not data_match else data_match
                         variables[variable] = (
                             data_match if not data_match or len(data_match) > 1 else data_match[0]
                         )
