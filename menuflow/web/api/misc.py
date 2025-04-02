@@ -149,9 +149,4 @@ async def check_jinja_template(request: web.Request) -> web.Response:
     except Exception as e:
         pass
 
-    try:
-        temp_rendered = ExtraUtils.jq_compile(temp_rendered, dict_variables)
-    except Exception as e:
-        log.debug("No jq filter found")
-
     return resp.ok({"rendered": temp_rendered}, trace_id)
