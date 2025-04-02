@@ -3,7 +3,7 @@ from logging import Logger, getLogger
 
 import pytz
 
-log: Logger = getLogger("menuflow.room")
+log: Logger = getLogger("menuflow.jinja_filters")
 
 
 def strftime_tz(str_format: str, tz: str = None) -> str:
