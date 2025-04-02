@@ -232,8 +232,6 @@ class Util:
             # If it's not a string, list or dictionary, return the value as is
             return value
 
-
-class ExtraUtils:
     @staticmethod
     def jq_compile(filter: str, json_data: dict | list) -> dict:
         """

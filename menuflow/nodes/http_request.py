@@ -10,7 +10,7 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import HTTPRequest as HTTPRequestModel
 from ..room import Room
-from ..utils import ExtraUtils, Nodes
+from ..utils import Nodes, Util
 from .switch import Switch
 
 if TYPE_CHECKING:
@@ -210,7 +210,7 @@ class HTTPRequest(Switch):
                                 Error message: {error}"""
                             )
                     else:
-                        jq_result: dict = ExtraUtils.jq_compile(
+                        jq_result: dict = Util.jq_compile(
                             self.http_variables[variable], response_data
                         )
                         if jq_result.get("status") != 200:

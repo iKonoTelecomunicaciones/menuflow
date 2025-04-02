@@ -11,7 +11,6 @@ from jinja2.exceptions import TemplateSyntaxError, UndefinedError
 
 from ...flow_utils import FlowUtils
 from ...jinja.jinja_template import jinja_env
-from ...utils import ExtraUtils
 from ..base import get_flow_utils, routes
 from ..responses import resp
 from ..util import Util
