@@ -313,18 +313,19 @@ class Util:
         """
         languages: dict[str, list[str]] = holidays.list_localized_countries()
         subdivisions: dict[str, list[str]] = holidays.list_supported_countries()
-        data: ClientResponse = await ClientSession().get(url=self.config["api.get_countries"])
+        async with ClientSession() as session:
+            data: ClientResponse = await session.get(url=self.config["api.get_countries"])
 
-        if data.status != 200 or not data:
-            self.log.error(f"Error fetching countries data: {data.status}")
-            raise GettingDataError("Error fetching countries data")
+            if data.status != 200 or not data:
+                self.log.error(f"Error fetching countries data: {data.status}")
+                raise GettingDataError("Error fetching countries data")
 
-        try:
-            countries_data: list[dict, list[dict]] = await data.json()
-        except Exception as e:
-            self.log.error(f"Error parsing countries data: {e}")
-            raise GettingDataError("Error parsing countries data")
+            try:
+                countries_data: list[dict, list[dict]] = await data.json()
+            except Exception as e:
+                self.log.error(f"Error parsing countries data: {e}")
+                raise GettingDataError("Error parsing countries data")
 
-        return self.parse_countries_data(
-            languages=languages, subdivisions=subdivisions, countries_data=countries_data
-        )
+            return self.parse_countries_data(
+                languages=languages, subdivisions=subdivisions, countries_data=countries_data
+            )
