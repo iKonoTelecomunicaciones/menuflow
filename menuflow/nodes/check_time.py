@@ -39,19 +39,21 @@ class CheckTime(Switch):
     def timezone(self) -> str:
         return self.render_data(self.content.get("timezone", str))
 
-    async def run(self):
-        """If the current month, day, weekday, and time are within the specified ranges,
-        then update the menu to the "True" case. Otherwise, update the menu to the "False" case
-
-        """
-
+    async def validate_connection(self) -> None:
         time_zone = pytz.timezone(self.timezone)
         now = datetime.now(time_zone)
         week_day: str = now.strftime("%a").lower()
         day: int = now.day
         month: int = now.month
 
-        o_connection = (
+        if self.content.get("holidays"):
+            return (
+                await self.get_case_by_id("True")
+                if self.check_hours(now.time()) and not self.check_holidays(now)
+                else await self.get_case_by_id("False")
+            )
+
+        return (
             await self.get_case_by_id("True")
             if self.check_month(month)
             and self.check_month_days(day)
@@ -59,6 +61,13 @@ class CheckTime(Switch):
             and self.check_hours(now.time())
             else await self.get_case_by_id("False")
         )
+
+    async def run(self):
+        """If the current month, day, weekday, and time are within the specified ranges,
+        then update the menu to the "True" case. Otherwise, update the menu to the "False" case
+
+        """
+        o_connection = await self.validate_connection()
 
         await self.room.update_menu(node_id=o_connection, state=None)
 
@@ -185,3 +194,25 @@ class CheckTime(Switch):
                 return True
 
         return False
+
+    def check_holidays(self, date: datetime) -> bool:
+        """
+        If the current date is a holiday, return True.
+        Otherwise, return False.
+
+        Parameters
+        ----------
+        date : datetime
+            The current date and time.
+
+        Returns
+        -------
+            A boolean value.
+
+        """
+
+        return self.util.is_holiday(
+            date=date,
+            country_code=self.content.get("country_code"),
+            subdivision_code=self.content.get("subdivision_code"),
+        )

@@ -1,3 +1,4 @@
+import datetime
 import json
 from asyncio import Task, all_tasks
 from logging import getLogger
@@ -233,6 +234,33 @@ class Util:
             # If it's not a string, list or dictionary, return the value as is
             return value
 
+    @classmethod
+    def is_holiday(cls, date: datetime, country_code: str, subdivision_code: str) -> bool:
+        """
+        Verify if the date is a holiday in the country and subdivision.
+
+        Parameters
+        ----------
+        date : datetime
+            The date to verify.
+        country_code : str
+            The country code to verify.
+        subdivision_code : str
+            The subdivision code to verify (the code of a zone of the country,
+            like the state or department).
+
+        Returns
+        -------
+            A boolean value.
+        """
+        try:
+            return date in holidays.country_holidays(country_code, prov=subdivision_code)
+        except NotImplementedError as e:
+            cls.log.error(
+                f"Error getting holidays for country code '{country_code}' - with subdivision code '{subdivision_code}': {e}"
+            )
+            return False
+
     @staticmethod
     def parse_countries_data(languages, subdivisions, countries_data):
         """
@@ -259,15 +287,15 @@ class Util:
         countries_with_name = [
             {"id": country["iso2Code"], "name": country["name"]}
             for country in countries_data[1]
-            if country["iso2Code"] in languages.keys()
+            if hasattr(holidays, country["iso2Code"])
         ]
 
         countries = [
             {
                 "code": country["id"],
                 "name": country["name"],
-                "languages": languages.get(country["id"]),
-                "subdivisions": subdivisions.get(country["id"]),
+                "languages": languages.get(country["id"], []),
+                "subdivisions": subdivisions.get(country["id"], []),
             }
             for country in countries_with_name
         ]
