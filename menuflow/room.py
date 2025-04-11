@@ -69,7 +69,7 @@ class Room(DBRoom):
 
         if not bridge_state_event:
             state_key = self.config["menuflow.state_key"]
-            self.log.critical(f"State key {state_key} ")
+
             try:
                 bridge_state_event: list[StateEvent] = await self.matrix_client.get_state_event(
                     room_id=self.room_id,
