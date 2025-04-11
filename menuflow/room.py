@@ -7,8 +7,8 @@ from logging import getLogger
 from re import match
 from typing import Any, Dict, List, Optional, cast
 
-from mautrix.errors.request import MNotFound
 from mautrix.client import Client as MatrixClient
+from mautrix.errors.request import MNotFound
 from mautrix.types import EventType, Member, RoomID, StateEvent, StateEventContent, UserID
 from mautrix.types.util.obj import Obj
 from mautrix.util.async_getter_lock import async_getter_lock
