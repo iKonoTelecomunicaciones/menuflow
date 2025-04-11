@@ -26,6 +26,7 @@ class Config(BaseFileConfig):
         copy("menuflow.message_rate_limit")
         copy("menuflow.backup_limit")
         copy_dict("menuflow.regex")
+        copy("menuflow.state_key")
         copy("server.hostname")
         copy("server.port")
         copy("server.public_url")

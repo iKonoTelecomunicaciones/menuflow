@@ -7,6 +7,7 @@ from logging import getLogger
 from re import match
 from typing import Any, Dict, List, Optional, cast
 
+from mautrix.errors.request import MNotFound
 from mautrix.client import Client as MatrixClient
 from mautrix.types import EventType, Member, RoomID, StateEvent, StateEventContent, UserID
 from mautrix.types.util.obj import Obj
@@ -58,9 +59,28 @@ class Room(DBRoom):
         # Create the m.bridge event type to filter the state events
         bridge_event: EventType = EventType(t="m.bridge", t_class=EventType.Class.STATE)
         # Get the m.bridge state event and get the customer's Mxid
-        bridge_state_event: list[StateEvent] = await self.matrix_client.get_state_event(
-            room_id=self.room_id, event_type=bridge_event
-        )
+        bridge_state_event: list[StateEvent] | None = None
+        try:
+            bridge_state_event = await self.matrix_client.get_state_event(
+                room_id=self.room_id, event_type=bridge_event
+            )
+        except MNotFound as e:
+            self.log.error(f"Event {bridge_event} not found from room {self.room_id}: {e}")
+
+        if not bridge_state_event:
+            state_key = self.config["menuflow.state_key"]
+            self.log.critical(f"State key {state_key} ")
+            try:
+                bridge_state_event: list[StateEvent] = await self.matrix_client.get_state_event(
+                    room_id=self.room_id,
+                    event_type=bridge_event,
+                    state_key=state_key,
+                )
+            except MNotFound as e:
+                self.log.error(
+                    f"Event {bridge_event} with state_key {state_key} not found from room {self.room_id}: {e}"
+                )
+                return
 
         # Check if the m.bridge state event has the customer's Mxid
         if bridge_state_event and bridge_state_event.channel:
