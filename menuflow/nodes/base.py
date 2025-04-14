@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import ast
+import html
+import traceback
 from abc import abstractmethod
 from asyncio import sleep
 from json import JSONDecodeError, dumps, loads
@@ -8,6 +11,7 @@ from random import randrange
 from typing import Any, Dict, List
 
 from aiohttp import ClientSession
+from jinja2 import TemplateSyntaxError, UndefinedError
 from mautrix.types import MessageEventContent, RoomID
 from mautrix.util.logging import TraceLogger
 
@@ -119,7 +123,7 @@ class Base:
 
         await self.room.matrix_client.send_message(room_id=room_id, content=content)
 
-    def render_data(self, data: Dict | List | str) -> Dict | List | str:
+    def render_data(self, data: dict | list | str) -> Dict | List | str:
         """It takes a dictionary or list, converts it to a string,
         and then uses Jinja to render the string
 
@@ -133,39 +137,54 @@ class Base:
             A dictionary or list.
 
         """
+        self.log.critical(f"Rendering data: {data}")
+        dict_variables = self.default_variables | self.room.all_variables
 
-        try:
-            data = data if isinstance(data, str) else dumps(data)
-            data_template = jinja_env.from_string(data)
-        except Exception as e:
-            self.log.exception(e)
-            return
-
-        copy_variables = self.default_variables | self.room.all_variables
-        clear_variables = dumps(copy_variables).replace("\\n", "ik-line-break")
-        try:
-            # if save variables have a string with \n,
-            # it will be replaced by ik-line-break to avoid errors when dict is dumped
-            # and before return, it will be replaced by \n again to keep the original string
-            temp_rendered = data_template.render(**loads(clear_variables))
-            temp_rendered = temp_rendered.replace("ik-line-break", "\\n")
-
-            temp_sanitized = convert_to_bool(Util.convert_to_json(temp_rendered))
-            if isinstance(temp_sanitized, str):
-                temp_sanitized = loads(temp_rendered)
-
-            return temp_sanitized
-        except JSONDecodeError:
-            temp_rendered = data_template.render(**loads(clear_variables))
-            temp_rendered = temp_rendered.replace("ik-line-break", "\\n")
-            return convert_to_bool(temp_rendered)
-        except KeyError:
-            data = loads(data_template.render())
-            data = convert_to_bool(data)
+        if isinstance(data, dict):
+            for key, value in data.items():
+                data[key] = self.render_data(value)
             return data
-        except Exception as e:
-            self.log.exception(e)
-            return
+        elif isinstance(data, list):
+            return [self.render_data(item) for item in data]
+        elif isinstance(data, str):
+            try:
+                template = jinja_env.from_string(data)
+                temp_rendered = template.render(dict_variables)
+            except TemplateSyntaxError as e:
+                self.log.exception(e)
+                self.log.error(
+                    f"func_name: {e.name}, \nline: {e.lineno}, \nerror: {e.message}",
+                )
+                return None
+            except UndefinedError as e:
+                self.log.exception(e)
+                tb_list = traceback.extract_tb(e.__traceback__)
+                traceback_info = tb_list[-1]
+
+                func_name = traceback_info.name
+                line: int | None = traceback_info.lineno
+                self.log.error(
+                    f"func_name: {func_name}, \nline: {line}, \nerror: {e}",
+                )
+                return None
+            except Exception as e:
+                self.log.exception(e)
+                self.log.error(
+                    f"Error rendering data: {e}",
+                )
+                return None
+            try:
+                evaluated_body = html.unescape(temp_rendered.replace("'", '"'))
+                evaluated_body = ast.literal_eval(evaluated_body)
+            except Exception as e:
+                return temp_rendered
+            else:
+                if isinstance(evaluated_body, (dict, list)):
+                    return self.render_data(evaluated_body)
+                else:
+                    return temp_rendered
+        else:
+            return data
 
     async def get_o_connection(self) -> str:
         """It returns the ID of the next node to be executed.
