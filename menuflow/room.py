@@ -68,7 +68,7 @@ class Room(DBRoom):
             self.log.error(f"Event {bridge_event} not found from room {self.room_id}: {e}")
 
         if not bridge_state_event:
-            state_key = self.config["menuflow.state_key"]
+            state_key = self.config["menuflow.mautrix_state_key"]
 
             try:
                 bridge_state_event: list[StateEvent] = await self.matrix_client.get_state_event(

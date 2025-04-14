@@ -51,7 +51,7 @@ menuflow:
     backup_limit: 10
 
     # State key to identify the m.bridge event in the new way of identify the creator of the room
-    state_key: "domain/mx_whatsapp"
+    mautrix_state_key: "domain/mx_whatsapp"
 
 server:
     # The IP and port to listen to.
