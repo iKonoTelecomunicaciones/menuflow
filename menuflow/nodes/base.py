@@ -140,9 +140,10 @@ class Base:
         dict_variables = self.default_variables | self.room.all_variables
 
         if isinstance(data, dict):
+            rendered_data = {}
             for key, value in data.items():
-                data[key] = self.render_data(value)
-            return data
+                rendered_data[self.render_data(key)] = self.render_data(value)
+            return rendered_data
         elif isinstance(data, list):
             return [self.render_data(item) for item in data]
         elif isinstance(data, str):
