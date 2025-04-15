@@ -1,7 +1,8 @@
 {
     "menu": {
         "flow_variables": {
-            "cat_fatc_url": "https://catfact.ninja/fact"
+            "cat_fatc_url": "https://catfact.ninja/fact",
+            "cat_name": "Luffy"
         },
         "nodes": [
             {
