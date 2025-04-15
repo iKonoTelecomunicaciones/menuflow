@@ -137,7 +137,6 @@ class Base:
             A dictionary or list.
 
         """
-        self.log.critical(f"Rendering data: {data}")
         dict_variables = self.default_variables | self.room.all_variables
 
         if isinstance(data, dict):
