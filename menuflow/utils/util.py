@@ -5,13 +5,13 @@ from logging import getLogger
 from re import match, sub
 from typing import Dict
 
+from babel import Locale
 import holidays
-from aiohttp import ClientResponse, ClientSession
+from pycountry import countries, subdivisions
 from mautrix.types import RoomID, UserID
 from mautrix.util.logging import TraceLogger
 
 from ..config import Config
-from .errors import GettingDataError
 
 
 class Util:
@@ -262,7 +262,7 @@ class Util:
             return False
 
     @staticmethod
-    def parse_countries_data(languages, subdivisions, countries_data):
+    def parse_countries_data(subdivisions_data, countries_data, translate_to):
         """
         Parse the countries data from the World Bank API and return a list of dictionaries
         with the countries' code, name, languages and subdivisions.
@@ -271,61 +271,99 @@ class Util:
         ----------
         languages : dict[str, list[str]]
             A dictionary with the countries' code as key and a list of languages as value.
-        subdivisions : dict[str, list[str]]
+        subdivisions_data : dict[str, list[str]]
             A dictionary with the countries' code as key and a list of subdivisions as value.
         countries_data : list[dict, list[dict]]
             A list with the countries' data from the World Bank API.
+        translate_to : str
+            The language to use for the countries' names.
 
         Returns
         -------
             A list of dictionaries with the countries' code, name, languages and subdivisions.
         """
 
-        if not countries_data:
+        if not countries_data or not subdivisions:
             return []
 
-        countries_with_name = [
-            {"id": country["iso2Code"], "name": country["name"]}
-            for country in countries_data[1]
-            if hasattr(holidays, country["iso2Code"])
-        ]
-
-        countries = [
+        locale = Locale(translate_to)
+        countries_code = [country.alpha_2 for country in countries_data if country.alpha_2]
+        countries_name = [
             {
-                "code": country["id"],
-                "name": country["name"],
-                "languages": languages.get(country["id"], []),
-                "subdivisions": subdivisions.get(country["id"], []),
+                country.alpha_2: locale.territories.get(country.alpha_2)
+                for country in countries_data
             }
-            for country in countries_with_name
+        ]
+        subdivisions_dict = [
+            {
+                country_code: [
+                    {
+                        # pycountry code is in the format "country_code-subdivision_code"
+                        # but the holidays library uses the format "subdivision_code"
+                        # so we need to split the code and get the last part
+                        # to get the subdivision code
+                        subdivision.code.split("-")[-1]: locale.territories.get(subdivision.code)
+                        or subdivision.name
+                    }
+                    for subdivision in subdivisions
+                ]
+                for country_code, subdivisions in subdivisions_data.items()
+            }
         ]
 
-        return countries
+        data_countries = {
+            "countries": countries_code,
+            "labels": countries_name,
+            "subdivisions": subdivisions_dict,
+        }
+        return data_countries
 
-    async def get_countries(self) -> list[dict]:
+    async def get_countries(self, language: str) -> list[dict]:
         """
         Fetch the countries data from the World Bank API and return a list of dictionaries
         with the countries' code, name, languages and subdivisions.
+        Parameters
+        ----------
+        language : str
+            The language to use for the countries' names.
 
         Returns
         -------
             A list of dictionaries with the countries' code, name, languages and subdivisions.
         """
-        languages: dict[str, list[str]] = holidays.list_localized_countries()
-        subdivisions: dict[str, list[str]] = holidays.list_supported_countries()
-        async with ClientSession() as session:
-            data: ClientResponse = await session.get(url=self.config["api.get_countries"])
+        holidays_subdivisions: dict[str, list[str]] = holidays.list_supported_countries()
 
-            if data.status != 200 or not data:
-                self.log.error(f"Error fetching countries data: {data.status}")
-                raise GettingDataError("Error fetching countries data")
+        # Get the list of countries from the holidays library, in holidays library, the alpha-2
+        # code  of United Kingdom  is "UK" but this code is not used in pycountry instead
+        # it uses "GB", so we need to convert it to "GB" in pycountry to get the country name
+        # and the subdivisions
+        countries_data: list[dict] = [
+            (countries.get(alpha_2=code) if code != "UK" else countries.get(alpha_2="GB"))
+            for code in holidays_subdivisions.keys()
+        ]
 
-            try:
-                countries_data: list[dict, list[dict]] = await data.json()
-            except Exception as e:
-                self.log.error(f"Error parsing countries data: {e}")
-                raise GettingDataError("Error parsing countries data")
+        subdivisions_data: dict[str, list[str]] = {}
 
-            return self.parse_countries_data(
-                languages=languages, subdivisions=subdivisions, countries_data=countries_data
-            )
+        for country_code, country_subdivisions in holidays_subdivisions.items():
+            if country_subdivisions:
+                # Convert the country code to the pycountry format
+                # in holidays library, the alpha-2 code of United Kingdom is "UK"
+                # but this code is not used in pycountry instead it uses "GB"
+                # so we need to convert it to "GB" in pycountry to get the country name
+                # and the subdivisions
+                if country_code == "UK":
+                    country_code = "GB"
+
+                country_subdivisions_data = [
+                    subdivisions.get(code=f"{country_code}-{subdivision_code}")
+                    for subdivision_code in country_subdivisions
+                    if subdivisions.get(code=f"{country_code}-{subdivision_code}")
+                ]
+
+                subdivisions_data[country_code] = country_subdivisions_data
+
+        return self.parse_countries_data(
+            subdivisions_data=subdivisions_data,
+            countries_data=countries_data,
+            translate_to=language,
+        )

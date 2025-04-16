@@ -354,12 +354,23 @@ components:
       properties:
         countries:
           type: array
+        labels:
+          type: array
+        subdivisions:
+          type: array
       example:
         countries:
-          - name: "Colombia"
-            code: "CO"
-            languages: ["en_US", "es", "uk"]
-            subdivisions: []
+          - AF
+          - CO
+          - US
+        labels:
+          - AF: Afganistán
+          - CO: Colombia
+          - US: Estados Unidos
+        subdivisions:
+          - US:
+              - CA: California
+              - NY: New York
 
     CheckTemplateOk:
       type: object

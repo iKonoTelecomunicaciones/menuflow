@@ -156,6 +156,14 @@ async def countries(request: web.Request) -> web.Response:
     tags:
         - Mis
 
+    parameters:
+        - in: query
+          name: language
+          description: The language to get the countries in
+          required: false
+          schema:
+            type: string
+
     responses:
         '200':
             $ref: '#/components/responses/GetCountriesSuccess'
@@ -163,10 +171,11 @@ async def countries(request: web.Request) -> web.Response:
             $ref: '#/components/responses/GetCountriesError'
     """
     config: Config = get_config()
+    language = request.query.get("language", 'es')
 
     try:
-        countries = await Utils(config=config).get_countries()
+        countries = await Utils(config=config).get_countries(language)
     except GettingDataError as e:
         return resp.server_error(f"Error getting countries: {e}")
 
-    return resp.ok({"countries": countries})
+    return resp.ok(countries)
