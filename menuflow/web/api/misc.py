@@ -171,7 +171,7 @@ async def countries(request: web.Request) -> web.Response:
             $ref: '#/components/responses/GetCountriesError'
     """
     config: Config = get_config()
-    language = request.query.get("language", 'es')
+    language = request.query.get("language", "es")
 
     try:
         countries = await Utils(config=config).get_countries(language)
