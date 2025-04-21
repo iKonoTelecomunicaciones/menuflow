@@ -5,11 +5,11 @@ from logging import getLogger
 from re import match, sub
 from typing import Dict
 
-from babel import Locale
 import holidays
-from pycountry import countries, subdivisions
+from babel import Locale
 from mautrix.types import RoomID, UserID
 from mautrix.util.logging import TraceLogger
+from pycountry import countries, subdivisions
 
 from ..config import Config
 
