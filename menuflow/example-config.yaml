@@ -50,6 +50,8 @@ menuflow:
     # Limit of backups to keep per flow
     backup_limit: 10
 
+    # State key to identify the m.bridge event in the new way of identify the creator of the room
+    mautrix_state_key: example.com/mx_whatsapp
 
 server:
     # The IP and port to listen to.
