@@ -71,7 +71,7 @@ class Room(DBRoom):
             state_key = self.config["menuflow.mautrix_state_key"]
 
             try:
-                bridge_state_event: list[StateEvent] = await self.matrix_client.get_state_event(
+                bridge_state_event = await self.matrix_client.get_state_event(
                     room_id=self.room_id,
                     event_type=bridge_event,
                     state_key=state_key,
