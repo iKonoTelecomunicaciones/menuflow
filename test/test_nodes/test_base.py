@@ -95,7 +95,7 @@ class TestBase:
         )
 
     @pytest.mark.asyncio
-    async def test_save_comloex_data(self, base: Base):
+    async def test_save_complex_data(self, base: Base):
         """
         It test if a route variable can save a complex data structure
         It checks if the method can handle nested lists and dictionaries,

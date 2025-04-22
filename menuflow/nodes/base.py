@@ -123,7 +123,7 @@ class Base:
 
         await self.room.matrix_client.send_message(room_id=room_id, content=content)
 
-    def render_data(self, data: dict | list | str) -> Dict | List | str:
+    def render_data(self, data: dict | list | str) -> dict | list | str:
         """It takes a dictionary or list, converts it to a string,
         and then uses Jinja to render the string
 
