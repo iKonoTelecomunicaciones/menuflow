@@ -9,8 +9,8 @@ from .config import Config
 from .flow_utils import FlowUtils
 from .middlewares import ASRMiddleware, HTTPMiddleware, IRMMiddleware, LLMMiddleware, TTMMiddleware
 from .nodes import (
-    CheckTime,
     CheckHoliday,
+    CheckTime,
     Delay,
     Email,
     FormInput,
