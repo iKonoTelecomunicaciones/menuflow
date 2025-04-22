@@ -5,7 +5,6 @@ import html
 import traceback
 from abc import abstractmethod
 from asyncio import sleep
-from json import JSONDecodeError, dumps, loads
 from logging import getLogger
 from random import randrange
 from typing import Any, Dict, List
@@ -18,7 +17,6 @@ from mautrix.util.logging import TraceLogger
 from ..config import Config
 from ..jinja.jinja_template import jinja_env
 from ..room import Room
-from ..utils import Util
 
 
 def convert_to_bool(item) -> Dict | List | str:
@@ -150,25 +148,21 @@ class Base:
                 template = jinja_env.from_string(data)
                 temp_rendered = template.render(dict_variables)
             except TemplateSyntaxError as e:
-                self.log.exception(e)
-                self.log.error(
+                self.log.warning(
                     f"func_name: {e.name}, \nline: {e.lineno}, \nerror: {e.message}",
                 )
                 return None
             except UndefinedError as e:
-                self.log.exception(e)
                 tb_list = traceback.extract_tb(e.__traceback__)
                 traceback_info = tb_list[-1]
-
                 func_name = traceback_info.name
                 line: int | None = traceback_info.lineno
-                self.log.error(
+                self.log.warning(
                     f"func_name: {func_name}, \nline: {line}, \nerror: {e}",
                 )
                 return None
             except Exception as e:
-                self.log.exception(e)
-                self.log.error(
+                self.log.warning(
                     f"Error rendering data: {e}",
                 )
                 return None
