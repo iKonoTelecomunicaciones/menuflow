@@ -1,4 +1,5 @@
 import nest_asyncio
+import pytest
 
 nest_asyncio.apply()
 
@@ -31,12 +32,104 @@ class TestBase:
         )
         assert {
             "foo": "https://catfact.ninja/fact",
-            "https://catfact.ninja/fact": "foo",
             "bar": "",
         } == base.render_data(
             {
                 "foo": "{{ flow.cat_fatc_url }}",
-                "{{ flow.cat_fatc_url }}": "foo",
                 "bar": "{{ foo }}",
             }
         )
+
+    def test_render_complex_data(self, base: Base):
+        """
+        Test rendering complex data structures in the render_data method.
+        It checks if the method can handle nested lists and dictionaries,
+        and if it correctly replaces the placeholders with the corresponding values.
+        It also checks if the method can handle a dictionary with a list as a value.
+        """
+        assert [
+            "https://catfact.ninja/fact",
+            "Luffy",
+            "Foo",
+        ] == base.render_data(["{{ flow.cat_fatc_url }}", "{{ flow.cat_name }}", "Foo"])
+        assert [
+            {
+                "Cat_name": "Luffy",
+                "Foo": ["bar", "foo"],
+            }
+        ] == base.render_data(
+            [
+                {
+                    "Cat_name": "{{ flow.cat_name }}",
+                    "Foo": ["bar", "foo"],
+                }
+            ]
+        )
+        assert [
+            [
+                {
+                    "Cat_name": "Luffy",
+                    "Foo": ["bar", "foo"],
+                }
+            ]
+        ] == base.render_data(
+            [
+                [
+                    {
+                        "Cat_name": "{{ flow.cat_name }}",
+                        "Foo": ["bar", "foo"],
+                    }
+                ]
+            ]
+        )
+        assert {
+            "Cat_name": "Luffy",
+            "Foo": ["bar", "foo"],
+            "flow_variables": {"cat_fatc_url": "https://catfact.ninja/fact", "cat_name": "Luffy"},
+        } == base.render_data(
+            {
+                "Cat_name": "{{ flow.cat_name }}",
+                "Foo": ["bar", "foo"],
+                "flow_variables": "{{ flow }}",
+            }
+        )
+
+    @pytest.mark.asyncio
+    async def test_save_complex_data(self, base: Base):
+        """
+        It test if a route variable can save a complex data structure
+        It checks if the method can handle nested lists and dictionaries,
+        and if it correctly replaces the placeholders with the corresponding values.
+        It also checks if the method can handle a dictionary with a list as a value.
+        """
+        data = {
+            "Cat_name": "{{ flow.cat_name }}",
+            "Foo": ["bar", "foo"],
+            "accounts": [
+                {
+                    "account_id": 1,
+                    "identifier": "573207051244",
+                    "account_type_id": 1,
+                    "account_type_name": "Phone",
+                    "label": "",
+                    "deleted": False,
+                    "rooms": ["{{ route.customer_room_id }}"],
+                    "opt_in": None,
+                }
+            ],
+        }
+
+        data_rendered = base.render_data(data)
+
+        # Save the rendered data to the route variable
+        await base.room.set_variable("test_data", data_rendered)
+
+        # Verify that the data is saved correctly
+        assert await base.room.get_variable("test_data") == data_rendered
+
+        # Get the data from the route variable
+        test_data = await base.room.get_variable("test_data")
+        customer_room_id = test_data.get("accounts")[0].get("rooms")[0]
+
+        # Verify that the data is saved correctly
+        assert customer_room_id ==  base.render_data("{{ route.customer_room_id }}")
