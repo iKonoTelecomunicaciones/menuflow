@@ -46,13 +46,6 @@ class CheckTime(Switch):
         day: int = now.day
         month: int = now.month
 
-        if self.content.get("holidays"):
-            return (
-                await self.get_case_by_id("True")
-                if self.check_hours(now.time()) and not self.check_holidays(now)
-                else await self.get_case_by_id("False")
-            )
-
         return (
             await self.get_case_by_id("True")
             if self.check_month(month)
@@ -194,25 +187,3 @@ class CheckTime(Switch):
                 return True
 
         return False
-
-    def check_holidays(self, date: datetime) -> bool:
-        """
-        If the current date is a holiday, return True.
-        Otherwise, return False.
-
-        Parameters
-        ----------
-        date : datetime
-            The current date and time.
-
-        Returns
-        -------
-            A boolean value.
-
-        """
-
-        return self.util.is_holiday(
-            date=date,
-            country_code=self.content.get("country_code"),
-            subdivision_code=self.content.get("subdivision_code"),
-        )

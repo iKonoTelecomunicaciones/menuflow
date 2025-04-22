@@ -30,7 +30,6 @@ class Config(BaseFileConfig):
         copy("server.port")
         copy("server.public_url")
         copy("server.base_path")
-        copy("api.get_countries")
         copy_dict("events")
         copy_dict("nats")
         copy_dict("logging")

@@ -4,6 +4,7 @@ from .middlewares import ASRMiddleware, HTTPMiddleware, IRMMiddleware, LLMMiddle
 from .nodes import (
     Case,
     CheckTime,
+    CheckHoliday,
     Delay,
     Email,
     Form,
