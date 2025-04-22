@@ -32,12 +32,10 @@ class TestBase:
         )
         assert {
             "foo": "https://catfact.ninja/fact",
-            "https://catfact.ninja/fact": "foo",
             "bar": "",
         } == base.render_data(
             {
                 "foo": "{{ flow.cat_fatc_url }}",
-                "{{ flow.cat_fatc_url }}": "foo",
                 "bar": "{{ foo }}",
             }
         )
@@ -56,14 +54,12 @@ class TestBase:
         ] == base.render_data(["{{ flow.cat_fatc_url }}", "{{ flow.cat_name }}", "Foo"])
         assert [
             {
-                "https://catfact.ninja/fact": "foo",
                 "Cat_name": "Luffy",
                 "Foo": ["bar", "foo"],
             }
         ] == base.render_data(
             [
                 {
-                    "{{ flow.cat_fatc_url }}": "foo",
                     "Cat_name": "{{ flow.cat_name }}",
                     "Foo": ["bar", "foo"],
                 }
@@ -72,7 +68,6 @@ class TestBase:
         assert [
             [
                 {
-                    "https://catfact.ninja/fact": "foo",
                     "Cat_name": "Luffy",
                     "Foo": ["bar", "foo"],
                 }
@@ -81,7 +76,6 @@ class TestBase:
             [
                 [
                     {
-                        "{{ flow.cat_fatc_url }}": "foo",
                         "Cat_name": "{{ flow.cat_name }}",
                         "Foo": ["bar", "foo"],
                     }
@@ -89,13 +83,11 @@ class TestBase:
             ]
         )
         assert {
-            "https://catfact.ninja/fact": "foo",
             "Cat_name": "Luffy",
             "Foo": ["bar", "foo"],
             "flow_variables": {"cat_fatc_url": "https://catfact.ninja/fact", "cat_name": "Luffy"},
         } == base.render_data(
             {
-                "{{ flow.cat_fatc_url }}": "foo",
                 "Cat_name": "{{ flow.cat_name }}",
                 "Foo": ["bar", "foo"],
                 "flow_variables": "{{ flow }}",

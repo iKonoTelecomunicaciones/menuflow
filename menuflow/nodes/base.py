@@ -140,10 +140,9 @@ class Base:
         dict_variables = self.default_variables | self.room.all_variables
 
         if isinstance(data, dict):
-            rendered_data = {}
             for key, value in data.items():
-                rendered_data[self.render_data(key)] = self.render_data(value)
-            return rendered_data
+                data[key] = self.render_data(value)
+            return data
         elif isinstance(data, list):
             return [self.render_data(item) for item in data]
         elif isinstance(data, str):
@@ -174,15 +173,17 @@ class Base:
                 )
                 return None
             try:
+                evaluated_body = temp_rendered
                 evaluated_body = html.unescape(temp_rendered.replace("'", '"'))
                 evaluated_body = ast.literal_eval(evaluated_body)
             except Exception as e:
-                return temp_rendered
+                self.log.debug(
+                    f"Error evaluating body: {e}, \nbody: {temp_rendered}",
+                )
             else:
                 if isinstance(evaluated_body, (dict, list)):
                     return self.render_data(evaluated_body)
-                else:
-                    return temp_rendered
+            return evaluated_body
         else:
             return data
 
