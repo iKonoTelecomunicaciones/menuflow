@@ -283,7 +283,7 @@ class Util:
             A list of dictionaries with the countries' code, name, languages and subdivisions.
         """
 
-        if not countries_data or not subdivisions:
+        if not countries_data or not subdivisions_data:
             return []
 
         locale = Locale(translate_to)
