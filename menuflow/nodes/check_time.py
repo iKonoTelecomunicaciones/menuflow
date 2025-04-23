@@ -39,19 +39,14 @@ class CheckTime(Switch):
     def timezone(self) -> str:
         return self.render_data(self.content.get("timezone", str))
 
-    async def run(self):
-        """If the current month, day, weekday, and time are within the specified ranges,
-        then update the menu to the "True" case. Otherwise, update the menu to the "False" case
-
-        """
-
+    async def validate_connection(self) -> None:
         time_zone = pytz.timezone(self.timezone)
         now = datetime.now(time_zone)
         week_day: str = now.strftime("%a").lower()
         day: int = now.day
         month: int = now.month
 
-        o_connection = (
+        return (
             await self.get_case_by_id("True")
             if self.check_month(month)
             and self.check_month_days(day)
@@ -59,6 +54,13 @@ class CheckTime(Switch):
             and self.check_hours(now.time())
             else await self.get_case_by_id("False")
         )
+
+    async def run(self):
+        """If the current month, day, weekday, and time are within the specified ranges,
+        then update the menu to the "True" case. Otherwise, update the menu to the "False" case
+
+        """
+        o_connection = await self.validate_connection()
 
         await self.room.update_menu(node_id=o_connection, state=None)
 
