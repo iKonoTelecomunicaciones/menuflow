@@ -3,6 +3,7 @@ from .flow_utils import FlowUtils
 from .middlewares import ASRMiddleware, HTTPMiddleware, IRMMiddleware, LLMMiddleware, TTMMiddleware
 from .nodes import (
     Case,
+    CheckHoliday,
     CheckTime,
     Delay,
     Email,
