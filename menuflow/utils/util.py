@@ -1,11 +1,15 @@
+import datetime
 import json
 from asyncio import Task, all_tasks
 from logging import getLogger
 from re import match, sub
 from typing import Dict
 
+import holidays
+from babel import Locale
 from mautrix.types import RoomID, UserID
 from mautrix.util.logging import TraceLogger
+from pycountry import countries, subdivisions
 
 from ..config import Config
 
@@ -229,3 +233,137 @@ class Util:
         else:
             # If it's not a string, list or dictionary, return the value as is
             return value
+
+    @classmethod
+    def is_holiday(cls, date: datetime, country_code: str, subdivision_code: str) -> bool:
+        """
+        Verify if the date is a holiday in the country and subdivision.
+
+        Parameters
+        ----------
+        date : datetime
+            The date to verify.
+        country_code : str
+            The country code to verify.
+        subdivision_code : str
+            The subdivision code to verify (the code of a zone of the country,
+            like the state or department).
+
+        Returns
+        -------
+            A boolean value.
+        """
+        try:
+            return date in holidays.country_holidays(country_code, prov=subdivision_code)
+        except NotImplementedError as e:
+            cls.log.error(
+                f"Error getting holidays for country code '{country_code}' - with subdivision code '{subdivision_code}': {e}"
+            )
+            return False
+
+    @staticmethod
+    def parse_countries_data(subdivisions_data, countries_data, translate_to):
+        """
+        Parse the countries data from the World Bank API and return a list of dictionaries
+        with the countries' code, name, languages and subdivisions.
+
+        Parameters
+        ----------
+        languages : dict[str, list[str]]
+            A dictionary with the countries' code as key and a list of languages as value.
+        subdivisions_data : dict[str, list[str]]
+            A dictionary with the countries' code as key and a list of subdivisions as value.
+        countries_data : list[dict, list[dict]]
+            A list with the countries' data from the World Bank API.
+        translate_to : str
+            The language to use for the countries' names.
+
+        Returns
+        -------
+            A list of dictionaries with the countries' code, name, languages and subdivisions.
+        """
+
+        if not countries_data or not subdivisions:
+            return []
+
+        locale = Locale(translate_to)
+        countries_code = [country.alpha_2 for country in countries_data if country.alpha_2]
+        countries_name = [
+            {
+                country.alpha_2: locale.territories.get(country.alpha_2)
+                for country in countries_data
+            }
+        ]
+        subdivisions_dict = [
+            {
+                country_code: [
+                    {
+                        # pycountry code is in the format "country_code-subdivision_code"
+                        # but the holidays library uses the format "subdivision_code"
+                        # so we need to split the code and get the last part
+                        # to get the subdivision code
+                        subdivision.code.split("-")[-1]: locale.territories.get(subdivision.code)
+                        or subdivision.name
+                    }
+                    for subdivision in subdivisions
+                ]
+                for country_code, subdivisions in subdivisions_data.items()
+            }
+        ]
+
+        data_countries = {
+            "countries": countries_code,
+            "labels": countries_name,
+            "subdivisions": subdivisions_dict,
+        }
+        return data_countries
+
+    async def get_countries(self, language: str) -> list[dict]:
+        """
+        Fetch the countries data from the World Bank API and return a list of dictionaries
+        with the countries' code, name, languages and subdivisions.
+        Parameters
+        ----------
+        language : str
+            The language to use for the countries' names.
+
+        Returns
+        -------
+            A list of dictionaries with the countries' code, name, languages and subdivisions.
+        """
+        holidays_subdivisions: dict[str, list[str]] = holidays.list_supported_countries()
+
+        # Get the list of countries from the holidays library, in holidays library, the alpha-2
+        # code  of United Kingdom  is "UK" but this code is not used in pycountry instead
+        # it uses "GB", so we need to convert it to "GB" in pycountry to get the country name
+        # and the subdivisions
+        countries_data: list[dict] = [
+            (countries.get(alpha_2=code) if code != "UK" else countries.get(alpha_2="GB"))
+            for code in holidays_subdivisions.keys()
+        ]
+
+        subdivisions_data: dict[str, list[str]] = {}
+
+        for country_code, country_subdivisions in holidays_subdivisions.items():
+            if country_subdivisions:
+                # Convert the country code to the pycountry format
+                # in holidays library, the alpha-2 code of United Kingdom is "UK"
+                # but this code is not used in pycountry instead it uses "GB"
+                # so we need to convert it to "GB" in pycountry to get the country name
+                # and the subdivisions
+                if country_code == "UK":
+                    country_code = "GB"
+
+                country_subdivisions_data = [
+                    subdivisions.get(code=f"{country_code}-{subdivision_code}")
+                    for subdivision_code in country_subdivisions
+                    if subdivisions.get(code=f"{country_code}-{subdivision_code}")
+                ]
+
+                subdivisions_data[country_code] = country_subdivisions_data
+
+        return self.parse_countries_data(
+            subdivisions_data=subdivisions_data,
+            countries_data=countries_data,
+            translate_to=language,
+        )

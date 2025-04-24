@@ -110,5 +110,14 @@ class _Response:
             status=HTTPStatus.UNPROCESSABLE_ENTITY,
         )
 
+    def server_error(self, message: str, uuid: str = "") -> web.Response:
+        log.error(f"({uuid}) -> {message}")
+        return web.json_response(
+            {
+                "detail": {"message": message},
+            },
+            status=HTTPStatus.INTERNAL_SERVER_ERROR,
+        )
+
 
 resp = _Response()
