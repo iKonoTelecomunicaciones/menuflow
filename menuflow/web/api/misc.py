@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import ast
+import html
 import traceback
 from logging import Logger, getLogger
 
@@ -142,6 +144,12 @@ async def check_jinja_template(request: web.Request) -> web.Response:
     except Exception as e:
         log.exception(e)
         return resp.bad_request(str(e), trace_id)
+
+    try:
+        temp_rendered = html.unescape(temp_rendered)
+        temp_rendered = ast.literal_eval(temp_rendered)
+    except Exception as e:
+        pass
 
     return resp.ok({"rendered": temp_rendered}, trace_id)
 
