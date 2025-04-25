@@ -1,0 +1,2 @@
+class GettingDataError(Exception):
+    pass

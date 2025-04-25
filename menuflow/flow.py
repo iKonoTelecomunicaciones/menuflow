@@ -9,6 +9,7 @@ from .config import Config
 from .flow_utils import FlowUtils
 from .middlewares import ASRMiddleware, HTTPMiddleware, IRMMiddleware, LLMMiddleware, TTMMiddleware
 from .nodes import (
+    CheckHoliday,
     CheckTime,
     Delay,
     Email,
@@ -186,6 +187,10 @@ class Flow:
         elif node_data.get("type") == "check_time":
             node_initialized = CheckTime(
                 check_time_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
+        elif node_data.get("type") == "check_holiday":
+            node_initialized = CheckHoliday(
+                check_holiday_data=node_data, room=room, default_variables=self.flow_variables
             )
         elif node_data.get("type") == "http_request":
             node_initialized = HTTPRequest(

@@ -3,6 +3,7 @@ from mautrix.types import SerializableEnum
 
 class Nodes(SerializableEnum):
     check_time = "check_time"
+    check_holiday = "check_holiday"
     email = "email"
     http_request = "http_request"
     input = "input"

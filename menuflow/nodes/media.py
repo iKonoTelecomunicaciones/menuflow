@@ -141,6 +141,9 @@ class Media(Message):
         o_connection = await self.get_o_connection()
         try:
             media_message = self.media_cache[self.url]
+
+            if media_message.body != self.text:
+                media_message.body = self.text
         except KeyError:
             media_message = await self.load_media()
             if media_message is None:

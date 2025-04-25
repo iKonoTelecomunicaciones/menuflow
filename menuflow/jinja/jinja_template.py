@@ -5,12 +5,19 @@ from fuzzywuzzy import fuzz
 from jinja2 import BaseLoader, Environment
 from jinja2_ansible_filters import AnsibleCoreFiltersExtension
 
+from .jinja_filters import strftime_tz
 from .matrix_filters import MatrixFilters
 
 jinja_env = Environment(
     autoescape=True,
     loader=BaseLoader,
-    extensions=[AnsibleCoreFiltersExtension, MatrixFilters],
+    extensions=[
+        AnsibleCoreFiltersExtension,
+        MatrixFilters,
+        "jinja2.ext.debug",
+        "jinja2.ext.do",
+        "jinja2.ext.loopcontrols",
+    ],
 )
 
 jinja_env.globals.update(utcnow_isoformat=lambda: datetime.utcnow().isoformat())
@@ -49,4 +56,11 @@ jinja_env.globals.update(
 Validates if a text is similar to another text
 e.g
 {{ compare_ratio("Esteban Galvis", "Esteban Galvis Triana") }}
+"""
+
+jinja_env.filters["strftime_tz"] = strftime_tz
+"""
+Formats the current time according to the timezone
+e.g
+{{ "%d %m %Y" | strftime_tz("America/Bogota") }}
 """
