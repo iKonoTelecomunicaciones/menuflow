@@ -5,8 +5,8 @@ from logging import getLogger
 from re import match, sub
 from typing import Dict
 
-import jq
 import holidays
+import jq
 from babel import Locale
 from mautrix.types import RoomID, UserID
 from mautrix.util.logging import TraceLogger
@@ -235,7 +235,6 @@ class Util:
         else:
             # If it's not a string, list or dictionary, return the value as is
             return value
-
 
     @classmethod
     def is_holiday(cls, date: datetime, country_code: str, subdivision_code: str) -> bool:
