@@ -106,6 +106,10 @@ class Switch(Base):
 
         if update_state:
             await self.room.update_menu(o_connection)
+        if not o_connection:
+            self.log.warning(f"o_connection is None in the switch node [{self.id}]")
+            await self.room.update_menu(node_id=self.id)
+            return
 
         if generate_event:
             await send_node_event(

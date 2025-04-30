@@ -53,6 +53,7 @@ class InteractiveInput(Input):
         if self.room.route.state == RouteState.INPUT:
             if not evt or not self.variable:
                 self.log.warning("A problem occurred to trying save the variable")
+                await self.room.update_menu(node_id=self.id)
                 return
 
             o_connection = await self.input_text(text=evt.content.body)
