@@ -10,7 +10,7 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import HTTPRequest as HTTPRequestModel
 from ..room import Room
-from ..utils import Nodes
+from ..utils import Nodes, Util
 from .switch import Switch
 
 if TYPE_CHECKING:
@@ -188,28 +188,46 @@ class HTTPRequest(Switch):
         except ContentTypeError:
             response_data = await response.text()
 
-        if isinstance(response_data, dict) or isinstance(response_data, list):
-            if self.http_variables:
-                for variable in self.http_variables:
-                    expr = parse(self.http_variables[variable])
-                    data_match: List = [match.value for match in expr.find(response_data)]
-
-                    if not data_match:
-                        continue
-
-                    try:
-                        variables[variable] = data_match if len(data_match) > 1 else data_match[0]
-                    except KeyError:
-                        pass
-        elif isinstance(response_data, str):
-            if self.http_variables:
-                for variable in self.http_variables:
+        if isinstance(response_data, (dict, list, str)) and self.http_variables:
+            for variable in self.http_variables:
+                if isinstance(response_data, str):
                     try:
                         variables[variable] = self.render_data(response_data)
                     except KeyError:
                         pass
-
                     break
+                else:
+                    default_value = self.default_variables.get("flow").get("jq_default_value")
+                    if not self.default_variables.get("flow").get("jq_syntax"):
+                        try:
+                            data_match = []
+                            expr = parse(self.http_variables[variable])
+                            data_match: List = [match.value for match in expr.find(response_data)]
+                        except Exception as error:
+                            self.log.error(
+                                f"""Error parsing '{self.http_variables[variable]}' with jsonpath
+                                on variable '{variable}'. Set to default value ({default_value}).
+                                Error message: {error}"""
+                            )
+                    else:
+                        jq_result: dict = Util.jq_compile(
+                            self.http_variables[variable], response_data
+                        )
+                        if jq_result.get("status") != 200:
+                            self.log.error(
+                                f"""Error parsing '{self.http_variables[variable]}' with jq
+                                on variable '{variable}'. Set to default value ({default_value}).
+                                Error message: {jq_result.get("error")}, Status: {jq_result.get("status")}"""
+                            )
+                        data_match = jq_result.get("result")
+
+                    try:
+                        data_match = default_value if not data_match else data_match
+                        variables[variable] = (
+                            data_match if not data_match or len(data_match) > 1 else data_match[0]
+                        )
+                    except KeyError:
+                        pass
 
         o_connection = await self.get_case_by_id(id=response.status)
         await self.room.update_menu(

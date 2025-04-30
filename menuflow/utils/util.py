@@ -6,6 +6,7 @@ from re import match, sub
 from typing import Dict
 
 import holidays
+import jq
 from babel import Locale
 from mautrix.types import RoomID, UserID
 from mautrix.util.logging import TraceLogger
@@ -13,10 +14,11 @@ from pycountry import countries, subdivisions
 
 from ..config import Config
 
+log: TraceLogger = getLogger("menuflow.util")
+
 
 class Util:
     config: Config
-    log: TraceLogger = getLogger("menuflow.util")
     _main_matrix_regex = "[\\w-]+:[\\w.-]"
 
     def __init__(self, config: Config):
@@ -107,7 +109,7 @@ class Util:
         task = self.get_tasks_by_name(task_name)
         if task:
             task.cancel()
-            self.log.debug(f"TASK CANCEL -> {task_name}")
+            log.debug(f"TASK CANCEL -> {task_name}")
 
     @classmethod
     def is_within_range(self, number: int, start: int, end: int) -> bool:
@@ -129,7 +131,7 @@ class Util:
         """
 
         if not (number and start and end):
-            self.log.warning("Validation parameters can not be None, range validation failed")
+            log.warning("Validation parameters can not be None, range validation failed")
             return False
 
         return start <= number <= end
@@ -367,3 +369,28 @@ class Util:
             countries_data=countries_data,
             translate_to=language,
         )
+
+    @staticmethod
+    def jq_compile(filter: str, json_data: dict | list) -> dict:
+        """
+        It compiles a jq filter and json data into a jq command.
+        Parameters
+        ----------
+        filter : str
+            The jq filter to be applied.
+        json_data : dict | list
+            The JSON data to be filtered.
+        Returns
+        -------
+            A dictionary containing the filtered result, error message if any, and status code.
+        """
+
+        try:
+            status = 400
+            compiled = jq.compile(filter)
+            status = 421
+            filtered_result = compiled.input(json_data).all()
+        except Exception as error:
+            return {"result": [], "error": str(error), "status": status}
+
+        return {"result": filtered_result, "error": None, "status": 200}
