@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 
 class MatrixHandler(MatrixClient):
     message_group_by_room: Dict[RoomID, list[MessageEvent]] = {}
+    ROOMS_TRACEBACK: Dict = {}
 
     def __init__(
         self, config: Config, flow: Flow, flow_utils: Optional[FlowUtils] = None, *args, **kwargs
@@ -192,48 +193,115 @@ class MatrixHandler(MatrixClient):
             f"Incoming message [user: {message.sender}] [message: {message.content.body}] [room_id: {message.room_id}]"
         )
 
-        # Message edits are ignored
-        if (
-            message.content._relates_to
-            and message.content._relates_to.rel_type
-            and message.content._relates_to.rel_type == RelationType.REPLACE
-        ):
+        task_name = f"{message.room_id}_message_traceback"
+        if message.room_id not in self.ROOMS_TRACEBACK:
+            self.log.critical(f"Adding room {message.room_id} to message traceback")
+            self.ROOMS_TRACEBACK[message.room_id] = {
+                "message_counter": 0,
+                "ignore": False,
+                "tempo": 0,
+            }
+
+        ################################
+        runing_task = False
+        for task in asyncio.all_tasks():
+            if task.get_name() == task_name:
+                if not task.done():
+                    self.log.warning(f"Task {task_name} already running")
+                    runing_task = True
+                else:
+                    self.log.warning(f"Task {task_name} finished")
+                    del self.ROOMS_TRACEBACK[message.room_id]
+                break
+            else:
+                loop = asyncio.get_event_loop()
+                break
+
+        def conversation_status(ignore: Optional[bool] = False):
+            if not runing_task:
+                if not ignore:
+                    asyncio.create_task(
+                        self.check_message_limit(room_id=message.room_id),
+                        name=task_name,
+                    )
+                else:
+                    asyncio.create_task(
+                        self.restore_state(room_id=message.room_id),
+                        name=task_name,
+                    )
+                    self.ROOMS_TRACEBACK[message.room_id]["tempo"] += 1
+
+        ##################################
+        if self.ROOMS_TRACEBACK[message.room_id]["ignore"] is False:
+
+            if self.ROOMS_TRACEBACK[message.room_id]["tempo"] == 2:
+                return
+
+            if self.ROOMS_TRACEBACK[message.room_id]["ignore"] is False:
+                self.log.critical(self.ROOMS_TRACEBACK[message.room_id])
+                self.ROOMS_TRACEBACK[message.room_id]["message_counter"] += 1
+
+                loop.call_later(7, conversation_status)
+
+            # Message edits are ignored
+            if (
+                message.content._relates_to
+                and message.content._relates_to.rel_type
+                and message.content._relates_to.rel_type == RelationType.REPLACE
+            ):
+                return
+
+            # Ignore bot messages
+            if (
+                self.util.ignore_user(mxid=message.sender, origin="message")
+                or message.sender == self.mxid
+                or message.content.msgtype == MessageType.NOTICE
+            ):
+                self.log.debug(
+                    f"This incoming message from {message.room_id} will be ignored :: {message.content.body}"
+                )
+                return
+
+            current_message_time = datetime.fromtimestamp(message.timestamp / 1000)
+            last_message_time = self.LAST_RECEIVED_MESSAGE.get(message.room_id)
+            if (
+                last_message_time
+                and (current_message_time - last_message_time).seconds
+                < self.config["menuflow.message_rate_limit"]
+            ):
+                self.log.warning(f"Message in {message.room_id} ignored due to rate limit")
+                return
+
+            self.LAST_RECEIVED_MESSAGE[message.room_id] = current_message_time
+            room: Room = await Room.get_by_room_id(room_id=message.room_id, bot_mxid=self.mxid)
+            room.config = self.config = self.config
+            room.matrix_client = self
+
+            if not room:
+                return
+
+            if room.room_id in Room.pending_invites:
+                self.log.warning(f"Ignoring message in {room.room_id} pending invite")
+                return
+
+            await self.algorithm(room=room, evt=message)
+
+        else:
+            loop.call_later(60, conversation_status, True)
+
+    async def check_message_limit(self, room_id: str):
+        self.log.critical("************************************* INICIANDO CHECK MESSAGE LIMIT")
+        if self.ROOMS_TRACEBACK[room_id]["message_counter"] >= 10:
+            self.log.critical(f"Message ignored in {room_id} due to message limit (20)")
+            self.ROOMS_TRACEBACK[room_id]["ignore"] = True
             return
 
-        # Ignore bot messages
-        if (
-            self.util.ignore_user(mxid=message.sender, origin="message")
-            or message.sender == self.mxid
-            or message.content.msgtype == MessageType.NOTICE
-        ):
-            self.log.debug(
-                f"This incoming message from {message.room_id} will be ignored :: {message.content.body}"
-            )
-            return
-
-        current_message_time = datetime.fromtimestamp(message.timestamp / 1000)
-        last_message_time = self.LAST_RECEIVED_MESSAGE.get(message.room_id)
-        if (
-            last_message_time
-            and (current_message_time - last_message_time).seconds
-            < self.config["menuflow.message_rate_limit"]
-        ):
-            self.log.warning(f"Message in {message.room_id} ignored due to rate limit")
-            return
-
-        self.LAST_RECEIVED_MESSAGE[message.room_id] = current_message_time
-        room: Room = await Room.get_by_room_id(room_id=message.room_id, bot_mxid=self.mxid)
-        room.config = self.config = self.config
-        room.matrix_client = self
-
-        if not room:
-            return
-
-        if room.room_id in Room.pending_invites:
-            self.log.warning(f"Ignoring message in {room.room_id} pending invite")
-            return
-
-        await self.algorithm(room=room, evt=message)
+    async def restore_state(self, room_id: str):
+        self.log.critical("************************************* INICIANDO RESTORE STATE")
+        self.log.critical(f"Restoring state in {room_id} after message limit (20)")
+        self.ROOMS_TRACEBACK[room_id]["ignore"] = False
+        self.ROOMS_TRACEBACK[room_id]["message_counter"] = 0
+        return
 
     async def group_message(self, room: Room, message: MessageEvent, node: Node) -> bool:
         """This function groups messages together based on the group_messages_timeout parameter.
