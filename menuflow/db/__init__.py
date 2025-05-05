@@ -7,11 +7,12 @@ from .migrations import upgrade_table
 from .room import Room
 from .route import Route
 from .user import User
+from .webhook import Webhook
 
 
 def init(db: Database) -> None:
-    for table in (Room, User, Client, Route, Flow, FlowBackup):
+    for table in (Room, User, Client, Route, Flow, FlowBackup, Webhook):
         table.db = db
 
 
-__all__ = ["upgrade_table", "Room", "User", "Client", "Route", "Flow", "FlowBackup"]
+__all__ = ["upgrade_table", "Room", "User", "Client", "Route", "Flow", "FlowBackup", "Webhook"]

@@ -103,3 +103,22 @@ async def upgrade_v6(conn: Connection) -> None:
             created_at  TIMESTAMP  WITH TIME ZONE DEFAULT now()
         )"""
     )
+
+@upgrade_table.register(description="Add new table webhook")
+async def upgrade_v7(conn: Connection) -> None:
+    await conn.execute(
+        """CREATE TABLE webhook (
+            id          SERIAL PRIMARY KEY,
+            room_id     TEXT NOT NULL,
+            client      TEXT NOT NULL,
+            filter      TEXT NOT NULL,
+            subscription_time   TIMESTAMP  WITH TIME ZONE DEFAULT now()
+        )"""
+    )
+    await conn.execute("CREATE INDEX ind_webhook_room ON webhook (room_id)")
+    await conn.execute(
+        "ALTER TABLE webhook ADD CONSTRAINT FK_room_webhook FOREIGN KEY (room_id) references room (room_id)"
+    )
+    await conn.execute(
+        "ALTER TABLE webhook ADD CONSTRAINT FK_client_webhook FOREIGN KEY (client) references client (id)"
+    )
