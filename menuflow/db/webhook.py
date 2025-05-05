@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar, Dict
+from typing import TYPE_CHECKING, ClassVar
 
 from asyncpg import Record
 from attr import dataclass
@@ -8,7 +8,6 @@ from mautrix.types import RoomID, UserID
 from mautrix.util.async_db import Database
 
 fake_db = Database.create("") if TYPE_CHECKING else None
-
 
 @dataclass
 class Webhook:
@@ -22,11 +21,6 @@ class Webhook:
 
     @classmethod
     def _from_row(cls, row: Record) -> Webhook | None:
-        import logging
-
-        log = logging.getLogger("menuflow.webhook")
-
-        log.critical(f">>>>>>>>>>Webhook row: {row}")
         return cls(**row)
 
     @property

@@ -62,10 +62,13 @@ async def handle_request(request: web.Request) -> web.Response:
     webhook_task = asyncio.create_task(Webhook.handle_webhook_event(webhook_event))
 
     try:
-        results = await asyncio.gather(webhook_task, return_exceptions=True)
+        #TODO: Delete the asyncio gather
+        results = await asyncio.gather(webhook_task)
         log.critical(f"Resultados: {results}")
     except Exception as e:
-        log.critical("Error:", e)
+        log.critical(f"*****************************************Error in webhook task: {e}")
+        log.exception(e)
+        log.critical(f"Error: {e}")
 
     return resp.ok(
         data={"detail": {"message": "Webhook event received", "data": data}},

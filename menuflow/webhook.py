@@ -1,5 +1,5 @@
+import json
 import logging
-from menuflow import web
 from menuflow.menu import MenuClient
 from menuflow.room import Room
 from mautrix.util.logging import TraceLogger
@@ -7,15 +7,22 @@ from mautrix.util.logging import TraceLogger
 from menuflow.utils.util import Util
 from .db import Webhook as DBWhebhook
 from mautrix.types import RoomID
+from collections import deque
 
 
 class Webhook(DBWhebhook):
     by_room_id: dict[RoomID, "Webhook"] = {}
     log: TraceLogger = logging.getLogger("menuflow.webhook")
 
-    def __init__(self, room_id: RoomID, client: str, filter: str, subscription_time: int):
+    def __init__(
+        self, room_id: RoomID, client: str, filter: str, subscription_time: int, id: int = None
+    ) -> None:
         super().__init__(
-            room_id=room_id, client=client, filter=filter, subscription_time=subscription_time
+            id=id,
+            room_id=room_id,
+            client=client,
+            filter=filter,
+            subscription_time=subscription_time,
         )
         self.by_room_id[room_id] = self
 
@@ -53,19 +60,19 @@ class Webhook(DBWhebhook):
         if not cls.by_room_id:
             cls.log.critical(f">>>>>>>>>>Webhooks")
 
-            whebhooks_data = await cls.get_all_data()
+            whebhooks_data = await DBWhebhook.get_all_data()
 
             cls.log.critical(f">>>>>>>>>>Webhooks data: {whebhooks_data}")
 
-            if whebhooks_data:
+            if isinstance(whebhooks_data, list) and len(whebhooks_data) > 0:
                 for whebhook_data in whebhooks_data:
-                    room = cls(
+                    whebhook = cls(
                         whebhook_data.room_id,
                         whebhook_data.client,
                         whebhook_data.filter,
                         whebhook_data.subscription_time,
                     )
-                    cls.by_room_id[room.room_id] = room
+                    cls.by_room_id[whebhook.room_id] = whebhook
 
         return cls.by_room_id
 
@@ -100,7 +107,13 @@ class Webhook(DBWhebhook):
             cls.log.debug(f"Room {data.room_id} not found")
             return False
 
-        if not room.route or not room.route.filter:
+        variables = json.loads(room.route.variables)
+        cls.log.critical(f"room.route: {room.route}")
+        cls.log.critical(f"room.route.variables: {room.route.variables}")
+        cls.log.critical(f"room.route.variables type: {type(variables)}")
+        cls.log.critical(f"event_data: {event_data}")
+
+        if not room.route or not "filter" in variables.keys():
             cls.log.debug(f"Room {room.room_id} does not have a route filter")
             return False
 
@@ -112,17 +125,10 @@ class Webhook(DBWhebhook):
         if jq_result.get("status") != 200:
             cls.log.error(
                 f"""Error parsing '{filter}' with jq on variable '{event_data}'.
-                Error message: {jq_result.get("error")}, Status: {jq_result.get("status")}"""
+                Error message: {jq_result.get("error")}, Status: {jq_result.get("status")}
+                Room_id: {room.room_id}, Client: {room.client}
+                """
             )
-            return False
-
-        data_match = jq_result.get("result")
-
-        cls.log.critical(f"Data match: {data_match}")
-        cls.log.critical(f"room.route.filter: {room.route.filter}")
-
-        if not room.route.filter == data_match:
-            cls.log.debug(f"Room {room.room_id} does not match the filter")
             return False
 
         return True
@@ -154,14 +160,18 @@ class Webhook(DBWhebhook):
             cls.log.debug("No rooms waiting for webhook event")
             return
 
+        webhooks_to_delete = deque()
+
         for whebhook in whebhook_data.values():
             room = await Room.get_by_room_id(room_id=whebhook.room_id, bot_mxid=whebhook.client)
 
-            cls.log.critical(f"Webhook data: {whebhook.room_id} - {whebhook.client} - {whebhook.filter}")
+            cls.log.critical(
+                f"Webhook data: {whebhook.room_id} - {whebhook.client} - {whebhook.filter}"
+            )
             cls.log.critical(f"Event data: {event}")
 
             if not cls.validate_webhook_filter(
-                room=room, filter=whebhook.filter, event_data=event.get("data")
+                room=room, filter=whebhook.filter, event_data=event
             ):
                 cls.log.debug(
                     f"Webhook filter does not match for room {room.room_id} and event {event}"
@@ -176,14 +186,21 @@ class Webhook(DBWhebhook):
                 continue
 
             # Get the node of the room
-            node = menu_client.matrix_handler.flow.node(room=room.room_id)
+            node = menu_client.matrix_handler.flow.node(room=room)
 
             cls.log.critical(f"Node: {node}")
 
             if not node:
                 cls.log.debug(f"Node not found for room {room.room_id}")
-            #TODO: Check if the node is a webhook node
+            # TODO: Check if the node is a webhook node
             # Execute event to the flow
 
-            # Delete the webhook from the database
-            await whebhook.remove()
+            webhooks_to_delete.append(whebhook)
+
+        cls.log.critical(f"Webhooks to delete: {webhooks_to_delete}")
+        # Remove the webhooks that are not needed anymore
+        while webhooks_to_delete:
+            webhook = webhooks_to_delete.popleft()
+            cls.log.critical(f"Removing webhook: {webhook}")
+            cls.log.debug(f"Removing webhook for room {webhook.room_id}")
+            await webhook.remove()

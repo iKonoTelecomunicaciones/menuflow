@@ -112,7 +112,7 @@ async def upgrade_v7(conn: Connection) -> None:
             room_id     TEXT NOT NULL,
             client      TEXT NOT NULL,
             filter      TEXT NOT NULL,
-            subscription_time   TIMESTAMP  WITH TIME ZONE DEFAULT now()
+            subscription_time   BIGINT NOT NULL
         )"""
     )
     await conn.execute("CREATE INDEX ind_webhook_room ON webhook (room_id)")
