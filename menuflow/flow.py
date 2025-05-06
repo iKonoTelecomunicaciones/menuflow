@@ -26,6 +26,7 @@ from .nodes import (
     SetVars,
     Subroutine,
     Switch,
+    Webhook
 )
 from .repository import Flow as FlowModel
 from .room import Room
@@ -48,6 +49,7 @@ Node = Union[
     Delay,
     GPTAssistant,
     FormInput,
+    Webhook,
 ]
 
 
@@ -244,6 +246,10 @@ class Flow:
         elif node_data.get("type") == "form":
             node_initialized = FormInput(
                 form_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
+        elif node_data.get("type") == "webhook":
+            node_initialized = Webhook(
+                webhook_data=node_data, room=room, default_variables=self.flow_variables
             )
         else:
             return

@@ -5,9 +5,10 @@ from logging import Logger, getLogger
 
 from aiohttp import web
 
+from ...webhook.webhook_handler import WebhookHandler
+
 from ..base import routes
 from ..responses import resp
-from ...webhook import Webhook
 
 log: Logger = getLogger("menuflow.api.webhook")
 
@@ -59,16 +60,7 @@ async def handle_request(request: web.Request) -> web.Response:
 
     webhook_event = data
 
-    webhook_task = asyncio.create_task(Webhook.handle_webhook_event(webhook_event))
-
-    try:
-        #TODO: Delete the asyncio gather
-        results = await asyncio.gather(webhook_task)
-        log.critical(f"Resultados: {results}")
-    except Exception as e:
-        log.critical(f"*****************************************Error in webhook task: {e}")
-        log.exception(e)
-        log.critical(f"Error: {e}")
+    asyncio.create_task(WebhookHandler.handle_webhook_event(webhook_event))
 
     return resp.ok(
         data={"detail": {"message": "Webhook event received", "data": data}},
