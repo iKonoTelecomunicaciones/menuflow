@@ -249,6 +249,14 @@ class Webhook(Input):
             )
             return False
 
+        if not jq_result.get("result")[0]:
+            self.log.debug(
+                f"Webhook filter does not match the event data for room {self.room.room_id}"
+            )
+            self.log.debug(f"Webhook filter: {webhook_filter}")
+            self.log.debug(f"Event data: {event_data}")
+            return False
+
         return True
 
     @property
@@ -304,6 +312,7 @@ class Webhook(Input):
 
         # Calculate the timeout
         time_out = time_out_db - int(time())
+        time_out = self.chat_timeout - abs(time_out)
 
         if time_out <= 0:
             return 0
@@ -323,8 +332,10 @@ class Webhook(Input):
             time_out_db=webhook.subscription_time,
         )
 
+        self.log.debug(f"Timeout: {time_out}")
+
         # wait the given time to start the task
-        await asyncio.sleep(self.chat_timeout - time_out)
+        await asyncio.sleep(time_out)
 
         self.log.debug(f"Inactivity loop: {datetime.now()} -> {self.room.room_id}")
 

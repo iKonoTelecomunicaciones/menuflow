@@ -56,7 +56,7 @@ class WebhookHandler():
                 cls.log.debug(f"Node not found for room {room.room_id}")
                 continue
 
-            if not node.id or node.id != "webhook_node":
+            if not node.type or node.type != "webhook":
                 webhooks_to_delete.append(whebhook)
                 cls.log.debug(f"Node is not a webhook node for room {room.room_id}")
                 continue
