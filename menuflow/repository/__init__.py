@@ -24,5 +24,5 @@ from .nodes import (
     SetVars,
     Subroutine,
     Switch,
-    Webhook
+    Webhook,
 )

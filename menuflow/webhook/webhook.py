@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import logging
+
+from mautrix.types import RoomID, UserID
 from mautrix.util.logging import TraceLogger
 
 from ..db import Webhook as DBWhebhook
-from mautrix.types import RoomID, UserID
 
 
 class Webhook(DBWhebhook):
@@ -70,7 +71,7 @@ class Webhook(DBWhebhook):
         return cls.by_room_id
 
     @classmethod
-    async def get_by_room_id_and_client(cls, room_id: RoomID, client: UserID ) -> "Webhook" | None:
+    async def get_by_room_id_and_client(cls, room_id: RoomID, client: UserID) -> "Webhook" | None:
         """
         This function retrieves the webhook data for a specific room ID and client ID from the
         cache or database.

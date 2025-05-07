@@ -26,7 +26,7 @@ from .nodes import (
     SetVars,
     Subroutine,
     Switch,
-    Webhook
+    Webhook,
 )
 from .repository import Flow as FlowModel
 from .room import Room

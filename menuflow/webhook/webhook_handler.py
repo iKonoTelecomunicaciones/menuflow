@@ -1,15 +1,16 @@
 import logging
+from collections import deque
+
+from mautrix.types import RoomID
+from mautrix.util.logging import TraceLogger
 
 from menuflow.menu import MenuClient
 from menuflow.room import Room
-from mautrix.util.logging import TraceLogger
-from mautrix.types import RoomID
-
-from collections import deque
 
 from .webhook import Webhook
 
-class WebhookHandler():
+
+class WebhookHandler:
     log: TraceLogger = logging.getLogger("menuflow.handler_webhook")
 
     @classmethod
@@ -61,9 +62,7 @@ class WebhookHandler():
                 cls.log.debug(f"Node is not a webhook node for room {room.room_id}")
                 continue
 
-            if not node.validate_webhook_filter(
-                 filter=whebhook.filter, event_data=event
-            ):
+            if not node.validate_webhook_filter(filter=whebhook.filter, event_data=event):
                 cls.log.debug(
                     f"Webhook filter {whebhook.filter} does not match for room {room.room_id} and event {event}"
                 )

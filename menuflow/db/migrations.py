@@ -104,6 +104,7 @@ async def upgrade_v6(conn: Connection) -> None:
         )"""
     )
 
+
 @upgrade_table.register(description="Add new table webhook")
 async def upgrade_v7(conn: Connection) -> None:
     await conn.execute(

@@ -1,19 +1,22 @@
-from ast import parse
 import asyncio
+from ast import parse
 from datetime import datetime
+from time import time
 from typing import Any
+
+from markdown import markdown
+from mautrix.types import Format, MessageEvent, MessageType, TextMessageEventContent
+
 from menuflow.db.route import RouteState
 from menuflow.events.event_generator import send_node_event
 from menuflow.events.event_types import MenuflowNodeEvents
 from menuflow.room import Room
 from menuflow.utils.types import Nodes
 from menuflow.utils.util import Util
-from .input import Input
+
 from ..repository import Webhook as WebhookModel
 from ..webhook.webhook import Webhook as ControllerWebhook
-from mautrix.types import MessageEvent, TextMessageEventContent, MessageType, Format
-from markdown import markdown
-from time import time
+from .input import Input
 
 
 class Webhook(Input):
@@ -154,7 +157,9 @@ class Webhook(Input):
                     msgtype=MessageType.TEXT,
                     body=self.validation_fail_message,
                     format=Format.HTML,
-                    formatted_body=markdown(text=self.validation_fail_message, extensions=["nl2br"]),
+                    formatted_body=markdown(
+                        text=self.validation_fail_message, extensions=["nl2br"]
+                    ),
                 )
                 await self.send_message(self.room.room_id, msg_content)
 

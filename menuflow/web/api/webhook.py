@@ -6,11 +6,11 @@ from logging import Logger, getLogger
 from aiohttp import web
 
 from ...webhook.webhook_handler import WebhookHandler
-
 from ..base import routes
 from ..responses import resp
 
 log: Logger = getLogger("menuflow.api.webhook")
+
 
 @routes.post("/v1/webhook/event")
 async def handle_request(request: web.Request) -> web.Response:
@@ -45,7 +45,6 @@ async def handle_request(request: web.Request) -> web.Response:
         '415':
             $ref: '#/components/responses/UnsupportedContentType'
     """
-    log.critical("Webhook event received")
     content_type = request.headers.get("Content-Type", default="")
 
     if not content_type.startswith("application/json") and not content_type.startswith(
@@ -59,6 +58,7 @@ async def handle_request(request: web.Request) -> web.Response:
         data = await request.post()
 
     webhook_event = data
+    log.info(f"Webhook event received {webhook_event}")
 
     asyncio.create_task(WebhookHandler.handle_webhook_event(webhook_event))
 

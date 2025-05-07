@@ -1,8 +1,11 @@
 from __future__ import annotations
+
 from typing import Any
 
 from attr import dataclass, ib
+
 from .input import InactivityOptions, Input
+
 
 @dataclass
 class Webhook(Input):
