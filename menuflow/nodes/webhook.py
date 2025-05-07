@@ -17,6 +17,7 @@ from time import time
 
 
 class Webhook(Input):
+    webhook_id: str = "webhook"
 
     def __init__(self, webhook_data: WebhookModel, room: Room, default_variables: dict) -> None:
         Input.__init__(
@@ -138,7 +139,10 @@ class Webhook(Input):
         evt : dict
             The event data.
         """
-        o_connection = await self.input_text(text=evt.content.body)
+        o_connection = None
+
+        if evt.content.body.lower() != self.webhook_id:
+            o_connection = await self.input_text(text=evt.content.body)
 
         if o_connection:
             self.log.debug(f"Deleting webhook from db: {self.room.room_id}")
@@ -173,7 +177,7 @@ class Webhook(Input):
         if variables:
             await self.room.set_variables(variables=variables)
 
-        o_connection = await self.get_case_by_id("webhook")
+        o_connection = await self.get_case_by_id(self.webhook_id)
         await self.send_node_event(
             o_connection=o_connection, event_type=MenuflowNodeEvents.NodeInputData
         )
