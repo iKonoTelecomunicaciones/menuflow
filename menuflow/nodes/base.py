@@ -169,14 +169,14 @@ class Base:
             try:
                 evaluated_body = temp_rendered
                 evaluated_body = html.unescape(temp_rendered.replace("'", '"'))
-                evaluated_body = ast.literal_eval(evaluated_body)
+                literal_eval_body = ast.literal_eval(evaluated_body)
             except Exception as e:
                 self.log.debug(
                     f"Error evaluating body: {e}, \nbody: {temp_rendered}",
                 )
             else:
-                if isinstance(evaluated_body, (dict, list)):
-                    return self.render_data(evaluated_body)
+                if isinstance(literal_eval_body, (dict, list)):
+                    return literal_eval_body
             return evaluated_body
         else:
             return data
