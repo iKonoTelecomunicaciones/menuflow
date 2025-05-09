@@ -53,6 +53,20 @@ menuflow:
     # State key to identify the m.bridge event in the new way of identify the creator of the room
     mautrix_state_key: example.com/mx_whatsapp
 
+    # This section is used to handle and avoid a menubot war with external bots
+    bot_war:
+        # The time when we're going to check if the message limit is reached after of the first message
+        init_checker_limit_timer: 10
+        # The message threshold to consider that it's a bot war if the limit is reached between the checker limit timer
+        message_threshold: 10
+        # The time to ignore and restore the conversation after to check if the message limit is reached
+        time_to_ignore: 30
+        # This multiplier is used to increase the time to ignore the conversation
+        time_multiplier: 2
+        # The sometimes when the conversations are ignored. If this value is higher, the time to ignore increases.
+        # This value also will be used to tag and ignore definitely the conversation while a supervisor takes a decision
+        sometimes_ignored_threshold: 3
+
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0

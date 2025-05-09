@@ -193,55 +193,44 @@ class MatrixHandler(MatrixClient):
             f"Incoming message [user: {message.sender}] [message: {message.content.body}] [room_id: {message.room_id}]"
         )
 
-        task_name = f"{message.room_id}_message_traceback"
         if message.room_id not in self.ROOMS_TRACEBACK:
-            self.log.critical(f"Adding room {message.room_id} to message traceback")
+            self.log.debug(f"Adding room {message.room_id} to message traceback")
             self.ROOMS_TRACEBACK[message.room_id] = {
                 "message_counter": 0,
                 "ignore": False,
-                "tempo": 0,
+                "sometimes_ignored": 0,
+                "time_to_ignore": self.config["menuflow.bot_war.time_to_ignore"],
+                "running_limit_task": False,
+                "running_restore_task": False,
+                "task_name": f"{message.room_id}_message_traceback",
             }
 
-        ################################
-        runing_task = False
-        for task in asyncio.all_tasks():
-            if task.get_name() == task_name:
-                if not task.done():
-                    self.log.warning(f"Task {task_name} already running")
-                    runing_task = True
-                else:
-                    self.log.warning(f"Task {task_name} finished")
-                    del self.ROOMS_TRACEBACK[message.room_id]
-                break
-            else:
-                loop = asyncio.get_event_loop()
-                break
+        running_limit_task = self.ROOMS_TRACEBACK[message.room_id]["running_limit_task"]
+        running_restore_task = self.ROOMS_TRACEBACK[message.room_id]["running_restore_task"]
+        task_name = self.ROOMS_TRACEBACK[message.room_id]["task_name"]
+        time_to_ignore = self.ROOMS_TRACEBACK[message.room_id]["time_to_ignore"]
+        checker_limit_timer = self.config["menuflow.bot_war.init_checker_limit_timer"]
+
+        if running_limit_task is False or running_restore_task is False:
+            loop = asyncio.get_event_loop()
 
         def conversation_status(ignore: Optional[bool] = False):
-            if not runing_task:
-                if not ignore:
-                    asyncio.create_task(
-                        self.check_message_limit(room_id=message.room_id),
-                        name=task_name,
-                    )
-                else:
-                    asyncio.create_task(
-                        self.restore_state(room_id=message.room_id),
-                        name=task_name,
-                    )
-                    self.ROOMS_TRACEBACK[message.room_id]["tempo"] += 1
+            if not ignore:
+                asyncio.create_task(
+                    self.check_message_limit(room_id=message.room_id),
+                    name=task_name,
+                )
+            else:
+                asyncio.create_task(
+                    self.restore_state(room_id=message.room_id),
+                    name=task_name,
+                )
 
-        ##################################
         if self.ROOMS_TRACEBACK[message.room_id]["ignore"] is False:
 
-            if self.ROOMS_TRACEBACK[message.room_id]["tempo"] == 2:
-                return
-
-            if self.ROOMS_TRACEBACK[message.room_id]["ignore"] is False:
-                self.log.critical(self.ROOMS_TRACEBACK[message.room_id])
-                self.ROOMS_TRACEBACK[message.room_id]["message_counter"] += 1
-
-                loop.call_later(7, conversation_status)
+            if running_limit_task is False:
+                self.ROOMS_TRACEBACK[message.room_id]["running_limit_task"] = True
+                loop.call_later(checker_limit_timer, conversation_status)
 
             # Message edits are ignored
             if (
@@ -272,6 +261,7 @@ class MatrixHandler(MatrixClient):
                 self.log.warning(f"Message in {message.room_id} ignored due to rate limit")
                 return
 
+            self.ROOMS_TRACEBACK[message.room_id]["message_counter"] += 1
             self.LAST_RECEIVED_MESSAGE[message.room_id] = current_message_time
             room: Room = await Room.get_by_room_id(room_id=message.room_id, bot_mxid=self.mxid)
             room.config = self.config = self.config
@@ -287,21 +277,41 @@ class MatrixHandler(MatrixClient):
             await self.algorithm(room=room, evt=message)
 
         else:
-            loop.call_later(60, conversation_status, True)
+            if running_restore_task is False:
+                self.log.warning(f"Ignoring messages for {time_to_ignore} seconds...")
+                self.ROOMS_TRACEBACK[message.room_id]["running_restore_task"] = True
+                loop.call_later(time_to_ignore, conversation_status, True)
 
     async def check_message_limit(self, room_id: str):
-        self.log.critical("************************************* INICIANDO CHECK MESSAGE LIMIT")
+        self.log.debug(f"Checking message limit for room {room_id}...")
         if self.ROOMS_TRACEBACK[room_id]["message_counter"] >= 10:
-            self.log.critical(f"Message ignored in {room_id} due to message limit (20)")
+            self.log.warning(
+                f"Message limit reached for room {room_id}, the messages will be ignored"
+            )
             self.ROOMS_TRACEBACK[room_id]["ignore"] = True
-            return
+            self.ROOMS_TRACEBACK[room_id]["sometimes_ignored"] += 1
+        else:
+            self.ROOMS_TRACEBACK[room_id]["running_limit_task"] = False
 
     async def restore_state(self, room_id: str):
-        self.log.critical("************************************* INICIANDO RESTORE STATE")
-        self.log.critical(f"Restoring state in {room_id} after message limit (20)")
         self.ROOMS_TRACEBACK[room_id]["ignore"] = False
         self.ROOMS_TRACEBACK[room_id]["message_counter"] = 0
-        return
+        self.ROOMS_TRACEBACK[room_id]["running_limit_task"] = False
+        self.ROOMS_TRACEBACK[room_id]["running_restore_task"] = False
+
+        self.log.warning(f"Restoring state for room {room_id} to unignore messages")
+        if (
+            self.ROOMS_TRACEBACK[room_id]["sometimes_ignored"]
+            == self.config["menuflow.bot_war.sometimes_ignored_threshold"]
+        ):
+            self.ROOMS_TRACEBACK[room_id]["sometimes_ignored"] = 0
+            self.ROOMS_TRACEBACK[room_id]["time_to_ignore"] = self.config[
+                "menuflow.bot_war.time_to_ignore"
+            ]
+        else:
+            self.ROOMS_TRACEBACK[room_id]["time_to_ignore"] *= self.config[
+                "menuflow.bot_war.time_multiplier"
+            ]
 
     async def group_message(self, room: Room, message: MessageEvent, node: Node) -> bool:
         """This function groups messages together based on the group_messages_timeout parameter.
