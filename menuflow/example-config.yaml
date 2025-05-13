@@ -65,7 +65,12 @@ menuflow:
         time_multiplier: 2
         # The sometimes when the conversations are ignored. If this value is higher, the time to ignore increases.
         # This value also will be used to tag and ignore definitely the conversation while a supervisor takes a decision
-        sometimes_ignored_threshold: 3
+        ignored_counter_threshold: 3
+        # The tag data to identify a conversation as a bot
+        tag_data:
+            id: "!jnMhGVDjyXCShxfQKl:darknet"
+            text: "bot"
+            color: "#38d66d"
 
 server:
     # The IP and port to listen to.

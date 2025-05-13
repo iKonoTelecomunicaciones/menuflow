@@ -189,6 +189,11 @@ class MatrixHandler(MatrixClient):
         await self.algorithm(room=room)
 
     async def handle_message(self, message: MessageEvent) -> None:
+
+        if await self.is_a_bot(room_id=message.room_id):
+            self.log.debug(f"The room {message.room_id} is a bot, ignoring messages...")
+            return
+
         self.log.debug(
             f"Incoming message [user: {message.sender}] [message: {message.content.body}] [room_id: {message.room_id}]"
         )
@@ -198,7 +203,7 @@ class MatrixHandler(MatrixClient):
             self.ROOMS_TRACEBACK[message.room_id] = {
                 "message_counter": 0,
                 "ignore": False,
-                "sometimes_ignored": 0,
+                "ignored_counter": 0,
                 "time_to_ignore": self.config["menuflow.bot_war.time_to_ignore"],
                 "running_limit_task": False,
                 "running_restore_task": False,
@@ -289,7 +294,7 @@ class MatrixHandler(MatrixClient):
                 f"Message limit reached for room {room_id}, the messages will be ignored"
             )
             self.ROOMS_TRACEBACK[room_id]["ignore"] = True
-            self.ROOMS_TRACEBACK[room_id]["sometimes_ignored"] += 1
+            self.ROOMS_TRACEBACK[room_id]["ignored_counter"] += 1
         else:
             self.ROOMS_TRACEBACK[room_id]["running_limit_task"] = False
 
@@ -301,10 +306,10 @@ class MatrixHandler(MatrixClient):
 
         self.log.warning(f"Restoring state for room {room_id} to unignore messages")
         if (
-            self.ROOMS_TRACEBACK[room_id]["sometimes_ignored"]
-            == self.config["menuflow.bot_war.sometimes_ignored_threshold"]
+            self.ROOMS_TRACEBACK[room_id]["ignored_counter"]
+            == self.config["menuflow.bot_war.ignored_counter_threshold"]
         ):
-            self.ROOMS_TRACEBACK[room_id]["sometimes_ignored"] = 0
+            self.ROOMS_TRACEBACK[room_id]["ignored_counter"] = 0
             self.ROOMS_TRACEBACK[room_id]["time_to_ignore"] = self.config[
                 "menuflow.bot_war.time_to_ignore"
             ]
@@ -320,11 +325,7 @@ class MatrixHandler(MatrixClient):
             await self.api.session.put(
                 url=f"{self.api.base_url}/_matrix/client/v3/rooms/{room_id}/state/ik.chat.tag/",
                 headers={"Authorization": f"Bearer {self.api.token}"},
-                json={
-                    "tags": [
-                        {"id": "!jnMhGVDjyXCShxfQKl:darknet", "text": "bot", "color": "#38d66d"}
-                    ]
-                },
+                json={"tags": [self.config["menuflow.bot_war.tag_data"]]},
                 params={"user_id": self.mxid},
             )
         except Exception as error:
@@ -341,20 +342,26 @@ class MatrixHandler(MatrixClient):
                 f"Error adding portal {room_id} to space !jnMhGVDjyXCShxfQKl:darknet: {error}"
             )
 
-    # async def is_a_bot(self, room_id: str) -> bool:
-    #     try:
-    #         conversation_tags = await self.api.session.get(
-    #             url=f"{self.api.base_url}/_matrix/client/v3/user/{self.mxid}/rooms/{room_id}/tags",
-    #             headers={"Authorization": f"Bearer {self.api.token}"},
-    #         )
-    #     except Exception as error:
-    #         self.log.error(f"Error checking if the {room_id} is a bot: {error}")
+    async def is_a_bot(self, room_id: str) -> bool:
+        try:
+            conversation_tags = await self.api.session.get(
+                url=f"{self.api.base_url}/_matrix/client/v3/rooms/{room_id}/state",
+                headers={"Authorization": f"Bearer {self.api.token}"},
+            )
+        except Exception as error:
+            self.log.error(f"Error checking if the {room_id} is a bot: {error}")
 
-    #     if conversation_tags:
-    #         conversation_tags = await conversation_tags.json()
-    #         self.log.critical(f"#################################################################")
-    #         self.log.critical(f"{conversation_tags=}")
-    #         self.log.critical(f"#################################################################")
+        if conversation_tags:
+            conversation_tags = await conversation_tags.json()
+            for room_event in conversation_tags:
+                if room_event.get("type") == "ik.chat.tag":
+                    content = room_event.get("content")
+                    if content:
+                        if content.get("tags"):
+                            for tag in content.get("tags"):
+                                if tag.get("text") == "bot":
+                                    return True
+        return False
 
     async def group_message(self, room: Room, message: MessageEvent, node: Node) -> bool:
         """This function groups messages together based on the group_messages_timeout parameter.
