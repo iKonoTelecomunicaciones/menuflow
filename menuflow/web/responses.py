@@ -133,7 +133,7 @@ class _Response:
         response_data = {"detail": {"message": message}}
 
         if data:
-            response_data["detail"] |= { "data": data }
+            response_data["detail"] |= {"data": data}
 
         return web.json_response(
             response_data,
