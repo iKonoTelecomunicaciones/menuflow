@@ -308,10 +308,53 @@ class MatrixHandler(MatrixClient):
             self.ROOMS_TRACEBACK[room_id]["time_to_ignore"] = self.config[
                 "menuflow.bot_war.time_to_ignore"
             ]
+            await self.set_room_tag_bot(room_id=room_id)
         else:
             self.ROOMS_TRACEBACK[room_id]["time_to_ignore"] *= self.config[
                 "menuflow.bot_war.time_multiplier"
             ]
+
+    async def set_room_tag_bot(self, room_id: str):
+        self.log.debug(f"Setting room tag bot for {room_id}...")
+        try:
+            await self.api.session.put(
+                url=f"{self.api.base_url}/_matrix/client/v3/rooms/{room_id}/state/ik.chat.tag/",
+                headers={"Authorization": f"Bearer {self.api.token}"},
+                json={
+                    "tags": [
+                        {"id": "!jnMhGVDjyXCShxfQKl:darknet", "text": "bot", "color": "#38d66d"}
+                    ]
+                },
+                params={"user_id": self.mxid},
+            )
+        except Exception as error:
+            self.log.error(f"Error adding tag to portal {room_id}: {error}")
+
+        try:
+            await self.api.session.put(
+                url=f"{self.api.base_url}/_matrix/client/v3/rooms/!jnMhGVDjyXCShxfQKl:darknet/state/m.space.child/{room_id}",
+                headers={"Authorization": f"Bearer {self.api.token}"},
+                json={"via": [self.domain], "suggested": False},
+            )
+        except Exception as error:
+            self.log.error(
+                f"Error adding portal {room_id} to space !jnMhGVDjyXCShxfQKl:darknet: {error}"
+            )
+
+    # async def is_a_bot(self, room_id: str) -> bool:
+    #     try:
+    #         conversation_tags = await self.api.session.get(
+    #             url=f"{self.api.base_url}/_matrix/client/v3/user/{self.mxid}/rooms/{room_id}/tags",
+    #             headers={"Authorization": f"Bearer {self.api.token}"},
+    #         )
+    #     except Exception as error:
+    #         self.log.error(f"Error checking if the {room_id} is a bot: {error}")
+
+    #     if conversation_tags:
+    #         conversation_tags = await conversation_tags.json()
+    #         self.log.critical(f"#################################################################")
+    #         self.log.critical(f"{conversation_tags=}")
+    #         self.log.critical(f"#################################################################")
 
     async def group_message(self, room: Room, message: MessageEvent, node: Node) -> bool:
         """This function groups messages together based on the group_messages_timeout parameter.
