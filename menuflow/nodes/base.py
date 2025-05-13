@@ -168,7 +168,8 @@ class Base:
                 return None
             try:
                 evaluated_body = temp_rendered
-                evaluated_body = html.unescape(temp_rendered.replace("'", '"'))
+                evaluated_body = evaluated_body.replace("true", "True").replace("false", "False")
+                evaluated_body = html.unescape(evaluated_body.replace("'", '"'))
                 literal_eval_body = ast.literal_eval(evaluated_body)
             except Exception as e:
                 self.log.debug(
