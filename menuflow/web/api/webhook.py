@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from logging import Logger, getLogger
 
 from aiohttp import web
@@ -8,6 +7,7 @@ from aiohttp import web
 from ...webhook.webhook_handler import WebhookHandler
 from ..base import routes
 from ..responses import resp
+from ..util import Util
 
 log: Logger = getLogger("menuflow.api.webhook")
 
@@ -45,6 +45,7 @@ async def handle_request(request: web.Request) -> web.Response:
         '415':
             $ref: '#/components/responses/UnsupportedContentType'
     """
+    trace_id = Util.generate_uuid()
     content_type = request.headers.get("Content-Type", default="")
 
     if not content_type.startswith("application/json") and not content_type.startswith(
@@ -60,8 +61,11 @@ async def handle_request(request: web.Request) -> web.Response:
     webhook_event = data
     log.info(f"Webhook event received {webhook_event}")
 
-    asyncio.create_task(WebhookHandler.handle_webhook_event(webhook_event))
+    status, message = await WebhookHandler.handle_webhook_event(webhook_event)
 
-    return resp.ok(
-        data={"detail": {"message": "Webhook event received", "data": data}},
+    return resp.management_response(
+        message=message,
+        data=data,
+        status=status,
+        uuid=trace_id,
     )

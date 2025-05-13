@@ -368,37 +368,6 @@ class Webhook(Input):
         self.log.debug(f"Deleting webhook from db: {self.room.room_id}")
         await webhook.remove()
 
-    def validate_json_data(self, data: dict, variable: dict, default_value: dict) -> dict:
-        """
-        This function validates the JSON data for the webhook.
-
-        Parameters
-        ----------
-        data : dict
-            The JSON data to validate.
-        variable : dict
-            The variable to validate.
-        default_value : dict
-            The default value to use if the validation fails.
-        Returns
-        -------
-        dict
-            The validated JSON data.
-        """
-        try:
-            expr = parse(self.variables[variable], mode="eval")
-            key = expr.body.id
-            data_match = [data[key]]
-        except Exception as error:
-            self.log.error(
-                f"""Error parsing '{self.variables[variable]}' with jsonpath
-                on variable '{variable}'. Set to default value ({default_value}).
-                Error message: {error}"""
-            )
-            return []
-
-        return data_match
-
     def validate_jq_data(self, data: dict, variable: dict, default_value: dict) -> dict:
         """
         This function validates the jq data for the webhook.
@@ -450,14 +419,11 @@ class Webhook(Input):
 
             default_value = self.default_variables.get("flow").get("jq_default_value")
 
-            if not self.default_variables.get("flow").get("jq_syntax"):
-                data_match = self.validate_json_data(data, variable, default_value)
-            else:
-                data_match = self.validate_jq_data(
-                    data=data,
-                    variable=variable,
-                    default_value=default_value,
-                )
+            data_match = self.validate_jq_data(
+                data=data,
+                variable=variable,
+                default_value=None,
+            )
 
             try:
                 data_match = default_value if not data_match else data_match

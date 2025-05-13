@@ -126,5 +126,19 @@ class _Response:
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
         )
 
+    def management_response(
+        self, message: str, data: dict = None, status: int = 200, uuid: str = ""
+    ) -> web.Response:
+        log.debug(f"({uuid}) -> {message}")
+        response_data = {"detail": {"message": message}}
+
+        if data:
+            response_data["detail"] |= { "data": data }
+
+        return web.json_response(
+            response_data,
+            status=status,
+        )
+
 
 resp = _Response()
