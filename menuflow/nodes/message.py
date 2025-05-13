@@ -1,8 +1,8 @@
 from typing import Dict
 
 from markdown import markdown
-from mautrix.types import Format, MessageType, TextMessageEventContent
 from mautrix.errors.request import MForbidden
+from mautrix.types import Format, MessageType, TextMessageEventContent
 
 from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
@@ -80,9 +80,7 @@ class Message(Base):
             try:
                 await self.send_message(room_id=self.room.room_id, content=msg_content)
             except MForbidden as e:
-                self.log.error(
-                    f"Error sending message to {self.room.room_id}. Error: {e}"
-                )
+                self.log.error(f"Error sending message to {self.room.room_id}. Error: {e}")
                 await self._update_node(None)
                 return
 
