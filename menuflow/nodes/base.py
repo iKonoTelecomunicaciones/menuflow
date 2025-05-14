@@ -118,7 +118,7 @@ class Base:
 
         await self.room.matrix_client.send_message(room_id=room_id, content=content)
 
-    def render_data(self, data:  dict | list | str) ->  dict | list | str:
+    def render_data(self, data: dict | list | str) -> dict | list | str:
         """It renders the data using the default variables and the room variables.
 
         Parameters
