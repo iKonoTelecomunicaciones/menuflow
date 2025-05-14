@@ -66,9 +66,11 @@ class HTTPRequest(Switch):
     @property
     def json(self) -> dict:
         body = self.content.get("json", "")
-        body_unescaped = body.encode("utf-8").decode("unicode_escape")
 
-        return self.render_data(body_unescaped)
+        if isinstance(body, str):
+            body = body.encode("utf-8").decode("unicode_escape")
+
+        return self.render_data(body)
 
     @property
     def context_params(self) -> dict[str, str]:
