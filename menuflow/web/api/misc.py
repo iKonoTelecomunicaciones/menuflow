@@ -150,7 +150,7 @@ async def check_jinja_template(request: web.Request) -> web.Response:
 
 
 @routes.post("/v1/mis/check_render_data")
-async def check_jinja_template(request: web.Request) -> web.Response:
+async def check_render_data(request: web.Request) -> web.Response:
     """
     ---
     summary: Check if the result of the rendered template is the same in the actual render data
