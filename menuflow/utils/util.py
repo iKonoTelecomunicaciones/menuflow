@@ -22,6 +22,25 @@ from ..jinja.jinja_template import jinja_env
 log: TraceLogger = getLogger("menuflow.util")
 
 
+# TODO: remove this function when all flows are migrated to the new render data
+def convert_to_bool(item) -> dict | list | str:
+    if isinstance(item, dict):
+        for k, v in item.items():
+            item[k] = convert_to_bool(v)
+        return item
+    elif isinstance(item, list):
+        return [convert_to_bool(i) for i in item]
+    elif isinstance(item, str):
+        if item.lower() == "true":
+            return True
+        elif item.lower() == "false":
+            return False
+        else:
+            return item
+    else:
+        return item
+
+
 class Util:
     config: Config
     _main_matrix_regex = "[\\w-]+:[\\w.-]"
@@ -167,7 +186,11 @@ class Util:
 
     @classmethod
     def render_data(
-        cls, data: dict | list | str, default_variables: dict, all_variables: dict
+        cls,
+        data: dict | list | str,
+        default_variables: dict = {},
+        all_variables: dict = {},
+        return_errors: bool = False,
     ) -> dict | list | str:
         """It takes a dictionary or list, converts it to a string,
         and then uses Jinja to render the string
@@ -180,6 +203,8 @@ class Util:
             The default variables to be used in the rendering.
         all_variables : Dict
             The variables to be used in the rendering.
+        return_errors : bool
+            If True, it will return the errors instead of ignoring them.
 
         Returns
         -------
@@ -202,6 +227,8 @@ class Util:
                 log.warning(
                     f"func_name: {e.name}, \nline: {e.lineno}, \nerror: {e.message}",
                 )
+                if return_errors:
+                    raise e
                 return None
             except UndefinedError as e:
                 tb_list = traceback.extract_tb(e.__traceback__)
@@ -211,11 +238,15 @@ class Util:
                 log.warning(
                     f"func_name: {func_name}, \nline: {line}, \nerror: {e}",
                 )
+                if return_errors:
+                    raise e
                 return None
             except Exception as e:
                 log.warning(
                     f"Error rendering data: {e}",
                 )
+                if return_errors:
+                    raise e
                 return None
             try:
                 evaluated_body = temp_rendered
@@ -231,6 +262,62 @@ class Util:
             return evaluated_body
         else:
             return data
+
+    # TODO: remove this function when all flows are migrated to the new render data
+    @classmethod
+    def old_render_data(
+        cls, data: dict | list | str, default_variables: dict = {}, all_variables: dict = {}
+    ) -> dict | list | str:
+        """It takes a dictionary or list, converts it to a string,
+        and then uses Jinja to render the string
+
+        Parameters
+        ----------
+        data : Dict | List
+            The data to be rendered.
+        default_variables : Dict
+            The default variables to be used in the rendering.
+        all_variables : Dict
+            The variables to be used in the rendering.
+
+        Returns
+        -------
+            A dictionary or list.
+
+        """
+
+        try:
+            data = data if isinstance(data, str) else json.dumps(data)
+            data_template = jinja_env.from_string(data)
+        except Exception as e:
+            cls.log.exception(e)
+            return
+
+        copy_variables = default_variables | all_variables
+        clear_variables = json.dumps(copy_variables).replace("\\n", "ik-line-break")
+        try:
+            # if save variables have a string with \n,
+            # it will be replaced by ik-line-break to avoid errors when dict is dumped
+            # and before return, it will be replaced by \n again to keep the original string
+            temp_rendered = data_template.render(**json.loads(clear_variables))
+            temp_rendered = temp_rendered.replace("ik-line-break", "\\n")
+
+            temp_sanitized = convert_to_bool(Util.convert_to_json(temp_rendered))
+            if isinstance(temp_sanitized, str):
+                temp_sanitized = json.loads(temp_rendered)
+
+            return temp_sanitized
+        except json.JSONDecodeError:
+            temp_rendered = data_template.render(**json.loads(clear_variables))
+            temp_rendered = temp_rendered.replace("ik-line-break", "\\n")
+            return convert_to_bool(temp_rendered)
+        except KeyError:
+            data = json.loads(data_template.render())
+            data = convert_to_bool(data)
+            return data
+        except Exception as e:
+            log.exception(e)
+            return
 
     def ignore_user(self, mxid: UserID, origin: str) -> bool:
         """It checks if the user ID matches any of the regex patterns in the config file
