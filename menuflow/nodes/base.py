@@ -1,25 +1,22 @@
 from __future__ import annotations
 
-import ast
-import html
-import traceback
 from abc import abstractmethod
 from asyncio import sleep
 from logging import getLogger
 from random import randrange
-from typing import Any, Dict, List
+from typing import Any
 
 from aiohttp import ClientSession
-from jinja2 import TemplateSyntaxError, UndefinedError
 from mautrix.types import MessageEventContent, RoomID
 from mautrix.util.logging import TraceLogger
 
+from menuflow.utils.util import Util
+
 from ..config import Config
-from ..jinja.jinja_template import jinja_env
 from ..room import Room
 
 
-def convert_to_bool(item) -> Dict | List | str:
+def convert_to_bool(item) -> dict | list | str:
     if isinstance(item, dict):
         for k, v in item.items():
             item[k] = convert_to_bool(v)
@@ -37,7 +34,7 @@ def convert_to_bool(item) -> Dict | List | str:
         return item
 
 
-def convert_to_int(item: Any) -> Dict | List | int:
+def convert_to_int(item: Any) -> dict | list | int:
     if isinstance(item, dict):
         for k, v in item.items():
             item[k] = convert_to_int(v)
@@ -66,9 +63,9 @@ class Base:
     config: Config
     session: ClientSession
 
-    content: Dict
+    content: dict
 
-    def __init__(self, room: Room, default_variables: Dict) -> None:
+    def __init__(self, room: Room, default_variables: dict) -> None:
         self.room = room
         self.default_variables = default_variables
 
@@ -122,64 +119,23 @@ class Base:
         await self.room.matrix_client.send_message(room_id=room_id, content=content)
 
     def render_data(self, data: dict | list | str) -> dict | list | str:
-        """It takes a dictionary or list, converts it to a string,
-        and then uses Jinja to render the string
+        """It renders the data using the default variables and the room variables.
 
         Parameters
         ----------
-        data : Dict | List
+        data : Any
             The data to be rendered.
 
         Returns
         -------
-            A dictionary or list.
+            The rendered data, which can be a dictionary, list, or string.
 
         """
-        dict_variables = self.default_variables | self.room.all_variables
-
-        if isinstance(data, dict):
-            for key, value in data.items():
-                data[key] = self.render_data(value)
-            return data
-        elif isinstance(data, list):
-            return [self.render_data(item) for item in data]
-        elif isinstance(data, str):
-            try:
-                template = jinja_env.from_string(data)
-                temp_rendered = template.render(dict_variables)
-            except TemplateSyntaxError as e:
-                self.log.warning(
-                    f"func_name: {e.name}, \nline: {e.lineno}, \nerror: {e.message}",
-                )
-                return None
-            except UndefinedError as e:
-                tb_list = traceback.extract_tb(e.__traceback__)
-                traceback_info = tb_list[-1]
-                func_name = traceback_info.name
-                line: int | None = traceback_info.lineno
-                self.log.warning(
-                    f"func_name: {func_name}, \nline: {line}, \nerror: {e}",
-                )
-                return None
-            except Exception as e:
-                self.log.warning(
-                    f"Error rendering data: {e}",
-                )
-                return None
-            try:
-                evaluated_body = temp_rendered
-                evaluated_body = html.unescape(temp_rendered.replace("'", '"'))
-                evaluated_body = ast.literal_eval(evaluated_body)
-            except Exception as e:
-                self.log.debug(
-                    f"Error evaluating body: {e}, \nbody: {temp_rendered}",
-                )
-            else:
-                if isinstance(evaluated_body, (dict, list)):
-                    return self.render_data(evaluated_body)
-            return evaluated_body
-        else:
-            return data
+        return Util.render_data(
+            data=data,
+            default_variables=self.default_variables,
+            all_variables=self.room.all_variables,
+        )
 
     async def get_o_connection(self) -> str:
         """It returns the ID of the next node to be executed.
