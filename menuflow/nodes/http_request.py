@@ -1,6 +1,6 @@
 import ast
 import html
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List
 
 from aiohttp import BasicAuth, ClientTimeout, ContentTypeError
 from jsonpath_ng import parse
@@ -18,18 +18,18 @@ if TYPE_CHECKING:
 
 
 class HTTPRequest(Switch):
-    HTTP_ATTEMPTS: dict = {}
+    HTTP_ATTEMPTS: Dict = {}
 
     middleware: "HTTPMiddleware" = None
 
     def __init__(
-        self, http_request_node_data: HTTPRequestModel, room: Room, default_variables: dict
+        self, http_request_node_data: HTTPRequestModel, room: Room, default_variables: Dict
     ) -> None:
         Switch.__init__(
             self, http_request_node_data, room=room, default_variables=default_variables
         )
         self.log = self.log.getChild(http_request_node_data.get("id"))
-        self.content: dict = http_request_node_data
+        self.content: Dict = http_request_node_data
 
     @property
     def method(self) -> str:
@@ -40,40 +40,35 @@ class HTTPRequest(Switch):
         return self.render_data(self.content.get("url", ""))
 
     @property
-    def http_variables(self) -> dict:
+    def http_variables(self) -> Dict:
         return self.render_data(self.content.get("variables", {}))
 
     @property
-    def cookies(self) -> dict:
+    def cookies(self) -> Dict:
         return self.render_data(self.content.get("cookies", {}))
 
     @property
-    def headers(self) -> dict:
+    def headers(self) -> Dict:
         return self.render_data(self.content.get("headers", {}))
 
     @property
-    def basic_auth(self) -> dict:
+    def basic_auth(self) -> Dict:
         return self.render_data(self.content.get("basic_auth", {}))
 
     @property
-    def query_params(self) -> dict:
+    def query_params(self) -> Dict:
         return self.render_data(self.content.get("query_params", {}))
 
     @property
-    def data(self) -> dict:
+    def data(self) -> Dict:
         return self.render_data(self.content.get("data", {}))
 
     @property
-    def json(self) -> dict:
-        body = self.content.get("json", "")
-
-        if isinstance(body, str):
-            body = body.encode("utf-8").decode("unicode_escape")
-
-        return self.render_data(body)
+    def json(self) -> Dict:
+        return self.render_data(self.content.get("json", {}))
 
     @property
-    def context_params(self) -> dict[str, str]:
+    def context_params(self) -> Dict[str, str]:
         return self.render_data(
             {
                 "bot_mxid": "{{ route.bot_mxid }}",
@@ -102,7 +97,7 @@ class HTTPRequest(Switch):
         else:
             return body
 
-    def prepare_request(self) -> dict:
+    def prepare_request(self) -> Dict:
         request_body = {}
 
         if self.query_params:
@@ -187,7 +182,7 @@ class HTTPRequest(Switch):
                 variables[cookie] = response.cookies.output(cookie)
 
         try:
-            response_data: dict = await response.json()
+            response_data: Dict = await response.json()
             if response_data and isinstance(response_data, dict):
                 response_data.update({"status": response.status})
         except ContentTypeError:
@@ -207,7 +202,7 @@ class HTTPRequest(Switch):
                         try:
                             data_match = []
                             expr = parse(self.http_variables[variable])
-                            data_match: list = [match.value for match in expr.find(response_data)]
+                            data_match: List = [match.value for match in expr.find(response_data)]
                         except Exception as error:
                             self.log.error(
                                 f"""Error parsing '{self.http_variables[variable]}' with jsonpath

@@ -1,7 +1,6 @@
 from typing import Dict
 
 from markdown import markdown
-from mautrix.errors.request import MForbidden
 from mautrix.types import Format, MessageType, TextMessageEventContent
 
 from ..db.route import RouteState
@@ -77,12 +76,7 @@ class Message(Base):
                 formatted_body=markdown(text=self.text, extensions=["nl2br"]),
             )
 
-            try:
-                await self.send_message(room_id=self.room.room_id, content=msg_content)
-            except MForbidden as e:
-                self.log.error(f"Error sending message to {self.room.room_id}. Error: {e}")
-                await self._update_node(None)
-                return
+            await self.send_message(room_id=self.room.room_id, content=msg_content)
 
         o_connection = await self.o_connection
         if update_state:
