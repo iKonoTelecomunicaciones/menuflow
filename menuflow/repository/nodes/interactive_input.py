@@ -20,9 +20,10 @@ class InteractiveMessage(SerializableAttrs, BaseMessageEventContent):
         if self.msgtype == "m.interactive_message":
             self.body = self.body
             self.interactive_message["body"] = re.sub(
-                r'¬¬¬', r'', self.interactive_message.get("body", "")
+                r"¬¬¬", r"", self.interactive_message.get("body", "")
             )
         super().trim_reply_fallback()
+
 
 @dataclass
 class InteractiveInput(Input):
