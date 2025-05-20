@@ -17,11 +17,17 @@ class InteractiveMessage(SerializableAttrs, BaseMessageEventContent):
         Trim the reply fallback to avoid sending a message with the same content
         as the interactive message.
         """
-        if self.msgtype == "m.interactive_message":
-            self.body = self.body
-            self.interactive_message["body"] = re.sub(
-                r"¬¬¬", r"", self.interactive_message.get("body", "")
-            )
+        if not self.msgtype == "m.interactive_message":
+            super().trim_reply_fallback()
+            return
+
+        if not self.interactive_message.get("body"):
+            super().trim_reply_fallback()
+            return
+
+        self.interactive_message["body"] = re.sub(
+            r"¬¬¬", r"", self.interactive_message.get("body", "")
+        )
         super().trim_reply_fallback()
 
 

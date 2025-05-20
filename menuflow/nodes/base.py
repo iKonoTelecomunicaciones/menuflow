@@ -117,10 +117,12 @@ class Base:
         if self.config["menuflow.typing_notification.enable"]:
             await self.set_typing(room_id=room_id)
 
-        if content.get("body"):
+        if "body" in content:
             content["body"] = re.sub(r"¬¬¬", r"", content["body"])
-        if content.get("formatted_body"):
-            content["formatted_body"] = re.sub(r"¬¬¬", r"", content["formatted_body"])
+        if "formatted_body" in content:
+            content["formatted_body"] = re.sub(
+                r"¬¬¬", r"", content["formatted_body"]
+            )
 
         await self.room.matrix_client.send_message(room_id=room_id, content=content)
 
