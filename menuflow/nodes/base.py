@@ -120,9 +120,7 @@ class Base:
         if "body" in content:
             content["body"] = re.sub(r"¬¬¬", r"", content["body"])
         if "formatted_body" in content:
-            content["formatted_body"] = re.sub(
-                r"¬¬¬", r"", content["formatted_body"]
-            )
+            content["formatted_body"] = re.sub(r"¬¬¬", r"", content["formatted_body"])
 
         await self.room.matrix_client.send_message(room_id=room_id, content=content)
 
