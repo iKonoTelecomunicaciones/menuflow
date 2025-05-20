@@ -1,4 +1,4 @@
-from typing import Dict
+import re
 
 from attr import dataclass, ib
 from mautrix.types import BaseMessageEventContent, SerializableAttrs
@@ -10,8 +10,19 @@ from .input import Input
 class InteractiveMessage(SerializableAttrs, BaseMessageEventContent):
     msgtype: str = ib(default=None, metadata={"json": "msgtype"})
     body: str = ib(default="", metadata={"json": "body"})
-    interactive_message: Dict = ib(factory=Dict, metadata={"json": "interactive_message"})
+    interactive_message: dict = ib(factory=dict, metadata={"json": "interactive_message"})
 
+    def trim_reply_fallback(self) -> None:
+        """
+        Trim the reply fallback to avoid sending a message with the same content
+        as the interactive message.
+        """
+        if self.msgtype == "m.interactive_message":
+            self.body = self.body
+            self.interactive_message["body"] = re.sub(
+                r'¬¬¬', r'', self.interactive_message.get("body", "")
+            )
+        super().trim_reply_fallback()
 
 @dataclass
 class InteractiveInput(Input):
@@ -129,4 +140,4 @@ class InteractiveInput(Input):
     ```
     """
 
-    interactive_message: Dict = ib(factory=Dict)
+    interactive_message: dict = ib(factory=dict)

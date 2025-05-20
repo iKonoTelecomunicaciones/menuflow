@@ -1,4 +1,4 @@
-from typing import Any, Dict, Optional
+from typing import Any
 
 from mautrix.types import MessageEvent
 
@@ -14,7 +14,7 @@ from .input import Input
 
 class InteractiveInput(Input):
     def __init__(
-        self, interactive_input_data: InteractiveInputModel, room: Room, default_variables: Dict
+        self, interactive_input_data: InteractiveInputModel, room: Room, default_variables: dict
     ) -> None:
         Input.__init__(
             self,
@@ -25,7 +25,7 @@ class InteractiveInput(Input):
         self.content = interactive_input_data
 
     @property
-    def interactive_message(self) -> Dict[str, Any]:
+    def interactive_message(self) -> dict[str, Any]:
         return self.render_data(self.content.get("interactive_message", {}))
 
     @property
@@ -37,7 +37,7 @@ class InteractiveInput(Input):
         interactive_message.trim_reply_fallback()
         return interactive_message
 
-    async def run(self, evt: Optional[MessageEvent]):
+    async def run(self, evt: MessageEvent | None):
         """If the room is in input mode, then set the variable.
         Otherwise, show the message and enter input mode
 
