@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from abc import abstractmethod
 from asyncio import sleep
 from logging import getLogger
@@ -115,6 +116,11 @@ class Base:
 
         if self.config["menuflow.typing_notification.enable"]:
             await self.set_typing(room_id=room_id)
+
+        if "body" in content:
+            content["body"] = re.sub(r"¬¬¬", r"", content["body"])
+        if "formatted_body" in content:
+            content["formatted_body"] = re.sub(r"¬¬¬", r"", content["formatted_body"])
 
         await self.room.matrix_client.send_message(room_id=room_id, content=content)
 
