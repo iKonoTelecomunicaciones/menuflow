@@ -4,9 +4,9 @@ import html
 import json
 import traceback
 from asyncio import Task, all_tasks
+from copy import deepcopy
 from logging import getLogger
 from re import match, sub
-from typing import Dict
 
 import holidays
 import jq
@@ -49,7 +49,7 @@ class Util:
         self.config = config
 
     @property
-    def months(self) -> Dict[str, int]:
+    def months(self) -> dict[str, int]:
         return {
             "jan": 1,
             "feb": 2,
@@ -66,7 +66,7 @@ class Util:
         }
 
     @property
-    def week_days(self) -> Dict[str, int]:
+    def week_days(self) -> dict[str, int]:
         return {
             "mon": 1,
             "tue": 2,
@@ -161,7 +161,7 @@ class Util:
         return start <= number <= end
 
     @classmethod
-    def flow_example(cls, flow_index: int = 0) -> Dict:
+    def flow_example(cls, flow_index: int = 0) -> dict:
         """This function reads a JSON file containing either a cat or dog fact and returns its
         contents as a dictionary.
 
@@ -185,6 +185,70 @@ class Util:
             return json.loads(f.read())
 
     @classmethod
+    def evaluate_data(
+        cls,
+        data: str | dict,
+        variables: dict = {},
+        return_errors: bool = False,
+    ) -> dict | list | str:
+        """It takes a string, evaluates it using Jinja, and returns the result
+
+        Parameters
+        ----------
+        data : str | dict
+            The data to be evaluated.
+        variables : dict
+            The variables to be used in the evaluation.
+        return_errors : bool
+            If True, it will return the errors instead of ignoring them.
+
+        Returns
+        -------
+            A dictionary, list or string.
+
+        """
+        try:
+            template = jinja_env.from_string(data)
+            temp_rendered = template.render(variables)
+        except TemplateSyntaxError as e:
+            log.warning(
+                f"func_name: {e.name}, \nline: {e.lineno}, \nerror: {e.message}",
+            )
+            if return_errors:
+                raise e
+            return None
+        except UndefinedError as e:
+            tb_list = traceback.extract_tb(e.__traceback__)
+            traceback_info = tb_list[-1]
+            func_name = traceback_info.name
+            line: int | None = traceback_info.lineno
+            log.warning(
+                f"func_name: {func_name}, \nline: {line}, \nerror: {e}",
+            )
+            if return_errors:
+                raise e
+            return None
+        except Exception as e:
+            log.warning(
+                f"Error rendering data: {e}",
+            )
+            if return_errors:
+                raise e
+            return None
+        try:
+            evaluated_body = temp_rendered
+            evaluated_body = html.unescape(evaluated_body.replace("'", '"'))
+            literal_eval_body = ast.literal_eval(evaluated_body)
+        except Exception as e:
+            log.debug(
+                f"Error evaluating body: {e}, \nbody: {temp_rendered}",
+            )
+        else:
+            if isinstance(literal_eval_body, (dict, list)):
+                return literal_eval_body
+        return evaluated_body
+
+    @classmethod
     def render_data(
         cls,
         data: dict | list | str,
@@ -197,11 +261,11 @@ class Util:
 
         Parameters
         ----------
-        data : Dict | List
+        data : dict | list
             The data to be rendered.
-        default_variables : Dict
+        default_variables : dict
             The default variables to be used in the rendering.
-        all_variables : Dict
+        all_variables : dict
             The variables to be used in the rendering.
         return_errors : bool
             If True, it will return the errors instead of ignoring them.
@@ -212,56 +276,18 @@ class Util:
 
         """
         dict_variables = default_variables | all_variables
+        copy_data = deepcopy(data)
 
-        if isinstance(data, dict):
-            for key, value in data.items():
-                data[key] = cls.render_data(value, default_variables, all_variables)
-            return data
-        elif isinstance(data, list):
-            return [cls.render_data(item, default_variables, all_variables) for item in data]
-        elif isinstance(data, str):
-            try:
-                template = jinja_env.from_string(data)
-                temp_rendered = template.render(dict_variables)
-            except TemplateSyntaxError as e:
-                log.warning(
-                    f"func_name: {e.name}, \nline: {e.lineno}, \nerror: {e.message}",
-                )
-                if return_errors:
-                    raise e
-                return None
-            except UndefinedError as e:
-                tb_list = traceback.extract_tb(e.__traceback__)
-                traceback_info = tb_list[-1]
-                func_name = traceback_info.name
-                line: int | None = traceback_info.lineno
-                log.warning(
-                    f"func_name: {func_name}, \nline: {line}, \nerror: {e}",
-                )
-                if return_errors:
-                    raise e
-                return None
-            except Exception as e:
-                log.warning(
-                    f"Error rendering data: {e}",
-                )
-                if return_errors:
-                    raise e
-                return None
-            try:
-                evaluated_body = temp_rendered
-                evaluated_body = html.unescape(evaluated_body.replace("'", '"'))
-                literal_eval_body = ast.literal_eval(evaluated_body)
-            except Exception as e:
-                log.debug(
-                    f"Error evaluating body: {e}, \nbody: {temp_rendered}",
-                )
-            else:
-                if isinstance(literal_eval_body, (dict, list)):
-                    return literal_eval_body
-            return evaluated_body
+        if isinstance(copy_data, dict):
+            for key, value in copy_data.items():
+                copy_data[key] = cls.render_data(value, default_variables, all_variables)
+            return copy_data
+        elif isinstance(copy_data, list):
+            return [cls.render_data(item, default_variables, all_variables) for item in copy_data]
+        elif isinstance(copy_data, str):
+            return cls.evaluate_data(copy_data, dict_variables, return_errors)
         else:
-            return data
+            return copy_data
 
     # TODO: remove this function when all flows are migrated to the new render data
     @classmethod
@@ -273,11 +299,11 @@ class Util:
 
         Parameters
         ----------
-        data : Dict | List
+        data : dict | List
             The data to be rendered.
-        default_variables : Dict
+        default_variables : dict
             The default variables to be used in the rendering.
-        all_variables : Dict
+        all_variables : dict
             The variables to be used in the rendering.
 
         Returns
