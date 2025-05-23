@@ -1,10 +1,10 @@
 import ast
-from copy import deepcopy
 import datetime
 import html
 import json
 import traceback
 from asyncio import Task, all_tasks
+from copy import deepcopy
 from logging import getLogger
 from re import match, sub
 
@@ -276,7 +276,7 @@ class Util:
 
         """
         dict_variables = default_variables | all_variables
-        copy_data  = deepcopy(data)
+        copy_data = deepcopy(data)
 
         if isinstance(copy_data, dict):
             for key, value in copy_data.items():
