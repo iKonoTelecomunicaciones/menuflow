@@ -17,6 +17,7 @@ class Nodes(SerializableEnum):
     subroutine = "subroutine"
     switch = "switch"
     delay = "delay"
+    webhook = "webhook"
 
 
 class Middlewares(SerializableEnum):
