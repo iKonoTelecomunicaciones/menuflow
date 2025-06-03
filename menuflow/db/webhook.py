@@ -41,7 +41,7 @@ class Webhook:
 
     @classmethod
     async def get_all_data(cls) -> list[Webhook] | None:
-        q = f"SELECT * FROM webhook"
+        q = "SELECT * FROM webhook"
         rows = await cls.db.fetch(q)
 
         if not rows:
@@ -51,7 +51,7 @@ class Webhook:
 
     @classmethod
     async def get_by_room_id(cls, room_id: RoomID, client: UserID) -> Webhook | None:
-        q = f"SELECT * FROM webhook WHERE room_id = $1 AND client = $2"
+        q = "SELECT * FROM webhook WHERE room_id = $1 AND client = $2"
         row = await cls.db.fetchrow(q, room_id, client)
 
         if not row:
@@ -60,5 +60,5 @@ class Webhook:
         return cls._from_row(row)
 
     async def delete(self) -> None:
-        q = f"DELETE FROM webhook WHERE room_id = $1 AND client = $2"
+        q = "DELETE FROM webhook WHERE room_id = $1 AND client = $2"
         await self.db.execute(q, self.room_id, self.client)

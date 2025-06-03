@@ -127,9 +127,8 @@ class _Response:
         )
 
     def management_response(
-        self, message: str, data: dict = None, status: int = 200, uuid: str = ""
+        self, message: str, data: dict = None, status: int = 200
     ) -> web.Response:
-        log.debug(f"({uuid}) -> {message}")
         response_data = {"detail": {"message": message}}
 
         if data:

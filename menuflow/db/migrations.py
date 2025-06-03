@@ -117,6 +117,7 @@ async def upgrade_v7(conn: Connection) -> None:
         )"""
     )
     await conn.execute("CREATE INDEX ind_webhook_room ON webhook (room_id)")
+    await conn.execute("CREATE INDEX ind_webhook_room ON webhook (room_id, client)")
     await conn.execute(
         "ALTER TABLE webhook ADD CONSTRAINT FK_room_webhook FOREIGN KEY (room_id) references room (room_id)"
     )

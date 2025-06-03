@@ -67,5 +67,4 @@ async def handle_request(request: web.Request) -> web.Response:
         message=message,
         data=data,
         status=status,
-        uuid=trace_id,
     )

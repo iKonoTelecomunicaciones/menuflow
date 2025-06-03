@@ -68,7 +68,7 @@ class Webhook(Input):
 
         if not webhook:
             self.log.debug(f"Webhook not found for room {self.room.room_id}")
-            self.log.debug(f"Creating webhook...")
+            self.log.debug("Creating webhook...")
             webhook = await ControllerWebhook.save_webhook(
                 room_id=self.room.room_id,
                 client=self.room.matrix_client.mxid,
@@ -188,7 +188,7 @@ class Webhook(Input):
         )
 
         if o_connection:
-            self.log.debug(f"Cancelling waiting task for room {self.room.room_id}")
+            self.log.debug(f"Cancelling waiting task for room {self.room.room_id} in webhook node")
             await Util.cancel_task(task_name=self.room.room_id)
             await self.room.matrix_client.algorithm(room=self.room)
 
@@ -242,8 +242,8 @@ class Webhook(Input):
             self.log.debug(
                 f"Webhook filter does not match the filter for room {self.room.room_id}"
             )
-            self.log.debug(f"Webhook filter: {webhook_filter}")
-            self.log.debug(f"Filter from db: {filter}")
+            self.log.debug(f"Webhook filter for room {self.room.room_id}: {webhook_filter}")
+            self.log.debug(f"Filter from db in webhook node for {self.room.room_id}: {filter}")
             return False
 
         # Check if the room is waiting for a webhook event validating the filter
@@ -290,7 +290,9 @@ class Webhook(Input):
         self.chat_timeout = self.inactivity_options.get("chat_timeout", 0)
 
         if not self.chat_timeout or self.chat_timeout <= 0:
-            self.log.debug(f"Chat timeout is not set for room: {self.room.room_id}")
+            self.log.debug(
+                f"Chat timeout is not set in node webhook for room: {self.room.room_id}"
+            )
             return
 
         if Util.get_tasks_by_name(task_name=self.room.room_id):
@@ -320,7 +322,7 @@ class Webhook(Input):
         self.log.debug(f"Chat timeout is set for room: {self.room.room_id}")
 
         # Calculate the timeout
-        time_out = time_out_db - int(time())
+        time_out = int(time()) - time_out_db
         time_out = self.chat_timeout - abs(time_out)
 
         if time_out <= 0:
@@ -340,8 +342,6 @@ class Webhook(Input):
         time_out = self.calculate_timeout(
             time_out_db=webhook.subscription_time,
         )
-
-        self.log.debug(f"Timeout: {time_out}")
 
         # wait the given time to start the task
         await asyncio.sleep(time_out)
