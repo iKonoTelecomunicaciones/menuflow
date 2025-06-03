@@ -156,6 +156,35 @@ components:
         autojoin: true
         flow: 1
 
+    EventOk:
+      type: object
+      properties:
+        detail:
+          type: object
+          properties:
+            message:
+              type: string
+              example: "Webhook event received"
+            data:
+              type: object
+              additionalProperties: true
+              example:
+                id: 123456
+                client: Jon Doe
+
+    BadContentType:
+      type: object
+      properties:
+        detail:
+          type: object
+          properties:
+            message:
+              type: string
+              example: "Unsupported Content-Type"
+      example:
+        detail:
+          message: Event received successfully
+
     InvalidAccessToken:
       type: object
       properties:
@@ -583,6 +612,20 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/CreateClientOk"
+
+    EventSuccess:
+      description: Event successfully received.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/EventOk"
+
+    UnsupportedContentType:
+      description: Unsupported content type.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BadContentType"
 
     CreateClientBadRequest:
       description: Create client bad request.

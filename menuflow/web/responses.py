@@ -25,6 +25,13 @@ class _Response:
         )
 
     @property
+    def unsupported_content_type(self) -> web.Response:
+        return web.json_response(
+            {"detail": {"message": "Unsupported Content-Type"}},
+            status=HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+        )
+
+    @property
     def bad_client_access_details(self) -> web.Response:
         return web.json_response(
             {"detail": {"message": "Invalid homeserver or access token"}},
@@ -117,6 +124,19 @@ class _Response:
                 "detail": {"message": message},
             },
             status=HTTPStatus.INTERNAL_SERVER_ERROR,
+        )
+
+    def management_response(
+        self, message: str, data: dict = None, status: int = 200
+    ) -> web.Response:
+        response_data = {"detail": {"message": message}}
+
+        if data:
+            response_data["detail"] |= {"data": data}
+
+        return web.json_response(
+            response_data,
+            status=status,
         )
 
 
