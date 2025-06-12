@@ -9,7 +9,6 @@ components:
           properties:
             message:
               type: string
-              example: "Default message"
     # End of base schemas
 
     # Schemas
@@ -40,12 +39,27 @@ components:
       properties:
         detail:
           type: object
-      example:
-        value:
-          detail:
-            message: Flow created successfully.
+          properties:
+            message:
+              type: string
             data:
-              flow_id: 1
+              type: object
+              properties:
+                id:
+                  type: integer
+    CreateUpdateModuleOk:
+      type: object
+      properties:
+        detail:
+          type: object
+          properties:
+            message:
+              type: string
+            data:
+              type: object
+              properties:
+                module_id:
+                  type: integer
 
     BodyNotJson:
       type: object
@@ -114,6 +128,44 @@ components:
                     type: message
                     message: message_1
                     o_connection: message_2
+
+    GetModuleOk:
+      type: object
+      properties:
+        id:
+          type: integer
+        flow_id:
+          type: integer
+        name:
+          type: string
+        nodes:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        position:
+          type: object
+
+    GetAllModulesOk:
+      type: object
+      properties:
+        modules:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              id:
+                type: integer
+              flow_id:
+                type: integer
+              nodes:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+              position:
+                type: object
+                additionalProperties: true
 
     GetFlowByIDNotFound:
       type: object
@@ -836,5 +888,179 @@ components:
                 detail:
                   message: "Error reading data: 'error_message'"
 
+    GetModuleSuccess:
+      description: Get Module success.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/GetModuleOk"
+              - $ref: "#/components/schemas/GetAllModulesOk"
+          examples:
+            GetModule:
+              value:
+                id: 1
+                flow_id: 1
+                name: "Main"
+                nodes:
+                  - x: 501.04994916101714
+                    y: -627.2362469450213
+                    id: "message_hello"
+                    name: "message_hello"
+                    text: "Hello, world! 😀"
+                    type: "message"
+                    module: "Main"
+                    message_type: "m.text"
+                position:
+                  x: 632.8705383300783
+                  y: 357.11742401123036
+                  scale: 0.4092324994498387
+                  module: "Main"
+            GetAllModules:
+              value:
+                modules:
+                  Main:
+                    id: 1
+                    flow_id: 1
+                    nodes:
+                      - x: 501.04994916101714
+                        y: -627.2362469450213
+                        id: "message_hello"
+                        name: "message_hello"
+                        text: "Hello, world! 😀"
+                        type: "message"
+                        module: "Main"
+                        message_type: "m.text"
+                    position:
+                      x: 632.8705383300783
+                      y: 357.11742401123036
+                      scale: 0.4092324994498387
+                  Second:
+                    id: 2
+                    flow_id: 1
+                    nodes:
+                      - x: 501.04994916101714
+                        y: -627.2362469450213
+                        id: "message_hello"
+                        name: "message_hello"
+                        text: "Hello, world! 😀"
+                        type: "message"
+                        module: "Second"
+                        message_type: "m.text"
+                    position:
+                      x: 632.8705383300783
+                      y: 357.11742401123036
+                      scale: 0.4092324994498387
+
+    GetModuleNotFound:
+      description: Get module not found.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            GetModuleByIDNotFound:
+              value:
+                detail:
+                  message: Module with ID 1 not found.
+            GetModuleByNameNotFound:
+              value:
+                detail:
+                  message: Module with name 'name' not found.
+
+    CreateModuleSuccess:
+      description: Create module success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateUpdateModuleOk"
+          example:
+            detail:
+              message: Module created successfully.
+              data:
+                module_id: 1
+
+    CreateModuleBadRequest:
+      description: Create module bad request.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            BodyNotJson:
+              value:
+                detail:
+                  message: Request body is not JSON.
+            ParameterRequired:
+              value:
+                detail:
+                  message: Parameter 'name' is required.
+            ModuleAlreadyExists:
+              value:
+                detail:
+                  message: Module with name 'name' already exists in flow_id 1.
+
+    UpdateModuleSuccess:
+      description: Update module success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateUpdateModuleOk"
+          example:
+            detail:
+              message: Module created successfully.
+              data:
+                module_id: 1
+
+    UpdateModuleBadRequest:
+      description: Update module bad request.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            BodyNotJson:
+              value:
+                detail:
+                  message: Request body is not JSON.
+            ParameterRequired:
+              value:
+                detail:
+                  message: Parameter 'name' is required.
+
+    UpdateModuleNotFound:
+      description: Module not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: Module with ID 1 not found in flow_id 1.
+
+    DeleteModuleSuccess:
+      description: Delete module success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CreateUpdateModuleOk"
+          example:
+            detail:
+              message: Module deleted successfully.
+              data:
+                module_id: 1
+
+    DeleteModuleNotFound:
+      description: Delete module not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: Module with ID 1 not found in flow_id 1.
 
   # End of responses

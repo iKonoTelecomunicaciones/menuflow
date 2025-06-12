@@ -4,6 +4,7 @@ from .client import Client
 from .flow import Flow
 from .flow_backup import FlowBackup
 from .migrations import upgrade_table
+from .module import Module
 from .room import Room
 from .route import Route
 from .user import User
@@ -11,8 +12,18 @@ from .webhook import Webhook
 
 
 def init(db: Database) -> None:
-    for table in (Room, User, Client, Route, Flow, FlowBackup, Webhook):
+    for table in (Room, User, Client, Route, Flow, FlowBackup, Webhook, Module):
         table.db = db
 
 
-__all__ = ["upgrade_table", "Room", "User", "Client", "Route", "Flow", "FlowBackup", "Webhook"]
+__all__ = [
+    "upgrade_table",
+    "Room",
+    "User",
+    "Client",
+    "Route",
+    "Flow",
+    "FlowBackup",
+    "Webhook",
+    "Module",
+]
