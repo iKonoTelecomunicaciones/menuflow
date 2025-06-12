@@ -111,8 +111,6 @@ create_module_doc = f"""
                             type: object
                     required:
                         - name
-                        - nodes
-                        - position
                 example:
                     {template_indent(template_body_create, 20)}
     responses:

@@ -88,10 +88,8 @@ async def create_module(request: web.Request) -> web.Response:
     except JSONDecodeError:
         return resp.body_not_json
 
-    list_req = ["name", "nodes", "position"]
-    for req in list_req:
-        if not data.get(req):
-            return resp.bad_request(f"Parameter {req} is required")
+    if not data.get("name"):
+        return resp.bad_request("Parameter 'name' is required")
 
     if await DBModule.check_exists_by_name(data["name"], flow_id, module_id=None):
         return resp.bad_request(
@@ -99,7 +97,10 @@ async def create_module(request: web.Request) -> web.Response:
         )
 
     new_module = DBModule(
-        name=data["name"], flow_id=flow_id, nodes=data["nodes"], position=data["position"]
+        name=data["name"],
+        flow_id=flow_id,
+        nodes=data.get("nodes", []),
+        position=data.get("position", {}),
     )
 
     log.debug(f"Creating new module: {new_module.__dict__}")
