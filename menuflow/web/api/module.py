@@ -65,7 +65,7 @@ async def get_module(request: web.Request) -> web.Response:
         modules = [module.serialize() for module in await DBModule.all(flow_id)]
         if not add_name:
             data = {"modules": {module.pop("name"): module for module in modules}}
-        if add_name:  # TODO: Temporary for adding module name to the response
+        else:  # TODO: Temporary for adding module name to the response
             response = {}
             for module in modules:
                 data_dict = Util.parse_modules_for_module(module, module.get("name"))
