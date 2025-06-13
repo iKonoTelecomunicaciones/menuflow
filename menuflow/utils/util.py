@@ -241,7 +241,7 @@ class Util:
             literal_eval_body = ast.literal_eval(evaluated_body)
         except Exception as e:
             log.debug(
-                f"Error evaluating body: {e}, \nbody: {temp_rendered}",
+                f"Trying to evaluate data: {temp_rendered}, it seems to be a not valid JSON",
             )
         else:
             if isinstance(literal_eval_body, (dict, list)):
