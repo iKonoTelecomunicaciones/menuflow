@@ -45,32 +45,32 @@ async def get_module(request: web.Request) -> web.Response:
 
     module_id = request.query.get("id", None)
     name = request.query.get("name", None)
+    add_name = request.query.get("include_name_module", False)
 
     if module_id:
         module = await DBModule.get_by_id(int(module_id), flow_id)
         if not module:
             return resp.not_found(f"Module with ID {module_id} not found")
         data = module.serialize()
-        data = Util.parse_modules_for_module(
-            data, module.name
-        )  # TODO: Temporary for adding module name to the response
+        if add_name:  # TODO: Temporary for adding module name to the response
+            data = Util.parse_modules_for_module(data, module.name)
     elif name:
         module = await DBModule.get_by_name(name, flow_id)
         if not module:
             return resp.not_found(f"Module with name '{name}' not found")
         data = module.serialize()
-        data = Util.parse_modules_for_module(
-            data, name
-        )  # TODO: Temporary for adding module name to the response
+        if add_name:  # TODO: Temporary for adding module name to the response
+            data = Util.parse_modules_for_module(data, name)
     else:
-        modules = await DBModule.all(flow_id)
-        # data = {"modules": {module.pop("name"): module for module in modules}}
-        # TODO: Temporary for adding module name to the response
-        response = []
-        for module in modules:
-            data_dict = Util.parse_modules_for_module(module, module.get("name"))
-            response.append({data_dict.pop("name"): data_dict})
-        data = {"modules": response}
+        modules = [module.serialize() for module in await DBModule.all(flow_id)]
+        if not add_name:
+            data = {"modules": {module.pop("name"): module for module in modules}}
+        if add_name:  # TODO: Temporary for adding module name to the response
+            response = {}
+            for module in modules:
+                data_dict = Util.parse_modules_for_module(module, module.get("name"))
+                response[data_dict.pop("name")] = data_dict
+            data = {"modules": response}
 
     return resp.ok(data)
 

@@ -71,6 +71,12 @@ get_module_doc = """
           schema:
             type: string
           description: The module name to get.
+        - in: query
+          name: include_name_module
+          schema:
+            type: boolean
+            default: false
+          description: Whether to include the module name in nodes and position objects.
 
     responses:
         '200':

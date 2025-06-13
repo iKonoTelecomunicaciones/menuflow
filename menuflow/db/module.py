@@ -59,7 +59,7 @@ class Module(SerializableAttrs):
         log.debug(f"QUERY: {q} with flow_id: {flow_id}")
         rows = await cls.db.fetch(q, flow_id)
 
-        return [cls._from_row(row).serialize() for row in rows] if rows else []
+        return [cls._from_row(row) for row in rows] if rows else []
 
     @classmethod
     async def check_exists_by_name(cls, name: str, flow_id: int, module_id: int = None) -> bool:

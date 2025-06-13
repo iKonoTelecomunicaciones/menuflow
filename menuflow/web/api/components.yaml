@@ -909,13 +909,11 @@ components:
                     name: "message_hello"
                     text: "Hello, world! 😀"
                     type: "message"
-                    module: "Main"
                     message_type: "m.text"
                 position:
                   x: 632.8705383300783
                   y: 357.11742401123036
                   scale: 0.4092324994498387
-                  module: "Main"
             GetAllModules:
               value:
                 modules:
@@ -929,7 +927,6 @@ components:
                         name: "message_hello"
                         text: "Hello, world! 😀"
                         type: "message"
-                        module: "Main"
                         message_type: "m.text"
                     position:
                       x: 632.8705383300783
@@ -945,7 +942,6 @@ components:
                         name: "message_hello"
                         text: "Hello, world! 😀"
                         type: "message"
-                        module: "Second"
                         message_type: "m.text"
                     position:
                       x: 632.8705383300783
