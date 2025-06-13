@@ -253,7 +253,7 @@ class Webhook(Input):
             self.log.error(
                 f"""Error parsing '{filter}' with jq on variable '{event_data}'.
                 Error message: {jq_result.get("error")}, Status: {jq_result.get("status")}
-                Room_id: {self.room.room_id}, Client: {self.room.client}
+                Room_id: {self.room.room_id}
                 """
             )
             return False
