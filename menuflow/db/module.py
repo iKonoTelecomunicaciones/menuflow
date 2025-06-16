@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import json
 from logging import Logger, getLogger
-from typing import TYPE_CHECKING, ClassVar, Union
+from typing import TYPE_CHECKING, ClassVar
 
 from asyncpg import Record
 from attr import dataclass, ib
@@ -27,7 +29,7 @@ class Module(SerializableAttrs):
         return json.dumps(value) if json_obj else value
 
     @classmethod
-    def _from_row(cls, row: Record) -> Union["Module", None]:
+    def _from_row(cls, row: Record) -> Module | None:
         if not row:
             return None
 
@@ -40,14 +42,14 @@ class Module(SerializableAttrs):
         )
 
     @classmethod
-    async def get_by_id(cls, id: int, flow_id: int) -> Union["Module", None]:
+    async def get_by_id(cls, id: int, flow_id: int) -> Module | None:
         q = f"SELECT id, {cls._columns} FROM module WHERE id=$1 AND flow_id=$2"
         row = await cls.db.fetchrow(q, id, flow_id)
 
         return cls._from_row(row) if row else None
 
     @classmethod
-    async def get_by_name(cls, name: str, flow_id: int) -> Union["Module", None]:
+    async def get_by_name(cls, name: str, flow_id: int) -> Module | None:
         q = f"SELECT id, {cls._columns} FROM module WHERE name=$1 AND flow_id=$2"
         row = await cls.db.fetchrow(q, name, flow_id)
 

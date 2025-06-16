@@ -1,6 +1,8 @@
 import uuid
 from copy import deepcopy
-from typing import Any, Dict
+from logging import Logger, getLogger
+
+log: Logger = getLogger("menuflow.web.util")
 
 
 class Util:
@@ -31,7 +33,7 @@ class Util:
         """
         data = deepcopy(module)
 
-        def update(d: Dict[str, Any]):
+        def update(d: dict):
             for node in d.get("nodes", []):
                 node.setdefault("module", module_name)
             if d.get("position"):
