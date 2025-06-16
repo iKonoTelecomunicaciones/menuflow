@@ -1,6 +1,6 @@
 import json
 from logging import Logger, getLogger
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Union
+from typing import TYPE_CHECKING, ClassVar, Union
 
 from asyncpg import Record
 from attr import dataclass, ib
@@ -19,8 +19,8 @@ class Module(SerializableAttrs):
     id: int = ib(default=None)
     flow_id: int = ib(factory=int)
     name: str = ib(default=None)
-    nodes: List[Dict[str, Any]] = ib(factory=list)
-    position: Dict[str, Any] = ib(factory=dict)
+    nodes: list = ib(factory=list)
+    position: dict = ib(factory=dict)
 
     def _get_value(self, attr: str, json_obj: bool = False) -> str:
         value = getattr(self, attr)
@@ -54,9 +54,8 @@ class Module(SerializableAttrs):
         return cls._from_row(row) if row else None
 
     @classmethod
-    async def all(cls, flow_id: int) -> list[Dict]:
+    async def all(cls, flow_id: int) -> list:
         q = f"SELECT id, {cls._columns} FROM module WHERE flow_id=$1"
-        log.debug(f"QUERY: {q} with flow_id: {flow_id}")
         rows = await cls.db.fetch(q, flow_id)
 
         return [cls._from_row(row) for row in rows] if rows else []
