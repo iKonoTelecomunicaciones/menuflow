@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from json import JSONDecodeError
 from logging import Logger, getLogger
-from typing import Dict
 
 from aiohttp import web
 
@@ -84,7 +83,7 @@ async def create_module(request: web.Request) -> web.Response:
         return resp.bad_request("Flow ID is required")
 
     try:
-        data: Dict = await request.json()
+        data: dict = await request.json()
     except JSONDecodeError:
         return resp.body_not_json
 
@@ -129,7 +128,7 @@ async def update_module(request: web.Request) -> web.Response:
         return resp.not_found(f"Module with ID {module_id} not found in flow_id {flow_id}")
 
     try:
-        data: Dict = await request.json()
+        data: dict = await request.json()
     except JSONDecodeError:
         return resp.body_not_json
 
