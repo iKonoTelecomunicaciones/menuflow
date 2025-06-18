@@ -98,12 +98,14 @@ components:
                 type: message
                 message: message_1
                 o_connection: message_2
-
     GetAllFlowsOk:
       type: object
       properties:
         flows:
           type: array
+          items:
+            type: object
+            additionalProperties: true
       example:
         flows:
           - id: 1
@@ -166,6 +168,16 @@ components:
               position:
                 type: object
                 additionalProperties: true
+    GetFlowNodesOk:
+      type: object
+      properties:
+        id:
+          type: integer
+        nodes:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
 
     GetFlowByIDNotFound:
       type: object
@@ -502,6 +514,18 @@ components:
 
   # Responses
   responses:
+    # Generic responses
+    InternalServerError:
+      description: Server error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "error_message"
+    # End of generic responses
+
     GetEmailServersSuccess:
       description: Get email servers success.
       content:
@@ -646,8 +670,7 @@ components:
         application/json:
           schema:
             oneOf:
-              - $ref: "#/components/schemas/GetFlowByIDNotFound"
-              - $ref: "#/components/schemas/GetFlowByUserIDNotFound"
+              - $ref: "#/components/schemas/BaseResponseDetailMessage"
           examples:
             GetFlowByIDNotFound:
               value:
@@ -867,7 +890,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/FlowNotFound"
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
 
     GetCountriesSuccess:
       description: Get countries success.
@@ -956,6 +979,10 @@ components:
             oneOf:
               - $ref: "#/components/schemas/BaseResponseDetailMessage"
           examples:
+            FlowNotFound:
+              value:
+                detail:
+                  message: Flow with ID 1 not found in the database
             GetModuleByIDNotFound:
               value:
                 detail:
@@ -964,6 +991,16 @@ components:
               value:
                 detail:
                   message: Module with name 'name' not found.
+    GetModuleBadRequest:
+      description: Get module bad request.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: Invalid or missing flow ID
 
     CreateModuleSuccess:
       description: Create module success.
@@ -976,7 +1013,16 @@ components:
               message: Module created successfully.
               data:
                 module_id: 1
-
+    CreateModuleNotFound:
+      description: Post module not found.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: Flow with ID 1 not found in the database
     CreateModuleBadRequest:
       description: Create module bad request.
       content:
@@ -989,6 +1035,10 @@ components:
               value:
                 detail:
                   message: Request body is not JSON.
+            InvalidFlowID:
+              value:
+                detail:
+                  message: Invalid or missing flow ID
             ParameterRequired:
               value:
                 detail:
@@ -1022,10 +1072,18 @@ components:
               value:
                 detail:
                   message: Request body is not JSON.
-            ParameterRequired:
+            InvalidType:
               value:
                 detail:
-                  message: Parameter 'name' is required.
+                  message: Flow ID and module ID must be valid integers
+            EmptyBody:
+              value:
+                detail:
+                  message: At least one of the parameters name, nodes or position is required
+            ModuleNameAlreadyExists:
+              value:
+                detail:
+                  message: Module with name 'module_name' already exists in flow_id 1
 
     UpdateModuleNotFound:
       description: Module not found.
@@ -1033,9 +1091,15 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/BaseResponseDetailMessage"
-          example:
-            detail:
-              message: Module with ID 1 not found in flow_id 1.
+          examples:
+            FlowNotFound:
+              value:
+                detail:
+                  message: Flow with ID 1 not found in the database
+            ModuleNotFound:
+              value:
+                detail:
+                  message: Module with ID '1' not found in flow_id '1'
 
     DeleteModuleSuccess:
       description: Delete module success.
@@ -1048,15 +1112,47 @@ components:
               message: Module deleted successfully.
               data:
                 module_id: 1
-
+    DeleteModuleBadRequest:
+      description: Delete module bad request.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: Flow ID and module ID must be valid integers
     DeleteModuleNotFound:
       description: Delete module not found.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            FlowNotFound:
+              value:
+                detail:
+                  message: Flow with ID 1 not found in the database
+            ModuleNotFound:
+              value:
+                detail:
+                  message: Module with ID 1 not found in flow_id 1
+
+    GetFlowNodesSuccess:
+      description: Get flow nodes by ID or client MXID.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/GetFlowNodesOk"
           example:
-            detail:
-              message: Module with ID 1 not found in flow_id 1.
+                id: 1
+                nodes:
+                  - id: start
+                    type: message
+                    name: start
+                  - id: message_1
+                    type: message
+                    name: message_1
 
   # End of responses
