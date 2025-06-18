@@ -1,27 +1,8 @@
 from logging import Logger, getLogger
-from textwrap import indent
+
+from ..util import Util
 
 log: Logger = getLogger("menuflow.docs.module")
-
-
-def template_indent(template: str, indent_level: int = None) -> str:
-    """
-    Get the example with the given indent level.
-
-    Parameters
-    ----------
-    template: str
-        The template to get the indent level from.
-    indent_level: int
-        The indent level to get the template with.
-
-    Returns
-    -------
-    str
-        The example with the given indent level.
-    """
-    lines = template.strip().splitlines()
-    return lines[0] + "\n" + indent("\n".join(lines[1:]), " " * (indent_level or 20))
 
 
 template_nodes = """
@@ -44,8 +25,8 @@ position:
 
 template_body_create = f"""
 name: "example"
-{template_indent(template_nodes)}
-{template_indent(template_position)}
+{Util.parse_template_indent(template_nodes)}
+{Util.parse_template_indent(template_position)}
 """
 
 get_module_doc = """
@@ -81,8 +62,12 @@ get_module_doc = """
     responses:
         '200':
             $ref: '#/components/responses/GetModuleSuccess'
+        '400':
+            $ref: '#/components/responses/GetModuleBadRequest'
         '404':
             $ref: '#/components/responses/GetModuleNotFound'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
 """
 
 create_module_doc = f"""
@@ -118,12 +103,16 @@ create_module_doc = f"""
                     required:
                         - name
                 example:
-                    {template_indent(template_body_create, 20)}
+                    {Util.parse_template_indent(template_body_create, 20)}
     responses:
         '200':
-            $ref: '#/components/responses/UpdateModuleSuccess'
+            $ref: '#/components/responses/CreateModuleSuccess'
         '400':
-            $ref: '#/components/responses/UpdateModuleBadRequest'
+            $ref: '#/components/responses/CreateModuleBadRequest'
+        '404':
+            $ref: '#/components/responses/CreateModuleNotFound'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
   """
 
 update_module_doc = f"""
@@ -170,21 +159,23 @@ update_module_doc = f"""
                             name: "example"
                     UpdateNodes:
                         value:
-                            {template_indent(template_nodes, 28)}
+                            {Util.parse_template_indent(template_nodes, 28)}
                     UpdatePosition:
                         value:
-                            {template_indent(template_position, 28)}
+                            {Util.parse_template_indent(template_position, 28)}
                     UpdateAll:
                         value:
-                            {template_indent(template_body_create, 28)}
+                            {Util.parse_template_indent(template_body_create, 28)}
 
     responses:
         '200':
-            $ref: '#/components/responses/CreateModuleSuccess'
+            $ref: '#/components/responses/UpdateModuleSuccess'
         '400':
-            $ref: '#/components/responses/CreateModuleBadRequest'
+            $ref: '#/components/responses/UpdateModuleBadRequest'
         '404':
             $ref: '#/components/responses/UpdateModuleNotFound'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
   """
 
 delete_module_doc = """
@@ -213,6 +204,10 @@ delete_module_doc = """
     responses:
         '200':
             $ref: '#/components/responses/DeleteModuleSuccess'
+        '400':
+            $ref: '#/components/responses/DeleteModuleBadRequest'
         '404':
             $ref: '#/components/responses/DeleteModuleNotFound'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
   """
