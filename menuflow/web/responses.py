@@ -100,7 +100,8 @@ class _Response:
             status=HTTPStatus.NOT_FOUND,
         )
 
-    def not_found(self, message: str) -> web.Response:
+    def not_found(self, message: str, uuid: str = "") -> web.Response:
+        log.debug(f"({uuid}) -> {message}")
         return web.json_response(
             {
                 "detail": {"message": message},

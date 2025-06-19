@@ -24,9 +24,9 @@ class Module(SerializableAttrs):
     nodes: list = ib(factory=list)
     position: dict = ib(factory=dict)
 
-    def _get_value(self, attr: str, json_obj: bool = False) -> str:
-        value = getattr(self, attr)
-        return json.dumps(value) if json_obj else value
+    @property
+    def values(self) -> tuple[str, str, str]:
+        return self.name, json.dumps(self.nodes), json.dumps(self.position)
 
     @classmethod
     def _from_row(cls, row: Record) -> Module | None:
@@ -73,23 +73,11 @@ class Module(SerializableAttrs):
 
     async def insert(self) -> int:
         q = "INSERT INTO module (flow_id, name, nodes, position) VALUES ($1, $2, $3, $4) RETURNING id"
-        return await self.db.fetchval(
-            q,
-            self._get_value("flow_id"),
-            self._get_value("name"),
-            self._get_value("nodes", True),
-            self._get_value("position", True),
-        )
+        return await self.db.fetchval(q, self.flow_id, *self.values())
 
     async def update(self) -> None:
         q = "UPDATE module SET name=$2, nodes=$3, position=$4 WHERE id=$1"
-        await self.db.execute(
-            q,
-            self.id,
-            self._get_value("name"),
-            self._get_value("nodes", True),
-            self._get_value("position", True),
-        )
+        await self.db.execute(q, self.id, *self.values())
 
     async def delete(self) -> None:
         q = "DELETE FROM module WHERE id=$1 AND flow_id=$2"

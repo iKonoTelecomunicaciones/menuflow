@@ -216,6 +216,7 @@ async def check_render_data(request: web.Request) -> web.Response:
 
     return resp.ok(
         {
+            "str_new_render_data": str(new_render_data),
             "new_render_data": new_render_data,
             "old_render_data": old_render_data,
             "equal": new_render_data == old_render_data,
