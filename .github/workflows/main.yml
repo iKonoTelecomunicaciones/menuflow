@@ -131,9 +131,5 @@ jobs:
             "
 
             echo " >> Deploy the service"
-            docker_compose_file="/mnt/shared/matrix/${stack}/docker-compose.yml"
-            ssh -tt ${{ secrets.HOST_TESTING }} " \
-              docker-compose -f ${docker_compose_file} config | \
-                docker stack deploy -c - ${stack_name};
-            "
+            ssh -tt ${{ secrets.HOST_TESTING }} "yes | docker-stack deploy ${stack_name};"
           done
