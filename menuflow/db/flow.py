@@ -22,9 +22,9 @@ class Flow(SerializableAttrs):
     flow: dict = ib(factory=dict)
     flow_vars: dict = ib(factory=dict)
 
-    def _get_value(self, attr: str, json_obj: bool = False) -> str:
-        value = getattr(self, attr)
-        return json.dumps(value) if json_obj else value
+    @property
+    def get_values(self) -> tuple[str, str]:
+        return json.dumps(self.flow), json.dumps(self.flow_vars)
 
     @property
     def values(self) -> str:
@@ -69,14 +69,12 @@ class Flow(SerializableAttrs):
 
     async def insert(self) -> int:
         q = "INSERT INTO flow (flow, flow_vars) VALUES ($1, $2)"
-        await self.db.execute(q, self._get_value("flow", True), self._get_value("flow_vars", True))
+        await self.db.execute(q, *self._get_values())
         return await self.db.fetchval("SELECT MAX(id) FROM flow")
 
     async def update(self) -> None:
         q = "UPDATE flow SET flow=$2, flow_vars=$3 WHERE id=$1"
-        await self.db.execute(
-            q, self.id, self._get_value("flow", True), self._get_value("flow_vars", True)
-        )
+        await self.db.execute(q, self.id, *self._get_values())
 
     async def backup_flow(self, config: Config) -> None:
         backup_count = await FlowBackup.get_count_by_flow_id(self.id)

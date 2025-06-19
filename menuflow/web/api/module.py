@@ -83,6 +83,9 @@ async def create_module(request: web.Request) -> web.Response:
         flow_id = int(request.match_info["flow_id"])
         data: dict = await request.json()
 
+        if not data.get("name"):
+            return resp.bad_request("Parameter 'name' is required", uuid)
+
         if not await DBFlow.check_exists(flow_id):
             return resp.not_found(f"Flow with ID {flow_id} not found in the database", uuid)
 
@@ -94,9 +97,6 @@ async def create_module(request: web.Request) -> web.Response:
         return resp.server_error(str(e), uuid)
 
     name = data.get("name")
-    if not name:
-        return resp.bad_request("Parameter 'name' is required", uuid)
-
     if await DBModule.check_exists_by_name(name, flow_id):
         return resp.bad_request(
             f"Module with name '{name}' already exists in flow_id {flow_id}",
