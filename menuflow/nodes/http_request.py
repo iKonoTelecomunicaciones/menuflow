@@ -67,9 +67,6 @@ class HTTPRequest(Switch):
     def json(self) -> dict:
         body = self.content.get("json", "")
 
-        if isinstance(body, str):
-            body = body.encode("utf-8").decode("unicode_escape")
-
         return self.render_data(body)
 
     @property
