@@ -69,12 +69,12 @@ class Flow(SerializableAttrs):
 
     async def insert(self) -> int:
         q = "INSERT INTO flow (flow, flow_vars) VALUES ($1, $2)"
-        await self.db.execute(q, *self._get_values())
+        await self.db.execute(q, *self.get_values())
         return await self.db.fetchval("SELECT MAX(id) FROM flow")
 
     async def update(self) -> None:
         q = "UPDATE flow SET flow=$2, flow_vars=$3 WHERE id=$1"
-        await self.db.execute(q, self.id, *self._get_values())
+        await self.db.execute(q, self.id, *self.get_values())
 
     async def backup_flow(self, config: Config) -> None:
         backup_count = await FlowBackup.get_count_by_flow_id(self.id)
