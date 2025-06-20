@@ -225,7 +225,7 @@ async def check_render_data(request: web.Request) -> web.Response:
     )
 
 
-@routes.get("/v1/mis/countries")
+@routes.get("/v1/mis/countries", allow_head=False)
 async def countries(request: web.Request) -> web.Response:
     """
     ---

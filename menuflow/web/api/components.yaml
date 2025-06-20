@@ -178,6 +178,15 @@ components:
           items:
             type: object
             additionalProperties: true
+    GetVariablesOk:
+      type: object
+      properties:
+        room:
+          type: object
+          additionalProperties: true
+        route:
+          type: object
+          additionalProperties: true
 
     GetFlowByIDNotFound:
       type: object
@@ -1154,5 +1163,30 @@ components:
                   - id: message_1
                     type: message
                     name: message_1
+    GetVariablesSuccess:
+      description: Get variables success.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/GetVariablesOk"
+          example:
+            room:
+              customer_room_id: "!KbOvLyPkXlKnJojGfS:darknet"
+              bot_mxid: "@menubot1:darknet"
+              customer_mxid: "@acd1:darknet"
+            route:
+              customer_room_id: "!KbOvLyPkXlKnJojGfS:darknet"
+              bot_mxid: "@menubot1:darknet"
+              puppet_mxid: "@acd1:darknet"
+    GetVariablesNotFound:
+      description: Get variables not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: Scopes not found
 
   # End of responses
