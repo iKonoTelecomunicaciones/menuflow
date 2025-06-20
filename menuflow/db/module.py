@@ -73,11 +73,11 @@ class Module(SerializableAttrs):
 
     async def insert(self) -> int:
         q = "INSERT INTO module (flow_id, name, nodes, position) VALUES ($1, $2, $3, $4) RETURNING id"
-        return await self.db.fetchval(q, self.flow_id, *self.values())
+        return await self.db.fetchval(q, self.flow_id, *self.values)
 
     async def update(self) -> None:
         q = "UPDATE module SET name=$2, nodes=$3, position=$4 WHERE id=$1"
-        await self.db.execute(q, self.id, *self.values())
+        await self.db.execute(q, self.id, *self.values)
 
     async def delete(self) -> None:
         q = "DELETE FROM module WHERE id=$1 AND flow_id=$2"
