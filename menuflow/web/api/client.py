@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from json import JSONDecodeError
 from logging import Logger, getLogger
 from typing import Dict, Optional
@@ -15,7 +16,16 @@ from ...db.flow import Flow as DBFlow
 from ...menu import MenuClient
 from ...room import Room
 from ..base import get_config, routes
+from ..docs.client import (
+    create_client_doc,
+    enable_disable_client_doc,
+    get_variables_doc,
+    reload_client_flow_doc,
+    set_variables_doc,
+    update_client_doc,
+)
 from ..responses import resp
+from ..util import Util
 
 log: Logger = getLogger("menuflow.api.client")
 
@@ -63,46 +73,8 @@ async def _create_client(
 
 
 @routes.post("/v1/client/new")
+@Util.docstring(create_client_doc)
 async def create_client(request: web.Request) -> web.Response:
-    """
-    ---
-    summary: Create a new client
-    description: Create a new client with the provided homeserver and access token
-    tags:
-        - Client
-
-    requestBody:
-        required: false
-        content:
-            application/json:
-                schema:
-                    type: object
-                    properties:
-                        homeserver:
-                            type: string
-                        access_token:
-                            type: string
-                        device_id:
-                            type: string
-                        enabled:
-                            type: boolean
-                        autojoin:
-                            type: boolean
-                    required:
-                        - homeserver
-                        - access_token
-                example:
-                    homeserver: "https://matrix.org"
-                    access_token: "sk_MDAxOGxvY2F0aW9uIG1hdXRyaXgub3JnCjAwMTBja"
-                    device_id: "DFKEN36"
-                    enabled: true
-                    autojoin: true
-    responses:
-        '201':
-            $ref: '#/components/responses/CreateClientSuccess'
-        '400':
-            $ref: '#/components/responses/CreateClientBadRequest'
-    """
     try:
         data = await request.json()
     except JSONDecodeError:
@@ -118,43 +90,8 @@ async def create_client(request: web.Request) -> web.Response:
 
 
 @routes.post("/v1/room/{room_id}/set_variables")
+@Util.docstring(set_variables_doc)
 async def set_variables(request: web.Request) -> web.Response:
-    """
-    ---
-    summary: Create a new client
-    description: Create a new client with the provided homeserver and access token
-    tags:
-        - Client
-
-    parameters:
-        - name: room_id
-          in: path
-          required: true
-          description: The room ID to set variables for
-          schema:
-            type: string
-          example: "!vOmHZZMQibXsynuNFm:example.com"
-
-    requestBody:
-        required: true
-        content:
-            application/json:
-                schema:
-                    type: object
-                    properties:
-                        variables:
-                            type: object
-                        bot_mxid:
-                            type: string
-                example:
-                    variables:
-                        var1: value
-                        var2: value
-                    bot_mxid: "@bot:example.com"
-    responses:
-        '201':
-            $ref: '#/components/responses/VariablesSetSuccess'
-    """
     try:
         data: Dict = await request.json()
     except JSONDecodeError:
@@ -171,46 +108,8 @@ async def set_variables(request: web.Request) -> web.Response:
 
 
 @routes.patch("/v1/client/{mxid}/flow")
+@Util.docstring(update_client_doc)
 async def update_client(request: web.Request) -> web.Response:
-    """
-    ---
-    summary: Update a client's flow
-    description: Update the flow of a client
-
-    tags:
-        - Client
-
-    parameters:
-        - name: mxid
-          in: path
-          required: true
-          description: The Matrix user ID of the client
-          schema:
-            type: string
-          example: "@client:example.com"
-
-    requestBody:
-        required: true
-        content:
-            application/json:
-                schema:
-                    type: object
-                    properties:
-                        flow_id:
-                            type: integer
-                    required:
-                        - flow_id
-                example:
-                    flow_id: 1
-
-    responses:
-        '200':
-            $ref: '#/components/responses/ClientFlowUpdated'
-        '400':
-            $ref: '#/components/responses/ClientUpdateFlowBadRequest'
-        '404':
-            $ref: '#/components/responses/ClientUpdateFlowNotFound'
-    """
     mxid = request.match_info["mxid"]
     client: Optional[MenuClient] = await MenuClient.get(mxid)
     if not client:
@@ -238,30 +137,8 @@ async def update_client(request: web.Request) -> web.Response:
 
 
 @routes.post("/v1/client/{mxid}/flow/reload")
+@Util.docstring(reload_client_flow_doc)
 async def reload_client_flow(request: web.Request) -> web.Response:
-    """
-    ---
-    summary: Reload a client's flow
-    description: Reload the flow of a client
-
-    tags:
-        - Client
-
-    parameters:
-        - name: mxid
-          in: path
-          required: true
-          description: The Matrix user ID of the client
-          schema:
-            type: string
-          example: "@client:example.com"
-
-    responses:
-        '200':
-            $ref: '#/components/responses/ClientFlowReloaded'
-        '404':
-            $ref: '#/components/responses/ClientReloadFlowNotFound'
-    """
     mxid = request.match_info["mxid"]
     client: Optional[MenuClient] = MenuClient.cache.get(mxid)
     if not client:
@@ -274,39 +151,8 @@ async def reload_client_flow(request: web.Request) -> web.Response:
 
 
 @routes.patch("/v1/client/{mxid}/{action}")
+@Util.docstring(enable_disable_client_doc)
 async def enable_disable_client(request: web.Request) -> web.Response:
-    """
-    ---
-    summary: Enable or disable a client
-    description: Enable or disable a client
-
-    tags:
-        - Client
-
-    parameters:
-        - name: mxid
-          in: path
-          required: true
-          description: The Matrix user ID of the client
-          schema:
-            type: string
-          example: "@client:example.com"
-        - name: action
-          in: path
-          required: true
-          description: The action to perform
-          schema:
-            type: string
-          example: "enable | disable"
-
-    responses:
-        '200':
-            $ref: '#/components/responses/ClientEnabledOrDisabled'
-        '400':
-            $ref: '#/components/responses/ClientEnableOrDisableBadRequest'
-        '404':
-            $ref: '#/components/responses/ClientEnableOrDisableNotFound'
-    """
     mxid = request.match_info["mxid"]
     action = request.match_info["action"]
     client: Optional[MenuClient] = await MenuClient.get(mxid)
@@ -325,3 +171,32 @@ async def enable_disable_client(request: web.Request) -> web.Response:
 
     await client.update()
     return resp.ok({"detail": {"message": f"Client {action}d successfully"}})
+
+
+@routes.get("/v1/client/{bot_mxid}/get_variables/{room_id}", allow_head=False)
+@Util.docstring(get_variables_doc)
+async def get_variables(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Getting variables")
+
+    room_id = request.match_info["room_id"]
+    bot_mxid = request.match_info["bot_mxid"]
+    scopes = request.query.getall("scopes", ["room", "route"])
+    response = {}
+
+    try:
+        room: Room = await Room.get_by_room_id(room_id, bot_mxid)
+
+        for scope in scopes:
+            match scope:
+                case "room":
+                    response[scope] = json.loads(room.variables)
+                case "route":
+                    response[scope] = json.loads(room.route.variables)
+                case _:
+                    log.warning(f"({uuid}) -> Invalid scope: {scope}, set to None")
+
+    except Exception as e:
+        return resp.server_error(e, uuid)
+
+    return resp.ok(response, uuid) if response else resp.not_found("Scopes not found")
