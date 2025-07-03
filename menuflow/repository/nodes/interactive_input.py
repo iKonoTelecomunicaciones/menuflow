@@ -32,9 +32,9 @@ class InteractiveMessage(SerializableAttrs, BaseMessageEventContent):
         )
 
         try:
-          self.interactive_message["content"]["text"] = re.sub(
-              r"¬¬¬", r"", content.get("text", "")
-          )
+            self.interactive_message["content"]["text"] = re.sub(
+                r"¬¬¬", r"", content.get("text", "")
+            )
         except KeyError:
             pass
 
