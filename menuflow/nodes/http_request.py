@@ -1,5 +1,4 @@
-import ast
-import html
+import json
 from typing import TYPE_CHECKING
 
 from aiohttp import BasicAuth, ClientTimeout, ContentTypeError
@@ -67,6 +66,15 @@ class HTTPRequest(Switch):
     def json(self) -> dict:
         body = self.content.get("json", "")
 
+        if isinstance(body, str):
+            try:
+                body = json.loads(body)
+
+                if isinstance(body, str):
+                    body = json.loads(body)
+            except json.JSONDecodeError:
+                pass
+
         return self.render_data(body)
 
     @property
@@ -78,47 +86,26 @@ class HTTPRequest(Switch):
             }
         )
 
-    def parse_json_body(self, body: any) -> any:
-        if isinstance(body, dict):
-            for key, value in body.items():
-                body[key] = self.parse_json_body(value)
-            return body
-        elif isinstance(body, list):
-            return [self.parse_json_body(item) for item in body]
-        elif isinstance(body, str):
-            try:
-                evaluated_body = html.unescape(body.replace("'", '"'))
-                evaluated_body = ast.literal_eval(evaluated_body)
-            except Exception as e:
-                return body
-            else:
-                if type(evaluated_body) in [dict, list]:
-                    return self.parse_json_body(evaluated_body)
-                else:
-                    return body
-        else:
-            return body
-
     def prepare_request(self) -> dict:
         request_body = {}
 
-        if self.query_params:
-            request_body["params"] = self.query_params
+        if query_params := self.query_params:
+            request_body["params"] = query_params
 
-        if self.basic_auth:
+        if basic_auth := self.basic_auth:
             request_body["auth"] = BasicAuth(
-                login=self.basic_auth["login"],
-                password=self.basic_auth["password"],
+                login=basic_auth["login"],
+                password=basic_auth["password"],
             )
 
-        if self.headers:
-            request_body["headers"] = self.headers
+        if headers := self.headers:
+            request_body["headers"] = headers
 
-        if self.data:
-            request_body["data"] = self.data
+        if data := self.data:
+            request_body["data"] = data
 
-        if self.json:
-            request_body["json"] = self.parse_json_body(self.json)
+        if json := self.json:
+            request_body["json"] = json
 
         return request_body
 
@@ -179,8 +166,8 @@ class HTTPRequest(Switch):
         variables = {}
         o_connection = None
 
-        if self.cookies:
-            for cookie in self.cookies:
+        if cookies := self.cookies:
+            for cookie in cookies:
                 variables[cookie] = response.cookies.output(cookie)
 
         try:
