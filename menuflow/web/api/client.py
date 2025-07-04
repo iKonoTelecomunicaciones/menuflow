@@ -13,6 +13,8 @@ from mautrix.types import UserID
 
 from ...config import Config
 from ...db.flow import Flow as DBFlow
+from ...db.room import Room as DBRoom
+from ...db.route import Route as DBRoute
 from ...menu import MenuClient
 from ...room import Room
 from ..base import get_config, routes
@@ -185,18 +187,24 @@ async def get_variables(request: web.Request) -> web.Response:
     response = {}
 
     try:
-        room: Room = await Room.get_by_room_id(room_id, bot_mxid)
+        room = await DBRoom.get_by_room_id(room_id)
+        if not room:
+            return resp.not_found(f"room_id '{room_id}' not found")
+
+        route = await DBRoute.get_by_room_and_client(room=room.id, client=bot_mxid, create=False)
+        if not route:
+            return resp.not_found(f"Client '{bot_mxid}' not found in room")
 
         for scope in scopes:
             match scope:
                 case "room":
                     response[scope] = json.loads(room.variables)
                 case "route":
-                    response[scope] = json.loads(room.route.variables)
+                    response[scope] = json.loads(route.variables)
                 case _:
-                    log.warning(f"({uuid}) -> Invalid scope: {scope}, set to None")
+                    log.warning(f"({uuid}) -> Invalid scope: {scope}, skipping")
 
     except Exception as e:
-        return resp.server_error(e, uuid)
+        return resp.server_error(str(e), uuid)
 
     return resp.ok(response, uuid) if response else resp.not_found("Scopes not found")

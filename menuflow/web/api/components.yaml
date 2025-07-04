@@ -1185,8 +1185,18 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/BaseResponseDetailMessage"
-          example:
-            detail:
-              message: Scopes not found
+          examples:
+            MxidNotFound:
+              value:
+                detail:
+                  message: Client '@bot_mxid:company' not found in room
+            RoomNotFound:
+              value:
+                detail:
+                  message: room_id '1' not found
+            ScopesNotFound:
+              value:
+                detail:
+                  message: Scopes not found
 
   # End of responses

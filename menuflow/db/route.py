@@ -75,11 +75,16 @@ class Route:
         return stack
 
     @classmethod
-    async def get_by_room_and_client(cls, room: int, client: UserID) -> Route | None:
+    async def get_by_room_and_client(
+        cls, room: int, client: UserID, create: bool = True
+    ) -> Route | None:
         q = f"SELECT id, {cls._columns} FROM route WHERE room=$1 and client=$2"
         row = await cls.db.fetchrow(q, room, client)
 
         if not row:
+            if not create:
+                return
+
             route = cls(room=room, client=client)
             await route.insert()
 
