@@ -21,13 +21,23 @@ class InteractiveMessage(SerializableAttrs, BaseMessageEventContent):
             super().trim_reply_fallback()
             return
 
-        if not self.interactive_message.get("body"):
+        content = self.interactive_message.get("content", {})
+
+        if not self.interactive_message.get("body") and not content.get("text"):
             super().trim_reply_fallback()
             return
 
         self.interactive_message["body"] = re.sub(
             r"¬¬¬", r"", self.interactive_message.get("body", "")
         )
+
+        try:
+            self.interactive_message["content"]["text"] = re.sub(
+                r"¬¬¬", r"", content.get("text", "")
+            )
+        except KeyError:
+            pass
+
         super().trim_reply_fallback()
 
 
