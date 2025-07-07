@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import ast
-import html
 import traceback
 from logging import Logger, getLogger
 
@@ -10,6 +8,9 @@ from aiohttp import web
 from jinja2.exceptions import TemplateSyntaxError, UndefinedError
 
 from ...config import Config
+from ...db.flow import Flow as DBFlow
+from ...db.room import Room as DBRoom
+from ...db.route import Route as DBRoute
 from ...flow_utils import FlowUtils
 from ...jinja.jinja_template import jinja_env
 from ...utils.errors import GettingDataError
@@ -120,9 +121,8 @@ async def check_jinja_template(request: web.Request) -> web.Response:
             if not isinstance(dict_variables, dict):
                 return resp.bad_request("The format of the variables is not valid", trace_id)
     try:
-        rendered_data = Utils.render_data(
-            data=template, default_variables=dict_variables, return_errors=True
-        )
+        template = jinja_env.from_string(template)
+        rendered_data = template.render(**dict_variables) if variables else template.render()
     except TemplateSyntaxError as e:
         log.exception(e)
         return resp.unprocessable_entity(
@@ -149,8 +149,8 @@ async def check_jinja_template(request: web.Request) -> web.Response:
     return resp.ok({"detail": {"message": "Data rendered", "data": rendered_data}}, trace_id)
 
 
-@routes.post("/v1/mis/check_render_data")
-async def check_render_data(request: web.Request) -> web.Response:
+@routes.post("/v1/mis/render_data")
+async def render_data(request: web.Request) -> web.Response:
     """
     ---
     summary: Check if the result of the rendered template is the same in the actual render data
@@ -175,6 +175,10 @@ async def check_render_data(request: web.Request) -> web.Response:
                             description: >
                                 The variables to be used in the template, in `yaml` or `json` format
                             example: "{'name': 'world'}"
+                        room_id:
+                            type: string
+                            description: The ID of the room that will be used in the template to obtain its variables.
+                            example: "!room:example.com"
                     required:
                         - template
     responses:
@@ -182,6 +186,8 @@ async def check_render_data(request: web.Request) -> web.Response:
             $ref: '#/components/responses/CheckTemplateSuccess'
         '400':
             $ref: '#/components/responses/CheckTemplateBadRequest'
+        '404':
+            $ref: '#/components/responses/RoomIDNotFound'
         '422':
             $ref: '#/components/responses/CheckTemplateUnprocessable'
     """
@@ -195,15 +201,40 @@ async def check_render_data(request: web.Request) -> web.Response:
 
     template = data.get("template")
     variables = data.get("variables")
+    room_id = data.get("room_id")
 
     log.info(f"({trace_id}) -> Checking jinja template with data: {data}")
 
     if not template:
         return resp.bad_request("Template is required", trace_id)
 
+    dict_variables = {}
+
+    if room_id:
+        room_obj = await DBRoom.get_by_room_id(room_id)
+        if not room_obj:
+            return resp.not_found(f"Room '{room_id}' not found")
+        else:
+            bot_mxid = room_obj._room_variables.get("current_bot_mxid")
+
+            if room_obj and bot_mxid:
+                route_obj = await DBRoute.get_by_room_and_client(
+                    room=room_obj.id, client=bot_mxid, create=False
+                )
+                flow_obj = await DBFlow.get_by_mxid(bot_mxid)
+
+                if room_obj._room_variables:
+                    dict_variables |= {"room": room_obj._room_variables}
+
+                if route_obj.variables:
+                    dict_variables |= {"route": route_obj._variables}
+
+                if flow_obj.flow_vars:
+                    dict_variables |= {"flow": flow_obj.flow_vars}
+
     if variables:
         try:
-            dict_variables = yaml.safe_load(variables)
+            dict_variables |= yaml.safe_load(variables)
         except Exception as e:
             log.exception(e)
             return resp.bad_request(f"Error format variables: {e}", trace_id)
@@ -211,8 +242,15 @@ async def check_render_data(request: web.Request) -> web.Response:
             if not isinstance(dict_variables, dict):
                 return resp.bad_request("The format of the variables is not valid", trace_id)
 
-    new_render_data = Utils.render_data(template, dict_variables)
-    old_render_data = Utils.old_render_data(template, dict_variables)
+    try:
+        new_render_data = Utils.render_data(template, dict_variables, return_errors=True)
+    except Exception as e:
+        return resp.server_error(str(e), trace_id)
+
+    try:
+        old_render_data = Utils.old_render_data(template, dict_variables)
+    except Exception as e:
+        old_render_data = str(e)
 
     return resp.ok(
         {

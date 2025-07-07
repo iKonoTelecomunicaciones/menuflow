@@ -585,6 +585,15 @@ components:
               value:
                 detail:
                   message: Template is required
+    RoomIDNotFound:
+      description: Room ID not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: Room with ID '!room:example.com' not found.
 
 
     CreateUpdateFlowSuccess:
@@ -1186,7 +1195,11 @@ components:
           schema:
             $ref: "#/components/schemas/BaseResponseDetailMessage"
           examples:
-            MxidNotFound:
+            CurrentBotMxidNotFound:
+              value:
+                detail:
+                  message: current_bot_mxid not found in the room variables
+            ClientNotFound:
               value:
                 detail:
                   message: Client '@bot_mxid:company' not found in room

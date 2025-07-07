@@ -211,30 +211,35 @@ class Util:
             template = jinja_env.from_string(data)
             temp_rendered = template.render(variables)
         except TemplateSyntaxError as e:
-            log.warning(
-                f"func_name: {e.name}, \nline: {e.lineno}, \nerror: {e.message}",
-            )
+            txt_error = f"func_name: {e.name}, \nline: {e.lineno}, \nerror: {e.message}"
+            log.warning(txt_error)
+
             if return_errors:
-                raise e
+                log.exception(e)
+                raise Exception(txt_error)
             return None
         except UndefinedError as e:
             tb_list = traceback.extract_tb(e.__traceback__)
             traceback_info = tb_list[-1]
             func_name = traceback_info.name
             line: int | None = traceback_info.lineno
-            log.warning(
-                f"func_name: {func_name}, \nline: {line}, \nerror: {e}",
-            )
+
+            txt_error = f"func_name: {func_name}, \nline: {line}, \nerror: {e}"
+            log.warning(txt_error)
+
             if return_errors:
-                raise e
+                log.exception(e)
+                raise Exception(txt_error)
             return None
         except Exception as e:
             log.warning(
                 f"Error rendering data: {e}",
             )
             if return_errors:
+                log.exception(e)
                 raise e
             return None
+
         try:
             evaluated_body = temp_rendered
             evaluated_body = html.unescape(evaluated_body.replace("'", '"'))
@@ -316,7 +321,7 @@ class Util:
             data = data if isinstance(data, str) else json.dumps(data)
             data_template = jinja_env.from_string(data)
         except Exception as e:
-            cls.log.exception(e)
+            log.exception(e)
             return
 
         copy_variables = default_variables | all_variables

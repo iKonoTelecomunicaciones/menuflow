@@ -48,7 +48,7 @@ set_variables_doc = """
     summary: Set variables
     description: Set variables for a room
     tags:
-        - Client
+        - Room
 
     parameters:
         - name: room_id
@@ -78,6 +78,8 @@ set_variables_doc = """
     responses:
         '201':
             $ref: '#/components/responses/VariablesSetSuccess'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
 """
 
 update_client_doc = """
@@ -183,7 +185,7 @@ get_variables_doc = """
     summary: Get variables
     description: Get variables
     tags:
-        - Client
+        - Room
 
     parameters:
         - name: room_id
@@ -195,8 +197,7 @@ get_variables_doc = """
           example: "!vOmHZZMQibXsynuNFm:example.com"
 
         - name: bot_mxid
-          in: path
-          required: true
+          in: query
           description: The Matrix user ID of the client
           schema:
             type: string

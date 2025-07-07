@@ -102,9 +102,12 @@ async def set_variables(request: web.Request) -> web.Response:
     room_id = request.match_info["room_id"]
     variables = data.get("variables", {})
     bot_mxid = data.get("bot_mxid", None)
-    room: Room = await Room.get_by_room_id(room_id, bot_mxid)
 
-    await room.set_variable(variable_id="external", value=variables)
+    try:
+        room: Room = await Room.get_by_room_id(room_id, bot_mxid)
+        await room.set_variable(variable_id="external", value=variables)
+    except Exception as e:
+        return resp.server_error(str(e))
 
     return resp.ok({"detail": {"message": "Variables set successfully"}})
 
@@ -175,14 +178,14 @@ async def enable_disable_client(request: web.Request) -> web.Response:
     return resp.ok({"detail": {"message": f"Client {action}d successfully"}})
 
 
-@routes.get("/v1/client/{bot_mxid}/get_variables/{room_id}", allow_head=False)
+@routes.get("/v1/room/{room_id}/get_variables", allow_head=False)
 @Util.docstring(get_variables_doc)
 async def get_variables(request: web.Request) -> web.Response:
     uuid = Util.generate_uuid()
     log.info(f"({uuid}) -> '{request.method}' '{request.path}' Getting variables")
 
     room_id = request.match_info["room_id"]
-    bot_mxid = request.match_info["bot_mxid"]
+    bot_mxid = request.query.get("bot_mxid", None)
     scopes = request.query.getall("scopes", ["room", "route"])
     response = {}
 
@@ -190,6 +193,11 @@ async def get_variables(request: web.Request) -> web.Response:
         room = await DBRoom.get_by_room_id(room_id)
         if not room:
             return resp.not_found(f"room_id '{room_id}' not found")
+
+        if not bot_mxid:
+            bot_mxid = room._room_variables.get("current_bot_mxid")
+            if not bot_mxid:
+                return resp.not_found("current_bot_mxid not found in the room variables")
 
         route = await DBRoute.get_by_room_and_client(room=room.id, client=bot_mxid, create=False)
         if not route:
