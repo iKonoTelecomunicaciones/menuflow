@@ -144,6 +144,8 @@ class MatrixHandler(MatrixClient):
         room.config = self.config
         room.matrix_client = self
 
+        await room.set_variable("room.current_bot_mxid", self.mxid)
+
         if not await room.get_variable(variable_id="customer_room_id"):
             await room.set_variable("customer_room_id", room_id)
 
