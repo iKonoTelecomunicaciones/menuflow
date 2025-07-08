@@ -39,6 +39,12 @@ class TestBase:
                 "bar": "{{ foo }}",
             }
         )
+        assert {"code": "0030"} == base.render_data({"code": "0030"})
+        assert {"empty": None} == base.render_data({"empty": "None"})
+        assert {"height": 1.8} == base.render_data({"height": 01.80})
+        assert {"balance": "1000.00"} == base.render_data({"balance": "1000.00"})
+        assert {"bool": False} == base.render_data({"bool": "false"})
+        assert ["Luffy", 1, 0.77, True] == base.render_data(["Luffy", "1", 000.7700, "true"])
 
     def test_render_complex_data(self, base: Base):
         """
@@ -132,4 +138,4 @@ class TestBase:
         customer_room_id = test_data.get("accounts")[0].get("rooms")[0]
 
         # Verify that the data is saved correctly
-        assert customer_room_id ==  base.render_data("{{ route.customer_room_id }}")
+        assert customer_room_id == base.render_data("{{ route.customer_room_id }}")

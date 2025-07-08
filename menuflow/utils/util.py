@@ -290,7 +290,10 @@ class Util:
         elif isinstance(copy_data, list):
             return [cls.render_data(item, default_variables, all_variables) for item in copy_data]
         elif isinstance(copy_data, str):
-            return cls.evaluate_data(copy_data, dict_variables, return_errors)
+            rendered = cls.evaluate_data(copy_data, dict_variables, return_errors)
+            return (
+                rendered if isinstance(rendered, (dict, list)) else cls.convert_to_type(rendered)
+            )
         else:
             return copy_data
 
@@ -584,3 +587,38 @@ class Util:
             return {"result": [], "error": str(error), "status": status}
 
         return {"result": filtered_result, "error": None, "status": 200}
+
+    @staticmethod
+    def convert_to_type(value: str) -> str | int | float | bool | None:
+        """
+        It takes a string and returns the type of the value.
+
+        Parameters
+        ----------
+        value : str
+            The value to be converted.
+
+        Returns
+        -------
+            The value converted to the appropriate type.
+        """
+
+        permitted_types = {
+            True: ("true", "True"),
+            False: ("false", "False"),
+            None: ("none", "None"),
+        }
+
+        for type in (int, float):
+            try:
+                new_value = type(value)
+            except Exception:
+                continue
+            else:
+                return new_value if str(new_value) == value else value
+
+        for type, values in permitted_types.items():
+            if value in values:
+                return type
+
+        return value
