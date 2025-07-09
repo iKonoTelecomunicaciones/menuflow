@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 
 class MatrixHandler(MatrixClient):
     message_group_by_room: Dict[RoomID, list[MessageEvent]] = {}
+    ROOMS_TRACEBACK: Dict = {}
 
     def __init__(
         self, config: Config, flow: Flow, flow_utils: Optional[FlowUtils] = None, *args, **kwargs
@@ -190,52 +191,179 @@ class MatrixHandler(MatrixClient):
         await self.algorithm(room=room)
 
     async def handle_message(self, message: MessageEvent) -> None:
+
+        if await self.is_a_bot(room_id=message.room_id):
+            self.log.debug(f"The room {message.room_id} is a bot, ignoring messages...")
+            return
+
         self.log.debug(
             f"Incoming message [user: {message.sender}] [message: {message.content.body}] [room_id: {message.room_id}]"
         )
 
-        # Message edits are ignored
-        if (
-            message.content._relates_to
-            and message.content._relates_to.rel_type
-            and message.content._relates_to.rel_type == RelationType.REPLACE
-        ):
-            return
+        if message.room_id not in self.ROOMS_TRACEBACK:
+            self.log.debug(f"Adding room {message.room_id} to message traceback")
+            self.ROOMS_TRACEBACK[message.room_id] = {
+                "message_counter": 0,
+                "ignore": False,
+                "ignored_counter": 0,
+                "time_to_ignore": self.config["menuflow.bot_war.time_to_ignore"],
+                "running_limit_task": False,
+                "running_restore_task": False,
+                "task_name": f"{message.room_id}_message_traceback",
+            }
 
-        # Ignore bot messages
-        if (
-            self.util.ignore_user(mxid=message.sender, origin="message")
-            or message.sender == self.mxid
-            or message.content.msgtype == MessageType.NOTICE
-        ):
-            self.log.debug(
-                f"This incoming message from {message.room_id} will be ignored :: {message.content.body}"
+        running_limit_task = self.ROOMS_TRACEBACK[message.room_id]["running_limit_task"]
+        running_restore_task = self.ROOMS_TRACEBACK[message.room_id]["running_restore_task"]
+        task_name = self.ROOMS_TRACEBACK[message.room_id]["task_name"]
+        time_to_ignore = self.ROOMS_TRACEBACK[message.room_id]["time_to_ignore"]
+        checker_limit_timer = self.config["menuflow.bot_war.init_checker_limit_timer"]
+
+        if running_limit_task is False or running_restore_task is False:
+            loop = asyncio.get_event_loop()
+
+        def conversation_status(ignore: Optional[bool] = False):
+            if not ignore:
+                asyncio.create_task(
+                    self.check_message_limit(room_id=message.room_id),
+                    name=task_name,
+                )
+            else:
+                asyncio.create_task(
+                    self.restore_state(room_id=message.room_id),
+                    name=task_name,
+                )
+
+        if self.ROOMS_TRACEBACK[message.room_id]["ignore"] is False:
+
+            if running_limit_task is False:
+                self.ROOMS_TRACEBACK[message.room_id]["running_limit_task"] = True
+                loop.call_later(checker_limit_timer, conversation_status)
+
+            # Message edits are ignored
+            if (
+                message.content._relates_to
+                and message.content._relates_to.rel_type
+                and message.content._relates_to.rel_type == RelationType.REPLACE
+            ):
+                return
+
+            # Ignore bot messages
+            if (
+                self.util.ignore_user(mxid=message.sender, origin="message")
+                or message.sender == self.mxid
+                or message.content.msgtype == MessageType.NOTICE
+            ):
+                self.log.debug(
+                    f"This incoming message from {message.room_id} will be ignored :: {message.content.body}"
+                )
+                return
+
+            current_message_time = datetime.fromtimestamp(message.timestamp / 1000)
+            last_message_time = self.LAST_RECEIVED_MESSAGE.get(message.room_id)
+            if (
+                last_message_time
+                and (current_message_time - last_message_time).seconds
+                < self.config["menuflow.message_rate_limit"]
+            ):
+                self.log.warning(f"Message in {message.room_id} ignored due to rate limit")
+                return
+
+            self.ROOMS_TRACEBACK[message.room_id]["message_counter"] += 1
+            self.LAST_RECEIVED_MESSAGE[message.room_id] = current_message_time
+            room: Room = await Room.get_by_room_id(room_id=message.room_id, bot_mxid=self.mxid)
+            room.config = self.config = self.config
+            room.matrix_client = self
+
+            if not room:
+                return
+
+            if room.room_id in Room.pending_invites:
+                self.log.warning(f"Ignoring message in {room.room_id} pending invite")
+                return
+
+            await self.algorithm(room=room, evt=message)
+
+        else:
+            if running_restore_task is False:
+                self.log.warning(f"Ignoring messages for {time_to_ignore} seconds...")
+                self.ROOMS_TRACEBACK[message.room_id]["running_restore_task"] = True
+                loop.call_later(time_to_ignore, conversation_status, True)
+
+    async def check_message_limit(self, room_id: str):
+        self.log.debug(f"Checking message limit for room {room_id}...")
+        if self.ROOMS_TRACEBACK[room_id]["message_counter"] >= 10:
+            self.log.warning(
+                f"Message limit reached for room {room_id}, the messages will be ignored"
             )
-            return
+            self.ROOMS_TRACEBACK[room_id]["ignore"] = True
+            self.ROOMS_TRACEBACK[room_id]["ignored_counter"] += 1
+        else:
+            self.ROOMS_TRACEBACK[room_id]["running_limit_task"] = False
 
-        current_message_time = datetime.fromtimestamp(message.timestamp / 1000)
-        last_message_time = self.LAST_RECEIVED_MESSAGE.get(message.room_id)
+    async def restore_state(self, room_id: str):
+        self.ROOMS_TRACEBACK[room_id]["ignore"] = False
+        self.ROOMS_TRACEBACK[room_id]["message_counter"] = 0
+        self.ROOMS_TRACEBACK[room_id]["running_limit_task"] = False
+        self.ROOMS_TRACEBACK[room_id]["running_restore_task"] = False
+
+        self.log.warning(f"Restoring state for room {room_id} to unignore messages")
         if (
-            last_message_time
-            and (current_message_time - last_message_time).seconds
-            < self.config["menuflow.message_rate_limit"]
+            self.ROOMS_TRACEBACK[room_id]["ignored_counter"]
+            == self.config["menuflow.bot_war.ignored_counter_threshold"]
         ):
-            self.log.warning(f"Message in {message.room_id} ignored due to rate limit")
-            return
+            self.ROOMS_TRACEBACK[room_id]["ignored_counter"] = 0
+            self.ROOMS_TRACEBACK[room_id]["time_to_ignore"] = self.config[
+                "menuflow.bot_war.time_to_ignore"
+            ]
+            await self.set_room_tag_bot(room_id=room_id)
+        else:
+            self.ROOMS_TRACEBACK[room_id]["time_to_ignore"] *= self.config[
+                "menuflow.bot_war.time_multiplier"
+            ]
 
-        self.LAST_RECEIVED_MESSAGE[message.room_id] = current_message_time
-        room: Room = await Room.get_by_room_id(room_id=message.room_id, bot_mxid=self.mxid)
-        room.config = self.config = self.config
-        room.matrix_client = self
+    async def set_room_tag_bot(self, room_id: str):
+        self.log.debug(f"Setting room tag bot for {room_id}...")
+        try:
+            await self.api.session.put(
+                url=f"{self.api.base_url}/_matrix/client/v3/rooms/{room_id}/state/ik.chat.tag/",
+                headers={"Authorization": f"Bearer {self.api.token}"},
+                json={"tags": [self.config["menuflow.bot_war.tag_data"]]},
+                params={"user_id": self.mxid},
+            )
+        except Exception as error:
+            self.log.error(f"Error adding tag to portal {room_id}: {error}")
 
-        if not room:
-            return
+        try:
+            await self.api.session.put(
+                url=f"{self.api.base_url}/_matrix/client/v3/rooms/!jnMhGVDjyXCShxfQKl:darknet/state/m.space.child/{room_id}",
+                headers={"Authorization": f"Bearer {self.api.token}"},
+                json={"via": [self.domain], "suggested": False},
+            )
+        except Exception as error:
+            self.log.error(
+                f"Error adding portal {room_id} to space !jnMhGVDjyXCShxfQKl:darknet: {error}"
+            )
 
-        if room.room_id in Room.pending_invites:
-            self.log.warning(f"Ignoring message in {room.room_id} pending invite")
-            return
+    async def is_a_bot(self, room_id: str) -> bool:
+        try:
+            conversation_tags = await self.api.session.get(
+                url=f"{self.api.base_url}/_matrix/client/v3/rooms/{room_id}/state",
+                headers={"Authorization": f"Bearer {self.api.token}"},
+            )
+        except Exception as error:
+            self.log.error(f"Error checking if the {room_id} is a bot: {error}")
 
-        await self.algorithm(room=room, evt=message)
+        if conversation_tags:
+            conversation_tags = await conversation_tags.json()
+            for room_event in conversation_tags:
+                if room_event.get("type") == "ik.chat.tag":
+                    content = room_event.get("content")
+                    if content:
+                        if content.get("tags"):
+                            for tag in content.get("tags"):
+                                if tag.get("text") == "bot":
+                                    return True
+        return False
 
     async def group_message(self, room: Room, message: MessageEvent, node: Node) -> bool:
         """This function groups messages together based on the group_messages_timeout parameter.
