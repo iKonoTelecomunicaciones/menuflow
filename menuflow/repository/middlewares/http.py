@@ -46,6 +46,7 @@ class HTTPMiddleware(FlowObject):
             type: jwt
             url: "https://webapinet.userfoo.com/api"
             token_type: 'Bearer'
+            auth_header: 'Authorization'
             auth:
                 method: POST
                 token_path: /login/authenticate
@@ -75,5 +76,6 @@ class HTTPMiddleware(FlowObject):
 
     url: str = ib(default=None)
     token_type: str = ib(default=None)
+    auth_header: str = ib(default="Authorization")
     auth: Auth = ib(default=None)
     general: General = ib(default=None)
