@@ -51,6 +51,7 @@ async def start_auth_middleware(
     if middleware.general:
         params.headers.update(middleware.general.get("headers"))
 
+    token_str: str = ""
     if middleware.type == "jwt":
         room: Room = await Room.get_by_room_id(
             room_id=context_params.get("customer_room_id"), bot_mxid=context_params.get("bot_mxid")
@@ -61,14 +62,20 @@ async def start_auth_middleware(
         if not await room.get_variable(token_key):
             await middleware.auth_request()
 
-        token = f"{middleware.token_type} {await room.get_variable(variable_id=token_key)}"
-        params.headers.update({"Authorization": token})
+        token_type: str = middleware.token_type if middleware.token_type is not None else "Bearer"
+        token_str = await room.get_variable(variable_id=token_key)
     elif middleware.type == "basic":
         log.info(f"middleware: {middleware.id} type: {middleware.type} executing ...")
         auth_str = f"{middleware.basic_auth['login']}:{middleware.basic_auth['password']}".encode(
             "utf-8"
         )
-        params.headers.update({"Authorization": f"Basic {base64.b64encode(auth_str).decode()}"})
+        token_type: str = middleware.token_type if middleware.token_type is not None else "Basic"
+        token_str = base64.b64encode(auth_str).decode()
+
+    if token_str:
+        auth_str: str = f"{token_type} {token_str}".strip()
+        auth_header = middleware.auth_header or "Authorization"
+        params.headers.update({auth_header: auth_str})
 
 
 async def end_auth_middleware(

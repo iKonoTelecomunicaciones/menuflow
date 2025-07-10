@@ -26,6 +26,10 @@ class HTTPMiddleware(Base):
         return self.render_data(self.content.token_type)
 
     @property
+    def auth_header(self) -> str:
+        return self.render_data(self.content.auth_header)
+
+    @property
     def auth(self) -> Dict:
         return self.render_data(self.content.auth)
 
