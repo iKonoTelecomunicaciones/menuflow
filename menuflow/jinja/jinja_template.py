@@ -5,7 +5,7 @@ from fuzzywuzzy import fuzz
 from jinja2 import BaseLoader, Environment
 from jinja2_ansible_filters import AnsibleCoreFiltersExtension
 
-from .jinja_filters import strftime_tz
+from .jinja_filters import dict2items, items2dict, strftime_tz
 from .matrix_filters import MatrixFilters
 
 jinja_env = Environment(
@@ -63,4 +63,18 @@ jinja_env.filters["strftime_tz"] = strftime_tz
 Formats the current time according to the timezone
 e.g
 {{ "%d %m %Y" | strftime_tz("America/Bogota") }}
+"""
+
+jinja_env.filters["dict2items"] = dict2items
+"""
+Converts a dictionary to a list of dictionaries with key and value
+e.g
+{{ {"a": 1, "b": 2} | dict2items("key", "value") }}
+"""
+
+jinja_env.filters["items2dict"] = items2dict
+"""
+Converts a list of dictionaries to a dictionary
+e.g
+{{ [{'key': 'a', 'value': 1}, {'key': 'b', 'value': 2}] | items2dict("key", "value") }}
 """
