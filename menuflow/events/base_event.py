@@ -29,7 +29,10 @@ class BaseEvent(SerializableAttrs):
     async def send(self, config: Config):
         log.error(f"Sending event {self.serialize()}")
         if config["nats.enabled"]:
-            await self.send_to_nats()
+            try:
+                await self.send_to_nats()
+            except Exception as e:
+                log.exception(f"Error sending event to NATS: {e}")
 
         if config["events.write_to_file"]:
             self.write_to_file()
@@ -78,6 +81,11 @@ class BaseEvent(SerializableAttrs):
                     name="publish_to_storage",
                 )
         else:
-            await self.publish(NatsPublisher.config, jetstream)
-            if NatsPublisher.config["events.sqlite_action"] == "all":
-                sqlite_db.insert_event(json.dumps(self.serialize()), True)
+            try:
+                await self.publish(NatsPublisher.config, jetstream)
+            except Exception as e:
+                log.critical(f"Error publishing event to NATS: {e}, saving event to sqlite")
+                sqlite_db.insert_event(json.dumps(self.serialize()))
+            else:
+                if NatsPublisher.config["events.sqlite_action"] == "all":
+                    sqlite_db.insert_event(json.dumps(self.serialize()), True)
