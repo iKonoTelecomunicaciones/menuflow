@@ -5,7 +5,7 @@ from fuzzywuzzy import fuzz
 from jinja2 import BaseLoader, Environment
 from jinja2_ansible_filters import AnsibleCoreFiltersExtension
 
-from .jinja_filters import dict2items, items2dict, strftime_tz
+from .jinja_filters import dict2items, items2dict, phone_numbers, strftime_tz
 from .matrix_filters import MatrixFilters
 
 jinja_env = Environment(
@@ -77,4 +77,11 @@ jinja_env.filters["items2dict"] = items2dict
 Converts a list of dictionaries to a dictionary
 e.g
 {{ [{'key': 'a', 'value': 1}, {'key': 'b', 'value': 2}] | items2dict("key", "value") }}
+"""
+
+jinja_env.filters["phonenumbers"] = phone_numbers
+"""
+Converts a phone number to a string
+e.g
+{{ ("3178901234" | phonenumbers("CO")).country_code }}
 """

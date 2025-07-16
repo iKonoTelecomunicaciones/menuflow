@@ -2,6 +2,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from logging import Logger, getLogger
 
+import phonenumbers
 import pytz
 
 log: Logger = getLogger("menuflow.jinja_filters")
@@ -63,3 +64,17 @@ def items2dict(data_list: list, key_name: str = "key", value_name: str = "value"
         )
     except TypeError:
         raise ValueError("items2dict requires a list of dictionaries")
+
+
+def phone_numbers(phone_number: str, country_code: str | None = None) -> str:
+    """Converts a phone number to a string.
+
+    Args:
+        phone_number (str): The phone number to convert
+        country_code (str): The country code to use
+
+    Returns:
+        str: The converted phone number
+    """
+
+    return phonenumbers.parse(phone_number, country_code)
