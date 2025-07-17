@@ -3,6 +3,9 @@ from datetime import datetime
 from logging import Logger, getLogger
 
 import pytz
+from glom import glom, merge
+
+from .filters.phone_numbers import PhoneNumbers
 
 log: Logger = getLogger("menuflow.jinja_filters")
 
@@ -63,3 +66,39 @@ def items2dict(data_list: list, key_name: str = "key", value_name: str = "value"
         )
     except TypeError:
         raise ValueError("items2dict requires a list of dictionaries")
+
+
+def phone_numbers(phone_number: str, country_code: str | None = None) -> str:
+    """Converts a phone number to a string.
+
+    Args:
+        phone_number (str): The phone number to convert
+        country_code (str): The country code to use
+
+    Returns:
+        str: The converted phone number
+    """
+
+    return PhoneNumbers(phone_number, country_code)
+
+
+def get_attrs(obj: object) -> list:
+    """Returns the attributes of an object
+
+    Args:
+        obj (object): The object to get the attributes of
+
+    Returns:
+        list: The attributes of the object
+    """
+    return dir(obj)
+
+
+def combine(*args: object) -> object:
+    """Combines an object with a list of objects
+
+    Args:
+        obj (object): The object to combine
+        *args (object): The list of objects to combine
+    """
+    return glom(args, merge)
