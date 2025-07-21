@@ -5,7 +5,8 @@ from fuzzywuzzy import fuzz
 from jinja2 import BaseLoader, Environment
 from jinja2_ansible_filters import AnsibleCoreFiltersExtension
 
-from .jinja_filters import dict2items, items2dict, strftime_tz
+from .jinja_filters import combine, dict2items, get_attrs, items2dict, phone_numbers, strftime_tz
+from .jinja_tests import is_valid_date
 from .matrix_filters import MatrixFilters
 
 jinja_env = Environment(
@@ -77,4 +78,34 @@ jinja_env.filters["items2dict"] = items2dict
 Converts a list of dictionaries to a dictionary
 e.g
 {{ [{'key': 'a', 'value': 1}, {'key': 'b', 'value': 2}] | items2dict("key", "value") }}
+"""
+
+jinja_env.filters["phonenumbers"] = phone_numbers
+"""
+Converts a phone number to a string
+e.g
+{{ ("3178901234" | phonenumbers("CO")).country_code }}
+{{ (("0431234567" | phonenumbers("CH")).description_for_number("it")) }}
+"""
+
+jinja_env.filters["dir"] = get_attrs
+"""
+Returns the attributes of an object
+e.g
+{{ "Hello" | dir }}
+"""
+
+jinja_env.filters["combine"] = combine
+"""
+Combines dictionaries into a single dictionary
+e.g
+{{ {"a": 1, "b": 2} | combine({"c": 3}, {"d": 4}) }}
+"""
+
+jinja_env.tests["valid_date"] = is_valid_date
+"""
+Checks if a variable is a valid date
+e.g
+{% if "2025-01-01" is valid_date %}The date is valid{% else %}The date is not valid{% endif %}
+{% if "2025:01:01" is valid_date("%Y:%m:%d") %}The date is valid {% else %}The date is not valid{% endif %}
 """
