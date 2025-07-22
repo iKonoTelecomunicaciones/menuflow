@@ -156,6 +156,7 @@ async def upgrade_v8(conn: Connection) -> None:
     # Create index on module table
     await conn.execute("CREATE INDEX idx_module_flow ON module (flow_id)")
 
+
 @upgrade_table.register(description="Add webhook_queue table")
 async def upgrade_v9(conn: Connection) -> None:
     await conn.execute(
@@ -166,6 +167,8 @@ async def upgrade_v9(conn: Connection) -> None:
             creation_time BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)
         )"""
     )
-    await conn.execute("CREATE INDEX idx_webhook_queue_creation_time ON webhook_queue (creation_time)")
+    await conn.execute(
+        "CREATE INDEX idx_webhook_queue_creation_time ON webhook_queue (creation_time)"
+    )
     await conn.execute("CREATE INDEX idx_webhook_queue_id ON webhook_queue (id)")
     await conn.execute("CREATE INDEX idx_webhook_queue_event ON webhook_queue (event)")

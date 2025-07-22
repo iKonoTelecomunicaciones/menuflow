@@ -4,10 +4,10 @@ from logging import Logger, getLogger
 
 from aiohttp import web
 
+from ...webhook.webhook_handler import WebhookHandler
 from ..base import routes
 from ..responses import resp
 from ..util import Util
-from ...webhook.webhook_handler import WebhookHandler
 
 log: Logger = getLogger("menuflow.api.webhook")
 

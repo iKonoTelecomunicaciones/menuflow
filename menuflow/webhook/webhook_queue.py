@@ -1,9 +1,11 @@
 import asyncio
 import logging
-from mautrix.util.logging import TraceLogger
 from time import time
-from menuflow.db.webhook_queue import WebhookQueue as WebhookQueueDB
+
+from mautrix.util.logging import TraceLogger
+
 from menuflow.config import Config
+from menuflow.db.webhook_queue import WebhookQueue as WebhookQueueDB
 
 
 class WebhookQueue(WebhookQueueDB):
