@@ -5,6 +5,8 @@ from typing import Dict
 from mautrix.util.async_db import Database, DatabaseException
 from mautrix.util.program import Program
 
+from menuflow.webhook.webhook_queue import WebhookQueue
+
 from .config import Config
 from .db import init as init_db
 from .db import upgrade_table
@@ -102,6 +104,7 @@ class MenuFlow(Program):
         await asyncio.gather(*[menu.start() async for menu in MenuClient.all()])
         await super().start()
         await self.server.start()
+        await WebhookQueue(config=self.config).save_events_to_queue()
         if self.flow_utils:
             asyncio.create_task(self.start_email_connections())
 

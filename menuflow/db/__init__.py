@@ -9,10 +9,11 @@ from .room import Room
 from .route import Route
 from .user import User
 from .webhook import Webhook
+from .webhook_queue import WebhookQueue
 
 
 def init(db: Database) -> None:
-    for table in (Room, User, Client, Route, Flow, FlowBackup, Webhook, Module):
+    for table in (Room, User, Client, Route, Flow, FlowBackup, Webhook, Module, WebhookQueue):
         table.db = db
 
 
@@ -26,4 +27,5 @@ __all__ = [
     "FlowBackup",
     "Webhook",
     "Module",
+    "WebhookQueue",
 ]
