@@ -102,6 +102,7 @@ class MenuFlow(Program):
         await asyncio.gather(*[menu.start() async for menu in MenuClient.all()])
         await super().start()
         await self.server.start()
+        await NatsPublisher.get_connection()
         if self.flow_utils:
             asyncio.create_task(self.start_email_connections())
 
