@@ -53,6 +53,9 @@ menuflow:
     # State key to identify the m.bridge event in the new way of identify the creator of the room
     mautrix_state_key: example.com/mx_whatsapp
 
+    webhook_queue:
+        time_to_live: 120 # seconds, time to live for webhook events in the queue
+
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0

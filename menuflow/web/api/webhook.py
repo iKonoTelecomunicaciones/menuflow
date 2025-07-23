@@ -61,7 +61,7 @@ async def handle_request(request: web.Request) -> web.Response:
     webhook_event = data
     log.info(f"Webhook event received {webhook_event}")
 
-    status, message = await WebhookHandler.handle_webhook_event(webhook_event)
+    status, message = await WebhookHandler().handle_webhook_event(webhook_event)
 
     return resp.management_response(
         message=message,

@@ -1,5 +1,5 @@
 import asyncio
-from ast import parse
+import json
 from datetime import datetime
 from time import time
 from typing import Any
@@ -13,6 +13,7 @@ from menuflow.events.event_types import MenuflowNodeEvents
 from menuflow.room import Room
 from menuflow.utils.types import Nodes
 from menuflow.utils.util import Util
+from menuflow.webhook.webhook_queue import WebhookQueue
 
 from ..repository import Webhook as WebhookModel
 from ..webhook.webhook import Webhook as ControllerWebhook
@@ -28,6 +29,7 @@ class Webhook(Input):
         )
         self.log = self.log.getChild(webhook_data.get("id"))
         self.content: WebhookModel = webhook_data
+        self.webhook_queue: WebhookQueue = WebhookQueue(config=self.room.config)
 
     @property
     def filter(self) -> str:
@@ -167,7 +169,7 @@ class Webhook(Input):
             o_connection=o_connection, event_type=MenuflowNodeEvents.NodeInputData
         )
 
-    async def management_webhook(self, evt: dict) -> None:
+    async def management_webhook(self, evt: dict) -> str | None:
         """
         This function manages the webhook event for the webhook.
         Set the variables for the webhook and update the menu for the room.
@@ -176,6 +178,12 @@ class Webhook(Input):
         ----------
         evt : dict
             The event data.
+
+        Returns
+        -------
+        str | None
+            The connection data for the webhook.
+            If the event is not valid, it returns None.
         """
         variables = await self.set_variables(data=evt)
 
@@ -190,7 +198,52 @@ class Webhook(Input):
         if o_connection:
             self.log.debug(f"Cancelling waiting task for room {self.room.room_id} in webhook node")
             await Util.cancel_task(task_name=self.room.room_id)
-            await self.room.matrix_client.algorithm(room=self.room)
+
+        return o_connection
+
+    async def search_enqueue_events(self, webhook: ControllerWebhook) -> WebhookQueue | None:
+        """
+        This function searches for events in the webhook queue and manages them if they match
+        the filter.
+
+        Parameters
+        ----------
+        webhook : ControllerWebhook
+            The webhook data to search for events.
+
+        Returns
+        -------
+        WebhookQueue | None
+            A WebhookQueue object that matches the filter.
+            If no events match, None is returned.
+        """
+        events = await self.webhook_queue.get_events_from_db()
+        if not events:
+            self.log.debug(f"No events found in the webhook queue for room {self.room.room_id}")
+            return None
+
+        self.log.debug(f"Webhook queue has {len(events)} events, searching for matches...")
+        event_to_managed = None
+        for event in events:
+            try:
+                dict_event = json.loads(event.event)
+            except json.JSONDecodeError:
+                continue
+
+            if not self.validate_webhook_filter(filter=webhook.filter, event_data=dict_event):
+                continue
+
+            self.log.debug(
+                f"""
+                Webhook filter {webhook.filter} matched for room {self.room.room_id} with event:
+                {event}
+                """
+            )
+
+            event_to_managed = event
+            break
+
+        return event_to_managed
 
     async def run(self, evt: dict | None) -> dict:
         """
@@ -205,12 +258,35 @@ class Webhook(Input):
         """
         webhook: ControllerWebhook = await self.get_webhook()
 
+        if event_to_manage := await self.search_enqueue_events(webhook):
+            self.log.debug(f"Managed {event_to_manage.id} from queue")
+
+            try:
+                await self.management_webhook(evt=json.loads(event_to_manage.event))
+            except json.JSONDecodeError:
+                self.log.error(
+                    f"""Error decoding JSON for event {event_to_manage.id}.
+                    Event: {event_to_manage.event}"""
+                )
+                return
+
+            return
+
+        if not isinstance(evt, MessageEvent) and self.room.route.state == RouteState.INPUT:
+            o_connection = await self.management_webhook(evt=evt)
+
+            if o_connection:
+                await self.room.matrix_client.algorithm(room=self.room)
+
+            return
+
         if self.room.route.state != RouteState.INPUT:
             await self.change_state_to_input(webhook)
-        elif isinstance(evt, MessageEvent):
+            return
+
+        if isinstance(evt, MessageEvent):
             await self.management_message(evt=evt, webhook=webhook)
-        else:
-            await self.management_webhook(evt=evt)
+            return
 
     def validate_webhook_filter(self, filter: str, event_data: dict) -> bool:
         """
