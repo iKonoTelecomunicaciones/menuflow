@@ -85,13 +85,13 @@ class WebhookHandler:
             if not node:
                 webhooks_to_delete.append(whebhook)
                 self.log.debug(f"Node webhook not found for room {room.room_id}")
-                message = f"Node webhook not found in rooms"
+                message = "Node webhook not found in rooms"
                 continue
 
             if not node.type or node.type != "webhook":
                 webhooks_to_delete.append(whebhook)
                 self.log.debug(f"Node is not a webhook node for room {room.room_id}")
-                message = f"No rooms with webhook node found"
+                message = "No rooms with webhook node found"
                 continue
 
             if not node.validate_webhook_filter(filter=whebhook.filter, event_data=event):
