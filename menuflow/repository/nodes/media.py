@@ -34,3 +34,4 @@ class Media(Message):
 
     url: str = ib(default=None)
     info: Dict[str, Any] = ib(default=None)
+    middleware: str = ib(default=None)
