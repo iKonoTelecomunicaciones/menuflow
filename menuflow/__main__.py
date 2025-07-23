@@ -104,6 +104,7 @@ class MenuFlow(Program):
         await asyncio.gather(*[menu.start() async for menu in MenuClient.all()])
         await super().start()
         await self.server.start()
+        await NatsPublisher.get_connection()
         await WebhookQueue(config=self.config).save_events_to_queue()
         if self.flow_utils:
             asyncio.create_task(self.start_email_connections())
