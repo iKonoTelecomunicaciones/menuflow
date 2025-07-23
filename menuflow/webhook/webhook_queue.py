@@ -22,14 +22,10 @@ class WebhookQueue(WebhookQueueDB):
         ending_time: int = None,
         creation_time: int = None,
     ) -> None:
-        if event is None:
-            event = "{}"
-        if ending_time is None:
-            ending_time = 0
-        if creation_time is None:
-            creation_time = int(time() * 1000)
-        if self.config is None:
-            self.config = config
+        event = event or "{}"
+        ending_time = ending_time or 0
+        creation_time = creation_time or int(time() * 1000)
+        self.config = self.config or config
 
         self.log = self.log.getChild("WebhookQueue")
         super().__init__(id=id, event=event, ending_time=ending_time, creation_time=creation_time)
