@@ -165,6 +165,9 @@ class Flow:
             node_initialized = Media(
                 media_node_data=node_data, room=room, default_variables=self.flow_variables
             )
+            if node_data.get("middleware"):
+                middleware = self.middleware(node_data.get("middleware"), room)
+                node_initialized.middleware = middleware
         elif node_data.get("type") == "email":
             node_initialized = Email(
                 email_node_data=node_data, room=room, default_variables=self.flow_variables

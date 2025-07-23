@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import mimetypes
 from io import BytesIO
-from typing import Dict
+from typing import TYPE_CHECKING, Dict
 
 from mautrix.errors import MUnknown
 from mautrix.types import (
@@ -31,8 +31,14 @@ except ImportError:
     Image = None
 
 
+if TYPE_CHECKING:
+    from ..middlewares import HTTPMiddleware
+
+
 class Media(Message):
     media_cache: Dict[str, MediaMessageEventContent] = {}
+
+    middleware: "HTTPMiddleware" = None
 
     def __init__(self, media_node_data: MediaModel, room: Room, default_variables: Dict) -> None:
         Message.__init__(self, media_node_data, room=room, default_variables=default_variables)
@@ -61,6 +67,15 @@ class Media(Message):
 
         return media_info
 
+    @property
+    def context_params(self) -> dict[str, str]:
+        return self.render_data(
+            {
+                "bot_mxid": "{{ route.bot_mxid }}",
+                "customer_room_id": "{{ route.customer_room_id }}",
+            }
+        )
+
     async def load_media(self) -> MediaMessageEventContent:
         """It downloads the media from the URL, uploads it to the Matrix server,
         and returns a MediaMessageEventContent object with the URL of the uploaded media
@@ -70,13 +85,24 @@ class Media(Message):
             MediaMessageEventContent
 
         """
-        resp = await self.session.get(self.url)
-        if resp.headers.get("Content-Type") in (
-            "application/json",
-            "application/text",
-            "application/octet-stream",
+        if self.middleware:
+            self.middleware.room = self.room
+            request_params_ctx = self.context_params
+            request_params_ctx.update({"middleware": self.middleware})
+        else:
+            request_params_ctx = {}
+
+        resp = await self.session.get(self.url, trace_request_ctx=request_params_ctx)
+        content_type = resp.headers.get("Content-Type", "").lower()
+
+        self.log.debug(
+            f"node: {self.id} type: media url: {self.url} status: {resp.status} content_type: {content_type}"
+        )
+
+        if content_type.startswith(
+            ("application/json", "application/text", "application/octet-stream")
         ):
-            if resp.headers.get("Content-Type") == "application/octet-stream":
+            if content_type.startswith("application/octet-stream"):
                 base64_data = await resp.read()
             else:
                 base64_data = await resp.text()
