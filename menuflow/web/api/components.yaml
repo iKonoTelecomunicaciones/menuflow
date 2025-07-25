@@ -482,6 +482,23 @@ components:
       example:
         rendered: "Hello world!"
 
+    RenderDataOk:
+      type: object
+      properties:
+        rendered:
+          type: string
+        string_format:
+          type: string
+        old_render:
+          type: string
+        equal:
+          type: boolean
+      example:
+        rendered: "Hello world!"
+        string_format: "Hello world!"
+        old_render: "Hello world!"
+        equal: true
+
     InvalidVariablesFormat:
       allOf:
         - $ref: "#/components/schemas/BaseResponseDetailMessage"
@@ -594,6 +611,13 @@ components:
           example:
             detail:
               message: Room with ID '!room:example.com' not found.
+
+    RenderDataSuccess:
+      description: Render data success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RenderDataOk"
 
 
     CreateUpdateFlowSuccess:

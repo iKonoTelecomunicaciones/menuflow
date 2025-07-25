@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict
 
 from mautrix.types import LocationMessageEventContent, MessageType
@@ -33,7 +33,7 @@ class Location(Message):
     async def run(self):
         location_message = LocationMessageEventContent(
             msgtype=MessageType.LOCATION,
-            body=f"User Location geo:{self.longitude},{self.latitude} at {datetime.utcnow()}",
+            body=f"User Location geo:{self.longitude},{self.latitude} at {datetime.now(timezone.utc).replace(tzinfo=None)}",
             geo_uri=f"geo:{self.longitude},{self.latitude}",
         )
         await self.send_message(room_id=self.room.room_id, content=location_message)

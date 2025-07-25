@@ -17,7 +17,7 @@ from ...utils.errors import GettingDataError
 from ...utils.util import Util as Utils
 from ..base import get_config, get_flow_utils, routes
 from ..responses import resp
-from ..util import Util
+from ..util import Util as UtilWeb
 
 log: Logger = getLogger("menuflow.api.misc")
 
@@ -95,7 +95,7 @@ async def check_jinja_template(request: web.Request) -> web.Response:
             $ref: '#/components/responses/CheckTemplateUnprocessable'
     """
 
-    trace_id = Util.generate_uuid()
+    trace_id = UtilWeb.generate_uuid()
     dict_variables = {}
 
     try:
@@ -179,11 +179,19 @@ async def render_data(request: web.Request) -> web.Response:
                             type: string
                             description: The ID of the room that will be used in the template to obtain its variables.
                             example: "!room:example.com"
+                        old_render:
+                            type: boolean
+                            description: If true, the old render data will be added to the response
+                            example: true
+                        string_format:
+                            type: boolean
+                            description: If true, the new render data will be returned as a string
+                            example: true
                     required:
                         - template
     responses:
         '200':
-            $ref: '#/components/responses/CheckTemplateSuccess'
+            $ref: '#/components/responses/RenderDataSuccess'
         '400':
             $ref: '#/components/responses/CheckTemplateBadRequest'
         '404':
@@ -192,7 +200,7 @@ async def render_data(request: web.Request) -> web.Response:
             $ref: '#/components/responses/CheckTemplateUnprocessable'
     """
 
-    trace_id = Util.generate_uuid()
+    trace_id = UtilWeb.generate_uuid()
 
     try:
         data = await request.post()
@@ -202,6 +210,8 @@ async def render_data(request: web.Request) -> web.Response:
     template = data.get("template")
     variables = data.get("variables")
     room_id = data.get("room_id")
+    old_render = Utils.convert_to_type(data.get("old_render", False))
+    string_format = Utils.convert_to_type(data.get("string_format", False))
 
     log.info(f"({trace_id}) -> Checking jinja template with data: {data}")
 
@@ -247,20 +257,22 @@ async def render_data(request: web.Request) -> web.Response:
     except Exception as e:
         return resp.server_error(str(e), trace_id)
 
-    try:
-        old_render_data = Utils.old_render_data(template, dict_variables)
-    except Exception as e:
-        old_render_data = str(e)
+    response = {
+        "rendered": new_render_data,
+        **({"string_format": str(new_render_data)} if string_format else {}),
+    }
 
-    return resp.ok(
-        {
-            "str_new_render_data": str(new_render_data),
-            "new_render_data": new_render_data,
-            "old_render_data": old_render_data,
-            "equal": new_render_data == old_render_data,
-        },
-        trace_id,
-    )
+    if old_render:
+        try:
+            old_render_data = Utils.old_render_data(template, dict_variables)
+        except Exception as e:
+            old_render_data = str(e)
+
+        response.update(
+            {"old_render_data": old_render_data, "equal": new_render_data == old_render_data}
+        )
+
+    return resp.ok(response, trace_id)
 
 
 @routes.get("/v1/mis/countries", allow_head=False)
