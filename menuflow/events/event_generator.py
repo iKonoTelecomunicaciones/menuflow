@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from logging import getLogger
 from typing import Optional
 
@@ -23,7 +23,7 @@ async def send_node_event(
         event = NodeEntry(
             event_type=MenuflowEventTypes.NODE,
             event=MenuflowNodeEvents.NodeEntry,
-            timestamp=datetime.utcnow().timestamp(),
+            timestamp=datetime.now(timezone.utc).timestamp(),
             room_id=kwargs.get("room_id"),
             sender=kwargs.get("sender"),
             node_type=kwargs.get("node_type"),
@@ -35,7 +35,7 @@ async def send_node_event(
         event = NodeInputData(
             event_type=MenuflowEventTypes.NODE,
             event=MenuflowNodeEvents.NodeInputData,
-            timestamp=datetime.utcnow().timestamp(),
+            timestamp=datetime.now(timezone.utc).timestamp(),
             room_id=kwargs.get("room_id"),
             sender=kwargs.get("sender"),
             node_id=kwargs.get("node_id"),
@@ -46,7 +46,7 @@ async def send_node_event(
         event = NodeInputTimeout(
             event_type=MenuflowEventTypes.NODE,
             event=MenuflowNodeEvents.NodeInputTimeout,
-            timestamp=datetime.utcnow().timestamp(),
+            timestamp=datetime.now(timezone.utc).timestamp(),
             room_id=kwargs.get("room_id"),
             sender=kwargs.get("sender"),
             node_id=kwargs.get("node_id"),
