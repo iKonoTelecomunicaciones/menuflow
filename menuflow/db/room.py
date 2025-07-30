@@ -33,7 +33,7 @@ class Room:
     _columns = "room_id, variables"
 
     @property
-    def _room_variables(self) -> Dict:
+    def _variables(self) -> Dict:
         return json.loads(self.variables) if self.variables else {}
 
     async def insert(self) -> str:

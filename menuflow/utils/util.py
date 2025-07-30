@@ -18,6 +18,7 @@ from pycountry import countries, subdivisions
 
 from ..config import Config
 from ..jinja.jinja_template import jinja_env
+from ..utils.types import Scopes
 
 log: TraceLogger = getLogger("menuflow.util")
 
@@ -622,3 +623,31 @@ class Util:
                 return type
 
         return value
+
+    @staticmethod
+    def get_scope_and_key(
+        variable_id: str,
+        default_scope: Scopes = Scopes.ROUTE,
+        scopes: tuple[str, ...] = (Scopes.ROOM.value, Scopes.ROUTE.value),
+    ) -> tuple[Scopes, str]:
+        """Get the scope and key from a variable id
+
+        Parameters
+        ----------
+        variable_id : str
+            The variable id to get the scope and key from.
+
+        Returns
+        -------
+            A tuple containing the scope and key.
+        """
+
+        parts = variable_id.split(".", maxsplit=1)
+        if len(parts) == 2 and parts[0] in scopes:
+            scope: Scopes = Scopes._value2member_map_.get(parts[0], Scopes.UNKNOWN)
+            key = parts[1]
+        else:
+            scope: Scopes = default_scope
+            key = variable_id
+
+        return scope, key

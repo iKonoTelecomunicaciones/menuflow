@@ -7,6 +7,7 @@ from logging import getLogger
 from re import match
 from typing import Any, Dict, List, Optional, cast
 
+from glom import Delete, PathAccessError, assign, glom
 from mautrix.client import Client as MatrixClient
 from mautrix.errors.request import MNotFound
 from mautrix.types import EventType, Member, RoomID, StateEvent, StateEventContent, UserID
@@ -17,7 +18,8 @@ from mautrix.util.logging import TraceLogger
 from .config import Config
 from .db.room import Room as DBRoom
 from .db.route import Route, RouteState
-from .utils import Util
+from .scope import Scope
+from .utils import JQ2Glom, Util
 
 
 class Room(DBRoom):
@@ -30,6 +32,8 @@ class Room(DBRoom):
     _ghost_pattern: str = r"^(?P<customer_phone>[0-9]{8,})@s\..+$"
     # Pattern to match the puppet's Mxid
     _puppet_pattern: str = r"^@acd[0-9]+:.+$"
+    # JQ2Glom instance
+    _jq2glom: JQ2Glom = JQ2Glom()
 
     config: Config
     log: TraceLogger = getLogger("menuflow.room")
@@ -40,7 +44,6 @@ class Room(DBRoom):
         id: int = None,
         variables: str = "{}",
     ) -> None:
-        self._variables: Dict = json.loads(variables)
         super().__init__(id=id, room_id=room_id, variables=f"{variables}")
         self.log = self.log.getChild(self.room_id)
         self.bot_mxid: UserID = None
@@ -250,13 +253,26 @@ class Room(DBRoom):
             The value of the variable with the given id.
 
         """
-        try:
-            scope, key = variable_id.split(".", 1)
-        except ValueError:
-            scope = "route"
-            key = variable_id
+        scope, key = Util.get_scope_and_key(variable_id)
 
-        return self.all_variables.get(scope, {}).get(key, None)
+        self.log.debug(
+            f"Getting variable [{variable_id}] from room [{self.room_id}] in scope {scope.value}"
+        )
+
+        try:
+            return glom(self.all_variables, self._jq2glom.to_glom_path(f"{scope.value}.{key}"))
+        except PathAccessError as e:
+            # TODO: Compatibility with old variables format
+            old_value = self.all_variables.get(scope.value, {}).get(key, None)
+
+            if old_value:
+                await self.set_variable(variable_id, old_value)
+                await self.del_variable(variable_id)
+                return old_value
+            return None
+        except Exception as e:
+            self.log.error(f"Error getting variable while using glom: {e}")
+            return
 
     async def set_variable(self, variable_id: str, value: Any) -> None:
         """The function sets a variable value in either the room or route scope
@@ -276,28 +292,30 @@ class Room(DBRoom):
         if not variable_id:
             return
 
-        try:
-            scope, key = variable_id.split(".")
-        except ValueError:
-            scope = "route"
-            key = variable_id
+        scope, key = Util.get_scope_and_key(variable_id)
 
         self.log.debug(
-            f"Saving variable [{variable_id}] to room [{self.room_id}] in scope {scope} "
+            f"Saving variable [{variable_id}] to room [{self.room_id}] in scope {scope.value} "
             f":: content [{value}]"
         )
 
-        new_variables = self._variables if scope == "room" else self.route._variables
-        if isinstance(value, Obj):
-            new_variables[key] = value.serialize()
-        else:
-            new_variables[key] = value
+        try:
+            entry = Scope(room=self, route=self.route).resolve(scope)
+        except Exception as e:
+            self.log.error(str(e))
+            return
 
-        if scope == "room":
-            self.variables = json.dumps(new_variables)
-        else:
-            self.route.variables = json.dumps(new_variables)
-        await self.update() if scope == "room" else await self.route.update()
+        new_variables = entry.get_vars()
+        new_value = value.serialize() if isinstance(value, Obj) else value
+
+        try:
+            assign(new_variables, self._jq2glom.to_glom_path(key), new_value, missing=dict)
+        except Exception as e:
+            self.log.error(f"Error assigning variable {key} to {new_variables}: {e}")
+            return
+
+        entry.set_vars(new_variables)
+        await entry.update_func()
 
     async def set_variables(self, variables: Dict) -> None:
         """It takes a dictionary of variable IDs and values, and sets the variables to the values
@@ -325,31 +343,41 @@ class Room(DBRoom):
         if not variable_id:
             return
 
-        try:
-            scope, key = variable_id.split(".")
-        except ValueError:
-            scope = "route"
-            key = variable_id
+        scope, key = Util.get_scope_and_key(variable_id)
 
-        variables: Dict = self._variables if scope == "room" else self.route._variables
-        if not variables:
-            self.log.debug(f"Variables in the room {self.room_id} are empty")
+        try:
+            entry = Scope(room=self, route=self.route).resolve(scope)
+        except Exception as e:
+            self.log.error(str(e))
             return
 
-        if variables and not variables.get(key):
-            self.log.debug(f"Variable [{variable_id}] does not exists in the room {self.room_id}")
+        variables = entry.get_vars()
+        if not variables:
+            self.log.debug(f"Variables to room {self.room_id} in scope {scope.value} are empty")
             return
 
         self.log.debug(
-            f"Removing variable [{key}] to room [{self.room_id}] in scope {scope}"
-            f":: content [{variables.get(key)}]"
+            f"Removing variable [{key}] to room [{self.room_id}] in scope {scope.value}"
         )
-        variables.pop(key, None)
-        if scope == "room":
-            self.variables = json.dumps(variables)
-        else:
-            self.route.variables = json.dumps(variables)
-        await self.update() if scope == "room" else await self.route.update()
+
+        try:
+            glom(variables, Delete(self._jq2glom.to_glom_path(key)))
+        except PathAccessError as e:
+            # TODO: Remove with old variables format
+            if not variables.get(key):
+                self.log.warning(
+                    f"Variable [{variable_id}] does not exists in the room {self.room_id}"
+                )
+                return
+
+            self.log.critical(f"Deleted variable [{key}] from room {self.room_id} old format")
+            variables.pop(key, None)
+        except Exception as e:
+            self.log.error(f"Error deleting variable {key} to {variables}: {e}")
+            return
+
+        entry.set_vars(variables)
+        await entry.update_func()
 
     async def del_variables(self, variables: List = []) -> None:
         """This function delete the variables in the room.

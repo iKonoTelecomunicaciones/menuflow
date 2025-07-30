@@ -28,3 +28,9 @@ class Middlewares(SerializableEnum):
     LLM = "llm"
     ASR = "asr"
     TTM = "ttm"
+
+
+class Scopes(SerializableEnum):
+    UNKNOWN = "unknown"
+    ROOM = "room"
+    ROUTE = "route"
