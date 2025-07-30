@@ -27,7 +27,6 @@ class BaseEvent(SerializableAttrs):
     sender: UserID = ib(factory=UserID)
 
     async def send(self, config: Config):
-        log.error(f"Sending event {self.serialize()}")
         if config["nats.enabled"]:
             try:
                 await self.send_to_nats()

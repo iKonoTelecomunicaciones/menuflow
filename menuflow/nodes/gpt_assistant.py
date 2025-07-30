@@ -98,9 +98,11 @@ class GPTAssistant(Switch):
             return {"type": "text", "text": message}
         elif evt.content.msgtype == MessageType.IMAGE:
             matrix_file = await self.room.matrix_client.download_media(evt.content.url)
-            file_name = (
-                evt.content.body or f"image.{mimetypes.guess_extension(mimetype(matrix_file))}"
-            )
+
+            if evt.content.body and "forwarded" not in evt.content.body.lower():
+                file_name = evt.content.body
+            else:
+                file_name = f"image.{mimetypes.guess_extension(mimetype(matrix_file))}"
 
             file = self.client.files.create(
                 file=(file_name, matrix_file, mimetype(matrix_file)), purpose="vision"
