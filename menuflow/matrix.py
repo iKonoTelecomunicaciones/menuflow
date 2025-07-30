@@ -213,18 +213,21 @@ class MatrixHandler(MatrixClient):
             )
             return
 
+        room: Room = await Room.get_by_room_id(room_id=message.room_id, bot_mxid=self.mxid)
+
         current_message_time = datetime.fromtimestamp(message.timestamp / 1000)
         last_message_time = self.LAST_RECEIVED_MESSAGE.get(message.room_id)
         if (
             last_message_time
             and (current_message_time - last_message_time).seconds
             < self.config["menuflow.message_rate_limit"]
+            and not self.flow.get_node_by_id(node_id=room.route.node_id).get("type")
+            == "gpt_assistant"
         ):
             self.log.warning(f"Message in {message.room_id} ignored due to rate limit")
             return
 
         self.LAST_RECEIVED_MESSAGE[message.room_id] = current_message_time
-        room: Room = await Room.get_by_room_id(room_id=message.room_id, bot_mxid=self.mxid)
         room.config = self.config = self.config
         room.matrix_client = self
 
@@ -263,11 +266,17 @@ class MatrixHandler(MatrixClient):
             await self.algorithm(room=room)
 
         def run_sync():
+            self.log.info(
+                f"Time's up, sending group message [room: {room.room_id}] [node: {node.id}] [messages: {len(message_group)}]"
+            )
             asyncio.create_task(run_node())
 
         if len(message_group) == 1:
             loop = asyncio.get_event_loop()
             loop.call_later(node.group_messages_timeout, run_sync)
+            self.log.info(
+                f"Created task for group message [room: {room.room_id}] [node: {node.id}] in {node.group_messages_timeout} seconds"
+            )
 
     async def algorithm(self, room: Room, evt: Optional[MessageEvent] = None) -> None:
         """The algorithm function is the main function that runs the flow.
