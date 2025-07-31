@@ -266,8 +266,8 @@ class Room(DBRoom):
             old_value = self.all_variables.get(scope.value, {}).get(key, None)
 
             if old_value:
-                await self.set_variable(variable_id, old_value)
                 await self.del_variable(variable_id)
+                await self.set_variable(variable_id, old_value)
                 return old_value
             return None
         except Exception as e:
@@ -370,7 +370,7 @@ class Room(DBRoom):
                 )
                 return
 
-            self.log.critical(f"Deleted variable [{key}] from room {self.room_id} old format")
+            self.log.info(f"Deleted variable [{key}] from room {self.room_id} old format")
             variables.pop(key, None)
         except Exception as e:
             self.log.error(f"Error deleting variable {key} to {variables}: {e}")
