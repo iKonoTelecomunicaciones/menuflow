@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import mimetypes
+import os
 from email.encoders import encode_base64
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
@@ -59,7 +61,13 @@ class Email:
                 resp = await http_session.get(file_url)
                 part.set_payload(await resp.read())
                 encode_base64(part)
-                part.add_header("Content-Disposition", f'attachment; filename="{file_url}"')
+                basename = os.path.basename(file_url)
+                filename = (
+                    f"{basename}{mimetypes.guess_extension(resp.content_type) or ''}"
+                    if not os.path.splitext(basename)[1]
+                    else basename
+                )
+                part.add_header("Content-Disposition", f'attachment; filename="{filename}"')
                 message.attach(part)
 
         return message
