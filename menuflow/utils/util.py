@@ -12,7 +12,7 @@ import holidays
 import jq
 from babel import Locale
 from jinja2 import TemplateSyntaxError, UndefinedError
-from mautrix.types import RoomID, UserID
+from mautrix.types import LocationInfo, LocationMessageEventContent, RoomID, UserID
 from mautrix.util.logging import TraceLogger
 from pycountry import countries, subdivisions
 
@@ -622,3 +622,32 @@ class Util:
                 return type
 
         return value
+
+    @staticmethod
+    def extract_location_info(content: LocationMessageEventContent) -> dict:
+        """Extracts the location information from the content.
+        Parameters
+        ----------
+        content : LocationMessageEventContent
+            The content of the location message event.
+        Returns
+        -------
+        dict
+            The location information.
+        """
+        _, coords = content.geo_uri.split(":", 1)
+        latitude, longitude = coords.split(",", 1)
+
+        delimiter = "Location: "
+        address = (
+            content.body.split(delimiter, 1)[1] if delimiter in content.body else content.body
+        )
+
+        return {
+            "location": {"latitude": latitude, "longitude": longitude, "address": address},
+            "info": (
+                content.info.serialize()
+                if isinstance(content.info, LocationInfo)
+                else content.info
+            ),
+        }
