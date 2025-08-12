@@ -58,7 +58,7 @@ class Input(Switch, Message):
             input_content = (
                 content.serialize()
                 if isinstance(content, MediaMessageEventContent)
-                else content.geo_uri
+                else Util.extract_location_info(content)
             )
             await self.room.set_variable(self.variable, input_content)
             return await self.get_case_by_id(True)
