@@ -548,11 +548,6 @@ components:
           id: "start"
           type: "message"
           o_connection: "message_1"
-    GetNodeNotFound:
-      type: object
-      properties:
-        detail:
-          type: object
     # End of error schemas
 
   # End of schemas
