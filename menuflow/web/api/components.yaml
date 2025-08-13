@@ -1236,4 +1236,28 @@ components:
                 detail:
                   message: Scopes not found
 
+    GetListModulesSuccess:
+      description: Get list modules success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GetAllModulesOk"
+          example:
+            modules:
+              - id: 1
+                name: Main
+              - id: 2
+                name: Second
+    GetListModulesBadRequest:
+      description: Get list modules bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+    GetListModulesNotFound:
+      description: Get list modules not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
   # End of responses
