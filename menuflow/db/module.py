@@ -67,7 +67,7 @@ class Module(SerializableAttrs):
 
     @classmethod
     async def get_by_fields(cls, flow_id: int, fields: list) -> list:
-        q = f"SELECT {', '.join(fields)} FROM module WHERE flow_id=$1"
+        q = f"SELECT {', '.join(fields)} FROM module WHERE flow_id=$1 ORDER BY name ASC"
         rows = await cls.db.fetch(q, flow_id)
 
         return [cls._to_dict(row, cls._json_columns.split(",")) for row in rows] if rows else []
