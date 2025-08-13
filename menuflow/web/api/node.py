@@ -21,7 +21,7 @@ async def get_node(request: web.Request) -> web.Response:
     uuid = UtilWeb.generate_uuid()
     log.info(f"({uuid}) -> '{request.method}' '{request.path}' Getting node")
 
-    module_name = convert_to_bool(request.query.get("module_name", True))
+    add_module_name = convert_to_bool(request.query.get("add_module_name", True))
     node_id = request.match_info["id"]
 
     try:
@@ -30,7 +30,7 @@ async def get_node(request: web.Request) -> web.Response:
         if not await DBFlow.check_exists(flow_id):
             return resp.not_found(f"Flow with ID {flow_id} not found in the database", uuid)
 
-        node = await DBModule.get_node_by_id(flow_id, node_id, module_name)
+        node = await DBModule.get_node_by_id(flow_id, node_id, add_module_name)
     except (KeyError, ValueError):
         return resp.bad_request("Invalid or missing flow ID", uuid)
     except Exception as e:

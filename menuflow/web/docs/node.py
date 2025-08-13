@@ -24,7 +24,7 @@ get_node_doc = """
             type: string
           description: Fields to return the list of nodes, if not provided, all fields will be returned.
         - in: query
-          name: module_name
+          name: add_module_name
           schema:
             type: boolean
             default: true
