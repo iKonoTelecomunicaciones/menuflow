@@ -211,3 +211,37 @@ delete_module_doc = """
         '500':
             $ref: '#/components/responses/InternalServerError'
   """
+
+get_module_list_doc = """
+    ---
+    summary: Get a list of modules.
+    description: Get a list of modules.
+
+    tags:
+        - Module
+
+    parameters:
+        - name: flow_id
+          in: path
+          required: true
+          description: The ID of the flow to get the modules.
+          schema:
+            type: integer
+        - in: query
+          name: fields
+          schema:
+            type: array
+            default: ["id", "name"]
+            items:
+              type: string
+          description: Fields to return the list of modules.
+    responses:
+        '200':
+            $ref: '#/components/responses/GetListModulesSuccess'
+        '400':
+            $ref: '#/components/responses/GetListModulesBadRequest'
+        '404':
+            $ref: '#/components/responses/GetListModulesNotFound'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
+"""

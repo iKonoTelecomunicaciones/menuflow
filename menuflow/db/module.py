@@ -17,6 +17,7 @@ log: Logger = getLogger("menuflow.db.module")
 class Module(SerializableAttrs):
     db: ClassVar[Database] = fake_db
     _columns: ClassVar[str] = "flow_id, name, nodes, position"
+    _json_columns: ClassVar[str] = "nodes, position"
 
     id: int = ib(default=None)
     flow_id: int = ib(factory=int)
@@ -42,6 +43,15 @@ class Module(SerializableAttrs):
         )
 
     @classmethod
+    def _to_dict(cls, row: Record, json_columns: list[str] = None) -> dict:
+        data = dict(zip(row.keys(), row))
+        if json_columns:
+            for column in json_columns:
+                if column in data:
+                    data[column] = json.loads(data[column])
+        return data
+
+    @classmethod
     async def get_by_id(cls, id: int, flow_id: int) -> Module | None:
         q = f"SELECT id, {cls._columns} FROM module WHERE id=$1 AND flow_id=$2"
         row = await cls.db.fetchrow(q, id, flow_id)
@@ -54,6 +64,13 @@ class Module(SerializableAttrs):
         row = await cls.db.fetchrow(q, name, flow_id)
 
         return cls._from_row(row) if row else None
+
+    @classmethod
+    async def get_by_fields(cls, flow_id: int, fields: list) -> list:
+        q = f"SELECT {', '.join(fields)} FROM module WHERE flow_id=$1"
+        rows = await cls.db.fetch(q, flow_id)
+
+        return [cls._to_dict(row, cls._json_columns.split(",")) for row in rows] if rows else []
 
     @classmethod
     async def all(cls, flow_id: int) -> list:
