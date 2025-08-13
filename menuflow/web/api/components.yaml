@@ -534,6 +534,25 @@ components:
       example:
         detail:
           message: "Error getting countries: 'error_message'"
+    GetNodeOk:
+      type: object
+      properties:
+        module_name:
+          type: string
+        node:
+          type: object
+          additionalProperties: true
+      example:
+        module_name: "Main"
+        node:
+          id: "start"
+          type: "message"
+          o_connection: "message_1"
+    GetNodeNotFound:
+      type: object
+      properties:
+        detail:
+          type: object
     # End of error schemas
 
   # End of schemas
@@ -1254,10 +1273,41 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: Invalid or missing flow ID
     GetListModulesNotFound:
       description: Get list modules not found.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: Flow with ID 1 not found in the database
+
+    GetNodeSuccess:
+      description: Get node success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GetNodeOk"
+    GetNodeBadRequest:
+      description: Get node bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: Invalid or missing flow ID
+    GetNodeNotFound:
+      description: Get node not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: Node with ID 'start' not found in the database
   # End of responses
