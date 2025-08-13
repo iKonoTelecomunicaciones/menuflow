@@ -12,7 +12,7 @@ from ...db.flow import Flow as DBFlow
 from ...db.room import Room as DBRoom
 from ...db.route import Route as DBRoute
 from ...flow_utils import FlowUtils
-from ...jinja.jinja_template import jinja_env
+from ...jinja.env import jinja_env
 from ...utils.errors import GettingDataError
 from ...utils.util import Util as Utils
 from ..base import get_config, get_flow_utils, routes

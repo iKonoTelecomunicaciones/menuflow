@@ -17,7 +17,7 @@ from mautrix.util.logging import TraceLogger
 from pycountry import countries, subdivisions
 
 from ..config import Config
-from ..jinja.jinja_template import jinja_env
+from ..jinja.env import jinja_env
 from ..utils.types import Scopes
 
 log: TraceLogger = getLogger("menuflow.util")
