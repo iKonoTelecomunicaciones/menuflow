@@ -731,7 +731,7 @@ components:
             GetFlowByIDNotFound:
               value:
                 detail:
-                  message: Flow with ID 1 not found.
+                  message: Flow with identifier "1" not found.
             GetFlowByUserIDNotFound:
               value:
                 detail:
@@ -1262,15 +1262,6 @@ components:
                 name: Main
               - id: 2
                 name: Second
-    GetListModulesBadRequest:
-      description: Get list modules bad request.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/BaseResponseDetailMessage"
-          example:
-            detail:
-              message: Invalid or missing flow ID
     GetListModulesNotFound:
       description: Get list modules not found.
       content:
@@ -1279,7 +1270,7 @@ components:
             $ref: "#/components/schemas/BaseResponseDetailMessage"
           example:
             detail:
-              message: Flow with ID 1 not found in the database
+              message: Flow with identifier "1" not found.
 
     GetNodeSuccess:
       description: Get node success.

@@ -238,7 +238,7 @@ async def delete_module(request: web.Request) -> web.Response:
     )
 
 
-@routes.get("/v1/{flow_id}/module/list", allow_head=False)
+@routes.get("/v1/{flow_identifier}/module/list", allow_head=False)
 @Util.docstring(get_module_list_doc)
 async def get_module_list(request: web.Request) -> web.Response:
     uuid = Util.generate_uuid()
@@ -246,18 +246,20 @@ async def get_module_list(request: web.Request) -> web.Response:
 
     fields = request.query.getall("fields", ["id", "name"])
 
-    try:
-        flow_id = int(request.match_info["flow_id"])
-
-        if not await DBFlow.check_exists(flow_id):
-            return resp.not_found(f"Flow with ID {flow_id} not found in the database", uuid)
-    except (KeyError, ValueError):
-        return resp.bad_request("Invalid or missing flow ID", uuid)
-    except Exception as e:
-        return resp.server_error(str(e), uuid)
+    flow_identifier = request.match_info["flow_identifier"]
 
     try:
-        modules = {"modules": await DBModule.get_by_fields(flow_id, fields)}
+        flow = (
+            await DBFlow.get_by_id(int(flow_identifier))
+            if flow_identifier.isdigit()
+            else await DBFlow.get_by_mxid(flow_identifier)
+        )
+
+        if not flow:
+            return resp.not_found(f"Flow with identifier {flow_identifier} not found", uuid)
+
+        modules = {"modules": await DBModule.get_by_fields(flow.id, fields)}
+
     except Exception as e:
         return resp.server_error(str(e), uuid)
 
