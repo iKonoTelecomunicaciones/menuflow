@@ -3,8 +3,8 @@ import logging
 from mautrix.util.logging import TraceLogger
 from nats import connect as nats_connect
 from nats.aio.client import Client as NATSClient
-from nats.js.client import JetStreamContext
 from nats.js.api import RetentionPolicy, StreamConfig
+from nats.js.client import JetStreamContext
 from nats.js.errors import ServerError
 
 from ..config import Config
