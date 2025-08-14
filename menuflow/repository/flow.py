@@ -11,6 +11,7 @@ from mautrix.util.logging import TraceLogger
 
 from ..config import Config
 from ..db import Flow as FlowDB
+from ..db import Module as DBModule
 from ..utils import Util
 
 log: TraceLogger = logging.getLogger("menuflow.repository.flow")
@@ -22,7 +23,7 @@ class Flow(SerializableAttrs):
     flow_variables: Dict[str, Any] = ib(default={})
 
     @classmethod
-    async def load_from_db(cls, flow_mxid: str, config: Config) -> Dict:
+    async def load_from_db(cls, flow_mxid: str, config: Config) -> tuple[dict, list[dict]]:
         """
         Load a flow from the database.
 
@@ -30,14 +31,15 @@ class Flow(SerializableAttrs):
             flow_mxid (str): The mxid of the flow to load.
 
         Returns:
-            Flow: The loaded flow.
+            tuple[dict, list[dict]]: The flow variables and nodes.
         """
         log.info(f"Loading flow {flow_mxid} from database")
         flow_db = await FlowDB.get_by_mxid(flow_mxid)
-        return flow_db.flow
+        modules = await DBModule.all(flow_db.id)
+        return flow_db.flow_vars, [node for module in modules for node in module.get("nodes", [])]
 
     @classmethod
-    def load_from_yaml(cls, flow_mxid: str) -> Dict:
+    def load_from_yaml(cls, flow_mxid: str) -> tuple[dict, list[dict]]:
         """
         Load a flow from a YAML file.
 
@@ -45,7 +47,7 @@ class Flow(SerializableAttrs):
             flow_mxid (str): The mxid of the flow to load.
 
         Returns:
-            Flow: The loaded flow.
+            tuple[dict, list[dict]]: The flow variables and nodes.
         """
         log.info(f"Loading flow {flow_mxid} from YAML file")
         path = Path(f"/data/flows/{flow_mxid}.yaml")
@@ -59,11 +61,12 @@ class Flow(SerializableAttrs):
 
         try:
             flow: Dict = yaml.safe_load(path.read_text())
+            flow_data = flow["menu"]
         except Exception as e:
             log.exception(f"Error loading flow {flow_mxid}.yaml: {e}")
             raise
 
-        return flow
+        return flow_data["flow_variables"], flow_data["nodes"]
 
     @classmethod
     async def load_flow(
@@ -83,11 +86,12 @@ class Flow(SerializableAttrs):
             Flow: The loaded flow.
         """
         if content:
-            flow = content
+            flow_vars = content["flow_variables"]
+            nodes = content["nodes"]
         elif flow_mxid:
             if config["menuflow.load_flow_from"] == "database":
-                flow = await cls.load_from_db(flow_mxid, config)
+                flow_vars, nodes = await cls.load_from_db(flow_mxid, config)
             else:
-                flow = cls.load_from_yaml(flow_mxid)
+                flow_vars, nodes = cls.load_from_yaml(flow_mxid)
 
-        return cls(**flow["menu"])
+        return cls(flow_variables=flow_vars, nodes=nodes)

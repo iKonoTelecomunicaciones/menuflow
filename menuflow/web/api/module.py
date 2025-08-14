@@ -5,9 +5,10 @@ from logging import Logger, getLogger
 
 from aiohttp import web
 
+from ...config import Config
 from ...db.flow import Flow as DBFlow
 from ...db.module import Module as DBModule
-from ..base import routes
+from ..base import get_config, routes
 from ..docs.module import (
     create_module_doc,
     delete_module_doc,
@@ -76,7 +77,7 @@ async def get_module(request: web.Request) -> web.Response:
     except Exception as e:
         return resp.server_error(str(e), uuid)
 
-    return resp.ok(data)
+    return resp.ok(data, uuid)
 
 
 @routes.post("/v1/{flow_id}/module")
@@ -123,7 +124,8 @@ async def create_module(request: web.Request) -> web.Response:
         return resp.server_error(str(e), uuid)
 
     return resp.created(
-        {"detail": {"message": "Module created successfully", "data": {"module_id": module_id}}}
+        {"detail": {"message": "Module created successfully", "data": {"module_id": module_id}}},
+        uuid,
     )
 
 
@@ -138,7 +140,18 @@ async def update_module(request: web.Request) -> web.Response:
         module_id = int(request.match_info["module_id"])
         data: dict = await request.json()
 
-        if not await DBFlow.check_exists(flow_id):
+        new_name = data.get("name")
+        new_nodes = data.get("nodes")
+        new_position = data.get("position")
+
+        if not new_name and new_nodes is None and new_position is None:
+            return resp.bad_request(
+                "At least one of the parameters name, nodes or position is required", uuid
+            )
+
+        flow = await DBFlow.get_by_id(flow_id)
+
+        if not flow:
             return resp.not_found(f"Flow with ID '{flow_id}' not found in the database", uuid)
 
         module = await DBModule.get_by_id(module_id, flow_id)
@@ -153,36 +166,42 @@ async def update_module(request: web.Request) -> web.Response:
     if not module:
         return resp.not_found(f"Module with ID {module_id} not found in flow_id {flow_id}", uuid)
 
-    if not data.get("name") and not data.get("nodes") and not data.get("position"):
-        return resp.bad_request(
-            "At least one of the parameters name, nodes or position is required",
-            uuid,
-        )
-
-    new_name = data.get("name")
+    new_data = {}
     if new_name and new_name != module.name:
         if await DBModule.check_exists_by_name(new_name, flow_id, module_id):
             return resp.bad_request(
-                f"Module with name '{new_name}' already exists in flow_id {flow_id}"
+                f"Module with name '{new_name}' already exists in flow_id '{flow_id}'", uuid
             )
-        module.name = new_name
+        new_data["name"] = new_name
 
-    new_nodes = data.get("nodes")
-    if new_nodes and new_nodes != module.nodes or new_nodes == []:
-        module.nodes = new_nodes
+    if new_nodes is not None and (new_nodes != module.nodes or new_nodes == []):
+        new_data["nodes"] = new_nodes
 
-    new_position = data.get("position")
-    if new_position and new_position != module.position or new_position == {}:
-        module.position = new_position
+    if new_position is not None and (new_position != module.position or new_position == {}):
+        new_data["position"] = new_position
 
-    try:
-        log.debug(f"({uuid}) -> Updating module '{module.name}' in flow_id '{flow_id}'")
-        await module.update()
-    except Exception as e:
-        return resp.server_error(str(e), uuid)
+    if new_data:
+        try:
+            log.debug(f"({uuid}) -> Updating module '{module.name}' in flow_id '{flow_id}'")
+
+            for key, value in new_data.items():
+                setattr(module, key, value)
+
+            await module.update()
+
+            config: Config = get_config()
+            if config["menuflow.load_flow_from"] == "database":
+                modules = await DBModule.all(int(flow_id))
+                nodes = [node for module in modules for node in module.get("nodes", [])]
+                await Util.update_flow_db_clients(
+                    flow_id, {"flow_variables": flow.flow_vars, "nodes": nodes}, config
+                )
+        except Exception as e:
+            return resp.server_error(str(e), uuid)
 
     return resp.ok(
-        {"detail": {"message": "Module updated successfully", "data": {"module_id": module_id}}}
+        {"detail": {"message": "Module updated successfully", "data": {"module_id": module_id}}},
+        uuid,
     )
 
 
@@ -214,7 +233,8 @@ async def delete_module(request: web.Request) -> web.Response:
         return resp.server_error(str(e), uuid)
 
     return resp.ok(
-        {"detail": {"message": "Module deleted successfully", "data": {"module_id": module_id}}}
+        {"detail": {"message": "Module deleted successfully", "data": {"module_id": module_id}}},
+        uuid,
     )
 
 
