@@ -3,6 +3,10 @@ from copy import deepcopy
 from logging import Logger, getLogger
 from textwrap import indent
 
+from ..config import Config
+from ..db.client import Client as DBClient
+from ..menu import MenuClient
+
 log: Logger = getLogger("menuflow.web.util")
 
 
@@ -156,3 +160,18 @@ class Util:
         """
         lines = template.strip().splitlines()
         return lines[0] + "\n" + indent("\n".join(lines[1:]), " " * (indent_level or 20))
+
+    @staticmethod
+    async def update_flow_db_clients(flow_id: int, content: dict, config: Config) -> None:
+        """Update the flow of the db clients.
+
+        Args:
+            flow_id (int): The id of the flow to update.
+            content (dict): The content of the flow to update.
+            config (Config): The config of the flow to update.
+        """
+
+        db_clients = await DBClient.get_by_flow_id(flow_id)
+        for db_client in db_clients:
+            client = MenuClient.cache[db_client.id]
+            await client.flow_cls.load_flow(flow_mxid=client.id, content=content, config=config)
