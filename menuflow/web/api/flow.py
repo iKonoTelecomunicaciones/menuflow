@@ -192,24 +192,19 @@ async def get_flow_nodes(request: web.Request) -> web.Response:
 
     flow_identifier = request.match_info["flow_identifier"]
 
-    try:
-        flow_identifier = int(flow_identifier)
-    except Exception as e:
-        pass
-
     flow_format = request.query.get(
         "flow_format", False
     )  # TODO: Remove this after a stable release of modules
     filters_nodes = request.query.getall("filters_nodes", ["id", "type", "name"])
 
-    if isinstance(flow_identifier, int):
-        flow = await DBFlow.get_by_id(flow_identifier)
-        if not flow:
-            return resp.not_found(f"Flow with ID {flow_identifier} not found", uuid)
-    else:
-        flow = await DBFlow.get_by_mxid(flow_identifier)
-        if not flow:
-            return resp.not_found(f"Flow with mxid {flow_identifier} not found", uuid)
+    flow = (
+        await DBFlow.get_by_id(int(flow_identifier))
+        if flow_identifier.isdigit()
+        else await DBFlow.get_by_mxid(flow_identifier)
+    )
+
+    if not flow:
+        return resp.not_found(f"Flow with identifier {flow_identifier} not found", uuid)
 
     flow_id = flow.id
     modules = await DBModule.all(int(flow_id))

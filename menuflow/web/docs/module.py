@@ -221,12 +221,12 @@ get_module_list_doc = """
         - Module
 
     parameters:
-        - name: flow_id
+        - name: flow_identifier
           in: path
           required: true
-          description: The ID of the flow to get the modules.
+          description: The ID or mxid of the flow to get the modules.
           schema:
-            type: integer
+            type: string
         - in: query
           name: fields
           schema:
@@ -238,8 +238,6 @@ get_module_list_doc = """
     responses:
         '200':
             $ref: '#/components/responses/GetListModulesSuccess'
-        '400':
-            $ref: '#/components/responses/GetListModulesBadRequest'
         '404':
             $ref: '#/components/responses/GetListModulesNotFound'
         '500':
