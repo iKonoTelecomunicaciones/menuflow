@@ -23,7 +23,7 @@ class Flow(SerializableAttrs):
     flow_variables: Dict[str, Any] = ib(default={})
 
     @classmethod
-    async def load_from_db(cls, flow_mxid: str, config: Config) -> tuple[FlowDB, list[dict]]:
+    async def load_from_db(cls, flow_mxid: str, config: Config) -> tuple[dict, list[dict]]:
         """
         Load a flow from the database.
 
