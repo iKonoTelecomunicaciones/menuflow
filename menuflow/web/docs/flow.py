@@ -10,8 +10,8 @@ create_or_update_flow_doc = """
 
     requestBody:
         required: false
-        description: A json with `id` and `flow` keys.
-                     `id` is the flow ID to update, `flow` is the flow content.
+        description: A json with `id`, `flow` and `flow_vars` keys.
+                     `id` is the flow ID to update, `flow` is the flow content, `flow_vars` is the flow variables.
         content:
             application/json:
                 schema:
@@ -21,8 +21,9 @@ create_or_update_flow_doc = """
                             type: integer
                         flow:
                             type: object
-                    required:
-                        - flow
+                        flow_vars:
+                            type: object
+                            additionalProperties: true
                     example:
                         id: 1
                         flow:
@@ -35,6 +36,9 @@ create_or_update_flow_doc = """
                                       type: "message"
                                       content: "Hello"
                                       o_connection: 2
+                        flow_vars:
+                            var1: "value1"
+                            var2: "value2"
     responses:
         '200':
             $ref: '#/components/responses/CreateUpdateFlowSuccess'

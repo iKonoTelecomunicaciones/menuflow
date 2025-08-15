@@ -35,13 +35,19 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
     except JSONDecodeError:
         return resp.body_not_json(uuid)
 
-    flow_id = data.get("id", None)
-    incoming_flow = data.get("flow", None)
+    flow_id = data.get("id")
+    incoming_flow = data.get("flow", {})
+    flow_vars = data.get("flow_vars")
 
-    if not incoming_flow:
-        return resp.bad_request("Parameter flow is required", uuid)
+    if not incoming_flow and flow_vars is None:
+        return resp.bad_request("Parameter flow or flow_vars is required", uuid)
 
-    flow_vars = incoming_flow.get("menu", {}).get("flow_variables", {})
+    variables = (
+        incoming_flow.get("menu", {}).get("flow_variables", {})
+        if incoming_flow
+        else flow_vars or {}
+    )
+
     nodes, positions = Util.parse_flow_to_module_fmt(incoming_flow)
 
     if flow_id:
@@ -49,61 +55,65 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
         if not flow:
             return resp.not_found(f"Flow with ID {flow_id} not found", uuid)
 
-        modules = await DBModule.all(int(flow_id))
+        if incoming_flow:
+            modules = await DBModule.all(int(flow_id))
 
-        if modules:
-            for module_obj in modules:
-                name = module_obj.name
-                if name not in nodes:
-                    await module_obj.delete()
-                else:
-                    new_nodes = nodes.get(name, {}).get("nodes", [])
-                    if module_obj.nodes != new_nodes:
-                        module_obj.nodes = new_nodes
-                    nodes.pop(name, None)
+            if modules:
+                for module_obj in modules:
+                    name = module_obj.name
+                    if name not in nodes:
+                        await module_obj.delete()
+                    else:
+                        new_nodes = nodes.get(name, {}).get("nodes", [])
+                        if module_obj.nodes != new_nodes:
+                            module_obj.nodes = new_nodes
+                        nodes.pop(name, None)
 
-                    new_position = positions.pop(name, {})
-                    if module_obj.position != new_position:
-                        module_obj.position = new_position
+                        new_position = positions.pop(name, {})
+                        if module_obj.position != new_position:
+                            module_obj.position = new_position
 
-                    await module_obj.update()
+                        await module_obj.update()
 
-        for name, node in nodes.items():
-            module_obj = DBModule(
-                flow_id=flow_id,
-                name=name,
-                nodes=node.get("nodes", []),
-                position=positions.get(name, {}),
-            )
-            await module_obj.insert()
+            for name, node in nodes.items():
+                module_obj = DBModule(
+                    flow_id=flow_id,
+                    name=name,
+                    nodes=node.get("nodes", []),
+                    position=positions.get(name, {}),
+                )
+                await module_obj.insert()
 
-        if flow.flow != incoming_flow:
-            await flow.backup_flow(config)
+            if flow.flow != incoming_flow:
+                await flow.backup_flow(config)
 
-        flow.flow = incoming_flow
-        flow.flow_vars = flow_vars
+            flow.flow = incoming_flow
+
+        flow.flow_vars = variables
+
         await flow.update()
 
         if config["menuflow.load_flow_from"] == "database":
             modules = await DBModule.all(int(flow_id))
             nodes = [node for module in modules for node in module.get("nodes", [])]
             await Util.update_flow_db_clients(
-                flow_id, {"flow_variables": flow_vars, "nodes": nodes}, config
+                flow_id, {"flow_variables": variables, "nodes": nodes}, config
             )
 
         message = "Flow updated successfully"
     else:
-        new_flow = DBFlow(flow=incoming_flow, flow_vars=flow_vars)
+        new_flow = DBFlow(flow=incoming_flow, flow_vars=variables)
         flow_id = await new_flow.insert()
 
-        for name, node in nodes.items():
-            module_obj = DBModule(
-                flow_id=flow_id,
-                name=name,
-                nodes=node.get("nodes", []),
-                position=positions.get(name, {}),
-            )
-            await module_obj.insert()
+        if incoming_flow:
+            for name, node in nodes.items():
+                module_obj = DBModule(
+                    flow_id=flow_id,
+                    name=name,
+                    nodes=node.get("nodes", []),
+                    position=positions.get(name, {}),
+                )
+                await module_obj.insert()
 
         message = "Flow created successfully"
 
@@ -147,15 +157,18 @@ async def get_flow(request: web.Request) -> web.Response:
                     },
                     "modules": positions,
                 },
+                "flow_vars": flow.flow_vars,
             }
         else:  # TODO: This is a temporary solution to return the flow when they are not yet in the module table
             log.warning(f"({uuid}) -> Old flow format detected, returning flow from column")
             data = flow.serialize()
-            data.pop("flow_vars")
+            data["flow_vars"] = flow.get("flow", {}).get("menu", {}).get("flow_variables", {})
 
     else:
         flows = await DBFlow.all()
         if flow_format:
+            for flow in flows:
+                flow["flow_vars"] = flow.get("flow", {}).get("menu", {}).get("flow_variables", {})
             data = {"flows": flows}
         else:
             list_flows = []
@@ -173,10 +186,13 @@ async def get_flow(request: web.Request) -> web.Response:
                                 },
                                 "modules": positions,
                             },
+                            "flow_vars": flow.get("flow_vars", {}),
                         }
                     )
                 else:  # TODO: This is a temporary solution to return the flow when they are not yet in the module table
-                    flow.pop("flow_vars")
+                    flow["flow_vars"] = (
+                        flow.get("flow", {}).get("menu", {}).get("flow_variables", {})
+                    )
                     list_flows.append(flow)
 
             data = {"flows": list_flows}
