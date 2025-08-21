@@ -77,7 +77,7 @@ components:
           type: object
       example:
         detail:
-          message: Parameter flow is required.
+          message: Parameter flow or flow_vars is required.
 
     GetFlowOk:
       type: object
@@ -86,6 +86,9 @@ components:
           type: integer
         flow:
           type: object
+        flow_vars:
+          type: object
+          additionalProperties: true
       example:
         id: 1
         flow:
@@ -98,6 +101,9 @@ components:
                 type: message
                 message: message_1
                 o_connection: message_2
+        flow_vars:
+          variable_1: value_1
+          variable_2: value_2
     GetAllFlowsOk:
       type: object
       properties:
@@ -119,6 +125,9 @@ components:
                     type: message
                     message: message_1
                     o_connection: message_2
+            flow_vars:
+              variable_1: value_1
+              variable_2: value_2
           - id: 2
             flow:
               menu:
@@ -130,7 +139,9 @@ components:
                     type: message
                     message: message_1
                     o_connection: message_2
-
+            flow_vars:
+              variable_1: value_1
+              variable_2: value_2
     GetModuleOk:
       type: object
       properties:
@@ -694,6 +705,14 @@ components:
                         type: message
                         message: message_1
                         o_connection: message_2
+                  modules:
+                    - x: 501.04994916101714
+                      y: -627.2362469450213
+                      scale: 0.4092324994498387
+                      module: Main
+                flow_vars:
+                  variable_1: value_1
+                  variable_2: value_2
             GetAllFlows:
               value:
                 flows:
@@ -708,6 +727,14 @@ components:
                             type: message
                             message: message_1
                             o_connection: message_2
+                        modules:
+                          - x: 501.04994916101714
+                            y: -627.2362469450213
+                            scale: 0.4092324994498387
+                            module: Main
+                    flow_vars:
+                      variable_1: value_1
+                      variable_2: value_2
                   - id: 2
                     flow:
                       menu:
@@ -719,6 +746,14 @@ components:
                             type: message
                             message: message_1
                             o_connection: message_2
+                        modules:
+                          - x: 501.04994916101714
+                            y: -627.2362469450213
+                            scale: 0.4092324994498387
+                            module: Main
+                    flow_vars:
+                      variable_1: value_1
+                      variable_2: value_2
 
     GetFlowNotFound:
       description: Get flow not found.
