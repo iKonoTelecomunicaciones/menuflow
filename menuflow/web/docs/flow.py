@@ -1,6 +1,6 @@
 from logging import Logger, getLogger
 
-log: Logger = getLogger("ivrflow.docs.flow")
+log: Logger = getLogger("menuflow.docs.flow")
 
 create_or_update_flow_doc = """
     ---
