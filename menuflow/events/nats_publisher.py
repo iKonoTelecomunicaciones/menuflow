@@ -3,7 +3,9 @@ import logging
 from mautrix.util.logging import TraceLogger
 from nats import connect as nats_connect
 from nats.aio.client import Client as NATSClient
+from nats.js.api import RetentionPolicy, StreamConfig
 from nats.js.client import JetStreamContext
+from nats.js.errors import ServerError
 
 from ..config import Config
 
@@ -39,10 +41,39 @@ class NatsPublisher:
             max_reconnect_attempts=1,
             user=cls.config["nats.user"],
             password=cls.config["nats.password"],
+            name=f"MENUFLOW {cls.config['homeserver.domain']} {cls.config['nats.user']}",
         )
         js = nc.jetstream()
         subject = f"{cls.config['nats.subject']}.*"
-        await js.add_stream(name=cls.config["nats.stream"], subjects=[subject])
+        cep_subject = f"{cls.config['nats.subject']}_cep.*"
+        mntr_subject = f"{cls.config['nats.subject']}_mntr.*"
+
+        stream_config = StreamConfig(name=cls.config["nats.stream"], subjects=[subject])
+        cep_stream_config = StreamConfig(
+            name=cls.config["nats.stream"] + "_CEP",
+            subjects=[cep_subject],
+            retention=RetentionPolicy.WORK_QUEUE,
+            num_replicas=cls.config["nats.num_replicas"],
+        )
+        mntr_stream_config = StreamConfig(
+            name=cls.config["nats.stream"] + "_MNTR",
+            subjects=[mntr_subject],
+            retention=RetentionPolicy.INTEREST,
+            num_replicas=cls.config["nats.num_replicas"],
+            max_age=24 * 60 * 60,  # Keep messages for 1 day maximum (in seconds)
+        )
+
+        try:
+            await js.add_stream(config=stream_config)
+            await js.add_stream(config=cep_stream_config)
+            await js.add_stream(config=mntr_stream_config)
+        except ServerError as e:
+            log.critical(f"Error adding stream: {e.err_code} - {e.description}")
+            cep_stream_config.num_replicas = None
+            mntr_stream_config.num_replicas = None
+            await js.add_stream(config=cep_stream_config)
+            await js.add_stream(config=mntr_stream_config)
+
         return nc, js
 
     @classmethod

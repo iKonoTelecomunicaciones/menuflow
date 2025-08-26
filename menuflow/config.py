@@ -35,6 +35,7 @@ class Config(BaseFileConfig):
         copy_dict("events")
         copy_dict("nats")
         copy_dict("logging")
+        copy_dict("homeserver")
         shared_secret = self["server.unshared_secret"]
         if shared_secret is None or shared_secret == "generate":
             base["server.unshared_secret"] = self._new_token()

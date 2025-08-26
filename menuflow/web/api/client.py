@@ -13,6 +13,7 @@ from mautrix.types import UserID
 
 from ...config import Config
 from ...db.flow import Flow as DBFlow
+from ...db.module import Module as DBModule
 from ...db.room import Room as DBRoom
 from ...db.route import Route as DBRoute
 from ...menu import MenuClient
@@ -33,7 +34,11 @@ log: Logger = getLogger("menuflow.api.client")
 
 
 async def _create_client(
-    data: Dict, *, user_id: Optional[UserID] = None, flow_id: Optional[int] = None
+    data: Dict,
+    *,
+    user_id: Optional[UserID] = None,
+    flow_id: Optional[int] = None,
+    uuid: Optional[str] = None,
 ) -> MenuClient | web.Response:
     homeserver = data.get("homeserver", None)
     access_token = data.get("access_token", None)
@@ -71,12 +76,15 @@ async def _create_client(
     client.autojoin = data.get("autojoin", True)
     await client.update()
     await client.start()
-    return resp.created(client.to_dict())
+    return resp.created(client.to_dict(), uuid=uuid)
 
 
 @routes.post("/v1/client/new")
 @Util.docstring(create_client_doc)
 async def create_client(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Creating client")
+
     try:
         data = await request.json()
     except JSONDecodeError:
@@ -84,20 +92,22 @@ async def create_client(request: web.Request) -> web.Response:
 
     new_flow_id = None
     if MenuClient.menuflow.config["menuflow.load_flow_from"] == "database":
-        example_flow = {"menu": {"flow_variables": {}, "nodes": []}}
-        new_flow = DBFlow(flow=example_flow)
+        new_flow = DBFlow(flow_vars={})
         new_flow_id = await new_flow.insert()
 
-    return await _create_client(data, flow_id=new_flow_id)
+    return await _create_client(data, flow_id=new_flow_id, uuid=uuid)
 
 
 @routes.post("/v1/room/{room_id}/set_variables")
 @Util.docstring(set_variables_doc)
 async def set_variables(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Setting variables")
+
     try:
         data: Dict = await request.json()
     except JSONDecodeError:
-        return resp.body_not_json
+        return resp.body_not_json(uuid)
 
     room_id = request.match_info["room_id"]
     variables = data.get("variables", {})
@@ -107,62 +117,77 @@ async def set_variables(request: web.Request) -> web.Response:
         room: Room = await Room.get_by_room_id(room_id, bot_mxid)
         await room.set_variable(variable_id="external", value=variables)
     except Exception as e:
-        return resp.server_error(str(e))
+        return resp.server_error(str(e), uuid)
 
-    return resp.ok({"detail": {"message": "Variables set successfully"}})
+    return resp.ok({"detail": {"message": "Variables set successfully"}}, uuid)
 
 
 @routes.patch("/v1/client/{mxid}/flow")
 @Util.docstring(update_client_doc)
 async def update_client(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Updating client")
+
     mxid = request.match_info["mxid"]
     client: Optional[MenuClient] = await MenuClient.get(mxid)
     if not client:
-        return resp.client_not_found(mxid)
+        return resp.client_not_found(mxid, uuid)
 
     try:
         data: Dict = await request.json()
     except JSONDecodeError:
-        return resp.body_not_json
+        return resp.body_not_json(uuid)
 
     flow_id = data.get("flow_id", None)
     if not flow_id:
-        return resp.bad_request("Flow ID is required")
+        return resp.bad_request("Flow ID is required", uuid)
 
     flow_db = await DBFlow.get_by_id(flow_id)
     if not flow_db:
-        return resp.not_found("Flow not found")
+        return resp.not_found("Flow not found", uuid)
 
     client.flow = flow_id
+    modules = await DBModule.all(flow_db.id)
+    nodes = [node for module in modules for node in module.get("nodes", [])]
     config: Config = get_config()
-    await client.flow_cls.load_flow(flow_mxid=client.id, content=flow_db.flow, config=config)
+    await client.flow_cls.load_flow(
+        flow_mxid=client.id,
+        content={"flow_variables": flow_db.flow_vars, "nodes": nodes},
+        config=config,
+    )
 
     await client.update()
-    return resp.ok(client.to_dict())
+    return resp.ok(client.to_dict(), uuid)
 
 
 @routes.post("/v1/client/{mxid}/flow/reload")
 @Util.docstring(reload_client_flow_doc)
 async def reload_client_flow(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Reloading client flow")
+
     mxid = request.match_info["mxid"]
     client: Optional[MenuClient] = MenuClient.cache.get(mxid)
     if not client:
-        return resp.client_not_found(mxid)
+        return resp.client_not_found(mxid, uuid)
 
     config: Config = get_config()
     await client.flow_cls.load_flow(flow_mxid=client.id, config=config)
 
-    return resp.ok({"detail": {"message": "Flow reloaded successfully"}})
+    return resp.ok({"detail": {"message": "Flow reloaded successfully"}}, uuid)
 
 
 @routes.patch("/v1/client/{mxid}/{action}")
 @Util.docstring(enable_disable_client_doc)
 async def enable_disable_client(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Enabling/disabling client")
+
     mxid = request.match_info["mxid"]
     action = request.match_info["action"]
     client: Optional[MenuClient] = await MenuClient.get(mxid)
     if not client:
-        return resp.client_not_found(mxid)
+        return resp.client_not_found(mxid, uuid)
 
     if action == "enable":
         client.enabled = True
@@ -172,10 +197,10 @@ async def enable_disable_client(request: web.Request) -> web.Response:
         asyncio.create_task(client.leave_rooms(), name=f"{mxid}-leave_rooms")
         await client.stop()
     else:
-        return resp.bad_request("Invalid action provided")
+        return resp.bad_request("Invalid action provided", uuid)
 
     await client.update()
-    return resp.ok({"detail": {"message": f"Client {action}d successfully"}})
+    return resp.ok({"detail": {"message": f"Client {action}d successfully"}}, uuid)
 
 
 @routes.get("/v1/room/{room_id}/get_variables", allow_head=False)
@@ -192,16 +217,16 @@ async def get_variables(request: web.Request) -> web.Response:
     try:
         room = await DBRoom.get_by_room_id(room_id)
         if not room:
-            return resp.not_found(f"room_id '{room_id}' not found")
+            return resp.not_found(f"room_id '{room_id}' not found", uuid)
 
         if not bot_mxid:
             bot_mxid = room._variables.get("current_bot_mxid")
             if not bot_mxid:
-                return resp.not_found("current_bot_mxid not found in the room variables")
+                return resp.not_found("current_bot_mxid not found in the room variables", uuid)
 
         route = await DBRoute.get_by_room_and_client(room=room.id, client=bot_mxid, create=False)
         if not route:
-            return resp.not_found(f"Client '{bot_mxid}' not found in room")
+            return resp.not_found(f"Client '{bot_mxid}' not found in room", uuid)
 
         for scope in scopes:
             match scope:

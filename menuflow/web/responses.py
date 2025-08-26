@@ -11,7 +11,8 @@ log: Logger = getLogger("menuflow.api.responses")
 
 class _Response:
     @property
-    def body_not_json(self) -> web.Response:
+    def body_not_json(self, uuid: str = "") -> web.Response:
+        log.debug(f"({uuid}) -> Request body is not JSON")
         return web.json_response(
             {"detail": {"message": "Request body is not JSON"}},
             status=HTTPStatus.BAD_REQUEST,
@@ -79,29 +80,34 @@ class _Response:
             status=HTTPStatus.CONFLICT,
         )
 
-    def ok(self, data: Optional[Dict] = {}, uuid: str = "") -> web.Response:
-        log.debug(f"({uuid}) -> {data}")
+    def ok(
+        self, data: Optional[Dict] = {}, uuid: str = "", log_msg: str | None = None
+    ) -> web.Response:
+        log.debug(f"({uuid}) -> {log_msg or data}")
         return web.json_response(data, status=HTTPStatus.OK)
 
-    @staticmethod
-    def created(data: dict) -> web.Response:
+    def created(self, data: dict, uuid: str = "", log_msg: str | None = None) -> web.Response:
+        log.debug(f"({uuid}) -> {log_msg or data}")
         return web.json_response(data, status=HTTPStatus.CREATED)
 
-    def bad_request(self, message: str, uuid: str = "") -> web.Response:
-        log.debug(f"({uuid}) -> {message}")
+    def bad_request(
+        self, message: str, uuid: str = "", log_msg: str | None = None
+    ) -> web.Response:
+        log.debug(f"({uuid}) -> {log_msg or message}")
         return web.json_response(
             {"detail": {"message": message}},
             status=HTTPStatus.BAD_REQUEST,
         )
 
-    def client_not_found(self, user_id: str) -> web.Response:
+    def client_not_found(self, user_id: str, uuid: str = "") -> web.Response:
+        log.debug(f"({uuid}) -> Client with given user ID {user_id} not found")
         return web.json_response(
             {"detail": {"message": f"Client with given user ID {user_id} not found"}},
             status=HTTPStatus.NOT_FOUND,
         )
 
-    def not_found(self, message: str, uuid: str = "") -> web.Response:
-        log.debug(f"({uuid}) -> {message}")
+    def not_found(self, message: str, uuid: str = "", log_msg: str | None = None) -> web.Response:
+        log.debug(f"({uuid}) -> {log_msg or message}")
         return web.json_response(
             {
                 "detail": {"message": message},
@@ -109,8 +115,10 @@ class _Response:
             status=HTTPStatus.NOT_FOUND,
         )
 
-    def unprocessable_entity(self, message: str, uuid: str = "") -> web.Response:
-        log.debug(f"({uuid}) -> {message}")
+    def unprocessable_entity(
+        self, message: str, uuid: str = "", log_msg: str | None = None
+    ) -> web.Response:
+        log.debug(f"({uuid}) -> {log_msg or message}")
         return web.json_response(
             {
                 "detail": {"message": message},
@@ -118,8 +126,10 @@ class _Response:
             status=HTTPStatus.UNPROCESSABLE_ENTITY,
         )
 
-    def server_error(self, message: str, uuid: str = "") -> web.Response:
-        log.error(f"({uuid}) -> {message}")
+    def server_error(
+        self, message: str, uuid: str = "", log_msg: str | None = None
+    ) -> web.Response:
+        log.error(f"({uuid}) -> {log_msg or message}")
         return web.json_response(
             {
                 "detail": {"message": message},

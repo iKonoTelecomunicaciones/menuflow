@@ -1,3 +1,8 @@
+# Homeserver details
+homeserver:
+    # The domain of the homeserver (for MXIDs, etc).
+    domain: dominiocliente.com
+
 menuflow:
     database: postgresql://menuflow:secretfoo@postgres/menuflow
     database_opts:
@@ -92,6 +97,8 @@ nats:
     stream: "MENUFLOW_COMPANY_NAME"
     # Subject to publish messages
     subject: "menuflow.company_name"
+    # Number of replicas for the stream
+    num_replicas: 3
 
 # Python logging configuration.
 #
