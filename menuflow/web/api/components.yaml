@@ -1173,11 +1173,19 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/BaseResponseDetailMessageData"
-          example:
-            detail:
-              message: Node with ID 'id' already exists in other module
-              data:
-                module_name: module_name
+          examples:
+            NodeAlreadyExists:
+              value:
+                detail:
+                  message: Node with ID 'id' already exists
+                  data:
+                    module_name: module_name
+            NodeIsRepeated:
+              value:
+                detail:
+                  message: Node with ID 'id' is repeated
+                  data:
+                    module_name: ''
 
     UpdateModuleSuccess:
       description: Update module success.
@@ -1237,11 +1245,19 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/BaseResponseDetailMessageData"
-          example:
-            detail:
-              message: Node with ID 'id' already exists in other module
-              data:
-                module_name: module_name
+          examples:
+            NodeAlreadyExists:
+              value:
+                detail:
+                  message: Node with ID 'id' already exists
+                  data:
+                    module_name: module_name
+            NodeIsRepeated:
+              value:
+                detail:
+                  message: Node with ID 'id' is repeated
+                  data:
+                    module_name: ''
 
     DeleteModuleSuccess:
       description: Delete module success.
