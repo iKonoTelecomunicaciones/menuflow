@@ -106,14 +106,6 @@ class Module(SerializableAttrs):
     ) -> dict | None:
         q = "SELECT m.name AS module_name, node " if add_module_name else "SELECT node "
         q += "FROM module m CROSS JOIN LATERAL jsonb_array_elements(m.nodes) AS node WHERE m.flow_id = $1 AND node->>'id' = $2"
-        rows = await cls.db.fetch(q, flow_id, node_id)
+        row = await cls.db.fetchrow(q, flow_id, node_id)
 
-        json_columns = ["node"]
-        if not rows:
-            return None
-
-        return (
-            [cls._to_dict(row, json_columns) for row in rows]
-            if len(rows) > 1
-            else cls._to_dict(rows[0], json_columns)
-        )
+        return cls._to_dict(row, ["node"]) if row else None

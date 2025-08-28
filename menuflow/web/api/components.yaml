@@ -19,9 +19,8 @@ components:
             message:
               type: string
             data:
-              type: array
-              items:
-                type: string
+              type: object
+              additionalProperties: true
     # End of base schemas
 
     # Schemas
@@ -1174,20 +1173,11 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/BaseResponseDetailMessageData"
-          examples:
-            NodeAlreadyExists:
-              value:
-                detail:
-                  message: "Node with ID 'id' already exists in multiple modules"
-                  data:
-                    - module_1
-                    - module_2
-            NodeAlreadyExistsInModule:
-              value:
-                detail:
-                  message: Node with ID 'id' already exists in other module
-                  data:
-                    - module_name
+          example:
+            detail:
+              message: Node with ID 'id' already exists in other module
+              data:
+                module_name: module_name
 
     UpdateModuleSuccess:
       description: Update module success.
@@ -1247,20 +1237,11 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/BaseResponseDetailMessageData"
-          examples:
-            NodeAlreadyExists:
-              value:
-                detail:
-                  message: Node with ID 'id' already exists in multiple modules
-                  data:
-                    - module_1
-                    - module_2
-            NodeAlreadyExistsInModule:
-              value:
-                detail:
-                  message: Node with ID 'id' already exists in other module
-                  data:
-                    - module_name
+          example:
+            detail:
+              message: Node with ID 'id' already exists in other module
+              data:
+                module_name: module_name
 
     DeleteModuleSuccess:
       description: Delete module success.
