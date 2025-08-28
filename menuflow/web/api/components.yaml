@@ -1370,15 +1370,9 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/BaseResponseDetailMessage"
-          examples:
-            MultipleNodesFound:
-              value:
-                detail:
-                  message: Multiple nodes found
-            InvalidFlowID:
-              value:
-                detail:
-                  message: Invalid or missing flow ID
+          example:
+            detail:
+              message: Invalid or missing flow ID
     GetNodeNotFound:
       description: Get node not found.
       content:
