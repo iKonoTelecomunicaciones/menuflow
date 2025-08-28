@@ -10,3 +10,7 @@ synapse
 *data*
 volumes
 docker-compose.yaml
+Dockerfile
+menuflow.log*
+*.toml
+__pycache__

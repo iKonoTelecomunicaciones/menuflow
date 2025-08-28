@@ -210,6 +210,9 @@ components:
         route:
           type: object
           additionalProperties: true
+        node:
+          type: object
+          additionalProperties: true
 
     GetFlowByIDNotFound:
       type: object
@@ -1312,6 +1315,9 @@ components:
               customer_room_id: "!KbOvLyPkXlKnJojGfS:darknet"
               bot_mxid: "@menubot1:darknet"
               puppet_mxid: "@acd1:darknet"
+            node:
+              variable_1: value_1
+              variable_2: value_2
     GetVariablesNotFound:
       description: Get variables not found.
       content:
