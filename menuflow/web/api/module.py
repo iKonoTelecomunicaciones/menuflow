@@ -110,6 +110,17 @@ async def create_module(request: web.Request) -> web.Response:
             uuid,
         )
 
+    for node in data.get("nodes", []):
+        if tmp_node := await DBModule.get_node_by_id(flow_id, node.get("id"), True):
+            if isinstance(tmp_node, list):
+                message = f"Node with ID '{node.get('id')}' already exists in multiple modules"
+                data = [module.get("module_name") for module in tmp_node]
+            else:
+                message = f"Node with ID '{node.get('id')}' already exists in other module"
+                data = [tmp_node.get("module_name")]
+
+            return resp.conflict(message, uuid, data)
+
     try:
         log.debug(f"({uuid}) -> Creating new module '{name}' in flow_id '{flow_id}'")
         new_module = DBModule(
@@ -175,6 +186,19 @@ async def update_module(request: web.Request) -> web.Response:
         new_data["name"] = new_name
 
     if new_nodes is not None and (new_nodes != module.nodes or new_nodes == []):
+        for node in new_nodes:
+            if tmp_node := await DBModule.get_node_by_id(flow_id, node.get("id"), True):
+
+                if isinstance(tmp_node, list):
+                    message = f"Node with ID '{node.get('id')}' already exists in multiple modules"
+                    data = [module.get("module_name") for module in tmp_node]
+                else:
+                    if tmp_node.get("module_name") == module.name:
+                        continue
+                    message = f"Node with ID '{node.get('id')}' already exists in other module"
+                    data = [tmp_node.get("module_name")]
+
+                return resp.conflict(message, uuid)
         new_data["nodes"] = new_nodes
 
     if new_position is not None and (new_position != module.position or new_position == {}):

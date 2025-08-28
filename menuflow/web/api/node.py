@@ -36,6 +36,9 @@ async def get_node(request: web.Request) -> web.Response:
     except Exception as e:
         return resp.server_error(str(e), uuid)
 
+    if isinstance(node, list):
+        return resp.bad_request("Multiple nodes found", uuid)
+
     if not node:
         return resp.not_found(f"Node with ID '{node_id}' not found in the database", uuid)
 

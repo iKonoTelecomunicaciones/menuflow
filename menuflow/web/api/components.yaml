@@ -9,6 +9,19 @@ components:
           properties:
             message:
               type: string
+
+    BaseResponseDetailMessageData:
+      type: object
+      properties:
+        detail:
+          type: object
+          properties:
+            message:
+              type: string
+            data:
+              type: array
+              items:
+                type: string
     # End of base schemas
 
     # Schemas
@@ -1155,6 +1168,26 @@ components:
               value:
                 detail:
                   message: Module with name 'name' already exists in flow_id 1.
+    CreateModuleConflict:
+      description: Create module conflict.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessageData"
+          examples:
+            NodeAlreadyExists:
+              value:
+                detail:
+                  message: "Node with ID 'id' already exists in multiple modules"
+                  data:
+                    - module_1
+                    - module_2
+            NodeAlreadyExistsInModule:
+              value:
+                detail:
+                  message: Node with ID 'id' already exists in other module
+                  data:
+                    - module_name
 
     UpdateModuleSuccess:
       description: Update module success.
@@ -1208,6 +1241,26 @@ components:
               value:
                 detail:
                   message: Module with ID '1' not found in flow_id '1'
+    UpdateModuleConflict:
+      description: Update module conflict.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessageData"
+          examples:
+            NodeAlreadyExists:
+              value:
+                detail:
+                  message: Node with ID 'id' already exists in multiple modules
+                  data:
+                    - module_1
+                    - module_2
+            NodeAlreadyExistsInModule:
+              value:
+                detail:
+                  message: Node with ID 'id' already exists in other module
+                  data:
+                    - module_name
 
     DeleteModuleSuccess:
       description: Delete module success.
@@ -1336,9 +1389,15 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/BaseResponseDetailMessage"
-          example:
-            detail:
-              message: Invalid or missing flow ID
+          examples:
+            MultipleNodesFound:
+              value:
+                detail:
+                  message: Multiple nodes found
+            InvalidFlowID:
+              value:
+                detail:
+                  message: Invalid or missing flow ID
     GetNodeNotFound:
       description: Get node not found.
       content:

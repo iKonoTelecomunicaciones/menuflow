@@ -150,5 +150,14 @@ class _Response:
             status=status,
         )
 
+    def conflict(
+        self, message: str, uuid: str = "", data: list = None, log_msg: str | None = None
+    ) -> web.Response:
+        log.debug(f"({uuid}) -> {log_msg or message}")
+        return web.json_response(
+            {"detail": {"message": message, "data": data} if data else {"message": message}},
+            status=HTTPStatus.CONFLICT,
+        )
+
 
 resp = _Response()
