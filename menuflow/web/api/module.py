@@ -110,6 +110,21 @@ async def create_module(request: web.Request) -> web.Response:
             uuid,
         )
 
+    nodes_ids = set()
+    for node in data.get("nodes", []):
+        node_id = node.get("id")
+        msg = f"Node with ID '{node_id}'"
+
+        if node_id in nodes_ids:
+            return resp.conflict(f"{msg} is repeated", uuid, {"module_name": ""})
+
+        if _node := await DBModule.get_node_by_id(flow_id, node_id, True):
+            return resp.conflict(
+                f"{msg} already exists", uuid, {"module_name": _node.get("module_name")}
+            )
+
+        nodes_ids.add(node_id)
+
     try:
         log.debug(f"({uuid}) -> Creating new module '{name}' in flow_id '{flow_id}'")
         new_module = DBModule(
@@ -175,6 +190,21 @@ async def update_module(request: web.Request) -> web.Response:
         new_data["name"] = new_name
 
     if new_nodes is not None and (new_nodes != module.nodes or new_nodes == []):
+        nodes_ids = set()
+        for node in new_nodes:
+            node_id = node.get("id")
+            msg = f"Node with ID '{node_id}'"
+
+            if node_id in nodes_ids:
+                return resp.conflict(f"{msg} is repeated", uuid, {"module_name": ""})
+
+            if _node := await DBModule.get_node_by_id(flow_id, node_id, True):
+                if not _node.get("module_name") == module.name:
+                    return resp.conflict(
+                        f"{msg} already exists", uuid, {"module_name": _node.get("module_name")}
+                    )
+            nodes_ids.add(node_id)
+
         new_data["nodes"] = new_nodes
 
     if new_position is not None and (new_position != module.position or new_position == {}):
