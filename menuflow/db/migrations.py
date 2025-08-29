@@ -172,3 +172,10 @@ async def upgrade_v9(conn: Connection) -> None:
     )
     await conn.execute("CREATE INDEX idx_webhook_queue_id ON webhook_queue (id)")
     await conn.execute("CREATE INDEX idx_webhook_queue_event ON webhook_queue (event)")
+
+
+@upgrade_table.register(description="Add node_vars column to route table")
+async def upgrade_v10(conn: Connection) -> None:
+    await conn.execute(
+        "ALTER TABLE route ADD COLUMN IF NOT EXISTS node_vars JSONB DEFAULT '{}'::jsonb"
+    )

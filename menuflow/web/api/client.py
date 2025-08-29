@@ -211,7 +211,7 @@ async def get_variables(request: web.Request) -> web.Response:
 
     room_id = request.match_info["room_id"]
     bot_mxid = request.query.get("bot_mxid", None)
-    scopes = request.query.getall("scopes", ["room", "route"])
+    scopes = request.query.getall("scopes", ["room", "route", "node"])
     response = {}
 
     try:
@@ -234,6 +234,8 @@ async def get_variables(request: web.Request) -> web.Response:
                     response[scope] = room._variables
                 case "route":
                     response[scope] = route._variables
+                case "node":
+                    response[scope] = route._node_vars
                 case _:
                     log.warning(f"({uuid}) -> Invalid scope: {scope}, skipping")
 

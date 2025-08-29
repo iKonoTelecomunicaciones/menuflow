@@ -183,7 +183,11 @@ class Room(DBRoom):
 
     @property
     def all_variables(self) -> Dict:
-        return {"room": self._variables, "route": self.route._variables}
+        return {
+            "room": self._variables,
+            "route": self.route._variables,
+            "node": self.route._node_vars,
+        }
 
     @classmethod
     @async_getter_lock
@@ -390,7 +394,9 @@ class Room(DBRoom):
         for variable in variables:
             await self.del_variable(variable_id=variable)
 
-    async def update_menu(self, node_id: str, state: Optional[RouteState] = None):
+    async def update_menu(
+        self, node_id: str, state: Optional[RouteState] = None, update_node_vars: bool = True
+    ):
         """Updates the menu's node_id and state.
 
         Parameters
@@ -406,4 +412,16 @@ class Room(DBRoom):
         )
         self.route.node_id = node_id
         self.route.state = state
+        if update_node_vars:
+            self.route._node_vars = {}
         await self.route.update()
+
+    def set_node_var(self, **kwargs) -> None:
+        """Updates the node variables.
+
+        Parameters
+        ----------
+        **kwargs : dict
+            The node variables to update.
+        """
+        self.route._node_vars = {**self.route._node_vars, **kwargs}
