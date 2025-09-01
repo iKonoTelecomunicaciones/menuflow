@@ -10,6 +10,39 @@ log: Logger = getLogger("menuflow.api.responses")
 
 
 class _Response:
+    @staticmethod
+    def _base_response(
+        status: HTTPStatus,
+        message: str | None = None,
+        uuid: str | None = None,
+        data: dict | None = None,
+        log_msg: str | None = None,
+    ) -> web.Response:
+
+        if message:
+            response = {"detail": {"message": message}}
+            if data:
+                response["detail"]["data"] = data
+        else:
+            response = data
+
+        log_msg = log_msg or response
+
+        log.info(f"({uuid}) -> {log_msg}" if uuid else log_msg)
+
+        return web.json_response(response, status=status)
+
+    def success(
+        self,
+        message: str = None,
+        uuid: str = None,
+        data: dict = None,
+        log_msg: str = None,
+    ) -> web.Response:
+        return self._base_response(
+            status=HTTPStatus.OK, message=message, uuid=uuid, data=data, log_msg=log_msg
+        )
+
     @property
     def body_not_json(self, uuid: str = "") -> web.Response:
         log.debug(f"({uuid}) -> Request body is not JSON")
