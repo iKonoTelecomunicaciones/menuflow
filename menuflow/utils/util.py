@@ -626,7 +626,6 @@ class Util:
     def get_scope_and_key(
         variable_id: str,
         default_scope: Scopes = Scopes.ROUTE,
-        scopes: tuple[str, ...] = (Scopes.ROOM.value, Scopes.ROUTE.value),
     ) -> tuple[Scopes, str]:
         """Get the scope and key from a variable id
 
@@ -634,6 +633,8 @@ class Util:
         ----------
         variable_id : str
             The variable id to get the scope and key from.
+        default_scope : Scopes
+            The default scope to use if the variable id does not have a scope.
 
         Returns
         -------
@@ -641,7 +642,8 @@ class Util:
         """
 
         parts = variable_id.split(".", maxsplit=1)
-        if len(parts) == 2 and parts[0] in scopes:
+
+        if len(parts) == 2 and parts[0] in Scopes._value2member_map_:
             scope: Scopes = Scopes._value2member_map_.get(parts[0], Scopes.UNKNOWN)
             key = parts[1]
         else:

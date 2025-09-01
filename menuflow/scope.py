@@ -33,5 +33,11 @@ class Scope:
                     get_vars=lambda: self.route._variables,
                     update_func=self.route.update,
                 )
+            case Scopes.NODE:
+                return ScopeHandler(
+                    set_vars=lambda vars: setattr(self.route, "node_vars", json.dumps(vars)),
+                    get_vars=lambda: self.route._node_vars,
+                    update_func=self.route.update_node_vars,
+                )
             case _:
                 raise ValueError(f"Unknown scope: {scope}")
