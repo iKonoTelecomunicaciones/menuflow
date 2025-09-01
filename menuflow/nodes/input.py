@@ -94,10 +94,13 @@ class Input(Switch, Message):
                 await middlewares_sorted[Middlewares.LLM].run(text=given_text)
         else:
             try:
-                await self.room.set_variable(
-                    self.variable,
-                    int(text) if text.isdigit() else text,
-                )
+                if vars := self.set_variables:
+                    await self.load_variables(vars)
+                else:
+                    await self.room.set_variable(
+                        self.variable,
+                        int(text) if text.isdigit() else text,
+                    )
             except ValueError as e:
                 self.log.warning(e)
 

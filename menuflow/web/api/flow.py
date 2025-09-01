@@ -164,6 +164,8 @@ async def get_flow(request: web.Request) -> web.Response:
             data = flow.serialize()
             data["flow_vars"] = flow.get("flow", {}).get("menu", {}).get("flow_variables", {})
 
+        log_msg = f"Returning flow_id: {flow_id} with {len(data['flow']['menu']['nodes'])} nodes"
+
     else:
         flows = await DBFlow.all()
         if flow_format:
@@ -197,7 +199,9 @@ async def get_flow(request: web.Request) -> web.Response:
 
             data = {"flows": list_flows}
 
-    return resp.ok(data, uuid)
+        log_msg = f"Returning {len(data['flows'])} flows"
+
+    return resp.success(data=data, uuid=uuid, log_msg=log_msg)
 
 
 @routes.get("/v1/flow/{flow_identifier}/nodes", allow_head=False)
@@ -234,7 +238,8 @@ async def get_flow_nodes(request: web.Request) -> web.Response:
         nodes = data.get("flow", {}).get("menu", {}).get("nodes", [])
         list_nodes.extend(Util.filter_nodes_by_keys(nodes, filters_nodes))
 
-    return resp.ok({"id": flow.id, "nodes": list_nodes}, uuid)
+    log_msg = f"Returning {len(list_nodes)} nodes for flow {flow_id}"
+    return resp.success(data={"id": flow.id, "nodes": list_nodes}, uuid=uuid, log_msg=log_msg)
 
 
 @routes.get("/v1/flow/{flow_id}/backup", allow_head=False)
@@ -260,4 +265,9 @@ async def get_backup(request: web.Request) -> web.Response:
 
     count = await FlowBackup.get_count_by_flow_id(flow_id=flow_id)
     backups = await FlowBackup.all_by_flow_id(flow_id=flow_id, offset=offset, limit=limit)
-    return resp.ok({"count": count, "backups": [backup.to_dict() for backup in backups]}, uuid)
+
+    return resp.success(
+        data={"count": count, "backups": [backup.to_dict() for backup in backups]},
+        uuid=uuid,
+        log_msg=f"Returning {count} backups for flow {flow_id}",
+    )

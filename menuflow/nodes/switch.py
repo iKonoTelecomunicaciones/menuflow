@@ -41,6 +41,10 @@ class Switch(Base):
     def cases(self) -> list[dict]:
         return self.content.get("cases")
 
+    @property
+    def set_variables(self) -> dict:
+        return self.render_data(self.content.get("set_variables", {}))
+
     async def load_cases(self) -> dict[str, str]:
         """It loads the cases into a dictionary.
 
