@@ -569,6 +569,15 @@ components:
             type: message
             name: message_1
             o_connection: message_2
+    GetStatusOk:
+      type: object
+      properties:
+        status:
+          type: string
+        node_id:
+          type: string
+        client:
+          type: string
 
     # Error schemas
     ErrorReadingData:
@@ -1419,4 +1428,33 @@ components:
           example:
             detail:
               message: Flow with ID 1 not found in the database
+    GetStatusSuccess:
+      description: Get status success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GetStatusOk"
+          example:
+            status: "start"
+            node_id: "message_1"
+            client: "@bot:example.com"
+    GetStatusNotFound:
+      description: Get status not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            CurrentBotMxidNotFound:
+              value:
+                detail:
+                  message: current_bot_mxid not found in the room variables, send the bot_mxid in the query parameters
+            ClientNotFound:
+              value:
+                detail:
+                  message: Client '@bot_mxid:company' not found in room
+            RoomNotFound:
+              value:
+                detail:
+                  message: room_id '1' not found
   # End of responses

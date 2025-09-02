@@ -66,6 +66,9 @@ class Message(Base):
         """
         self.log.debug(f"Room {self.room.room_id} enters message node {self.id}")
 
+        if self.id == RouteState.START.value and self.room.route.state != RouteState.START:
+            await self.room.route.clean_up(update_state=False, preserve_constants=True)
+
         if not self.text:
             self.log.warning(f"The message {self.id} hasn't been send because the text is empty")
         else:

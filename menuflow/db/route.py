@@ -111,11 +111,23 @@ class Route:
         """
         await self.db.execute(q, *self.values)
 
-    async def clean_up(self) -> None:
+    async def clean_up(self, update_state: bool = True, preserve_constants: bool = False) -> None:
         log.info(f"Cleaning up route {self.client}")
-        self.state = RouteState.START
+
+        constants = (
+            ("customer_room_id", "bot_mxid", "customer_mxid", "puppet_mxid")
+            if preserve_constants
+            else ()
+        )
+
+        if update_state:
+            self.state = RouteState.START
         self.node_id = "start"
-        self.variables = json.dumps({"external": self._variables.pop("external", {})})
+        _vars = self._variables
+
+        self.variables = json.dumps(
+            {"external": _vars.pop("external", {}), **{c: _vars.pop(c, "") for c in constants}}
+        )
         self.stack = json.dumps({self.client: []})
         await self.update()
 

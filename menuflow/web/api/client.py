@@ -25,6 +25,7 @@ from ..docs.client import (
     get_variables_doc,
     reload_client_flow_doc,
     set_variables_doc,
+    status_doc,
     update_client_doc,
 )
 from ..responses import resp
@@ -243,3 +244,37 @@ async def get_variables(request: web.Request) -> web.Response:
         return resp.server_error(str(e), uuid)
 
     return resp.ok(response, uuid) if response else resp.not_found("Scopes not found")
+
+
+@routes.get("/v1/room/{room_id}/status", allow_head=False)
+@Util.docstring(status_doc)
+async def status(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Getting variables")
+
+    room_id = request.match_info["room_id"]
+    bot_mxid = request.query.get("bot_mxid", None)
+
+    try:
+        room = await DBRoom.get_by_room_id(room_id)
+        if not room:
+            return resp.not_found(f"room_id '{room_id}' not found", uuid)
+
+        if not bot_mxid:
+            bot_mxid = room._variables.get("current_bot_mxid")
+            if not bot_mxid:
+                return resp.not_found(
+                    "current_bot_mxid not found in the room variables, send the bot_mxid in the query parameters",
+                    uuid,
+                )
+
+        route = await DBRoute.get_by_room_and_client(room=room.id, client=bot_mxid, create=False)
+        if not route:
+            return resp.not_found(f"Client '{bot_mxid}' not found in room", uuid)
+
+        response = {"status": route.state.value, "node_id": route.node_id, "client": route.client}
+
+    except Exception as e:
+        return resp.server_error(str(e), uuid)
+
+    return resp.success(data=response, uuid=uuid)
