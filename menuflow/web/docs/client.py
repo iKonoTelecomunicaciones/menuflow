@@ -221,3 +221,36 @@ get_variables_doc = """
         '500':
             $ref: '#/components/responses/InternalServerError'
 """
+
+status_doc = """
+    ---
+    summary: Get status
+    description: Get status
+    tags:
+        - Room
+
+    parameters:
+        - name: room_id
+          in: path
+          required: true
+          description: The room ID to get the status of the client
+          schema:
+            type: string
+          example: "!vOmHZZMQibXsynuNFm:example.com"
+
+        - name: bot_mxid
+          in: query
+          required: false
+          description: The Matrix user ID of the client
+          schema:
+            type: string
+          example: "@bot:example.com"
+
+    responses:
+        '200':
+            $ref: '#/components/responses/GetStatusSuccess'
+        '404':
+            $ref: '#/components/responses/GetStatusNotFound'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
+"""
