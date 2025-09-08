@@ -129,6 +129,8 @@ class Input(Switch, Message):
                 return
 
             if self.input_type == MessageType.TEXT:
+                self.room.set_node_var(content=evt.content.body)
+
                 o_connection = await self.input_text(
                     text=evt.content.body, middlewares_sorted=middlewares_sorted
                 )
@@ -190,7 +192,11 @@ class Input(Switch, Message):
             # and the room state is set to input.
             self.log.debug(f"Room {self.room.room_id} enters input node {self.id}")
             await Message.run(self, update_state=False, generate_event=False)
-            await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
+
+            self.room.set_node_var(content="")
+            await self.room.update_menu(
+                node_id=self.id, state=RouteState.INPUT, update_node_vars=False
+            )
             if self.inactivity_options:
                 await self.inactivity_task()
 

@@ -185,7 +185,7 @@ class Webhook(Input):
             The connection data for the webhook.
             If the event is not valid, it returns None.
         """
-        variables = await self.set_variables(data=evt)
+        variables = await self.set_webhook_variables(data=evt)
 
         if variables:
             await self.room.set_variables(variables=variables)
@@ -471,7 +471,7 @@ class Webhook(Input):
             )
         return jq_result.get("result")
 
-    async def set_variables(self, data: dict):
+    async def set_webhook_variables(self, data: dict):
         """
         This function sets the variables for the webhook.
 
