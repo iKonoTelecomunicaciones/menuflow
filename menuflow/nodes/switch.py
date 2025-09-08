@@ -127,7 +127,7 @@ class Switch(Base):
 
         return o_connection
 
-    async def get_case_by_id(self, id: str | int) -> str:
+    async def get_case_by_id(self, id: str | int | bool) -> str:
         id = safe_data_convertion(id)
 
         try:
