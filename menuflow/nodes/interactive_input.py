@@ -56,6 +56,7 @@ class InteractiveInput(Input):
                 await self.room.update_menu(node_id=self.id)
                 return
 
+            self.room.set_node_var(content=evt.content.body)
             o_connection = await self.input_text(text=evt.content.body)
 
             if self.inactivity_options:
@@ -82,7 +83,10 @@ class InteractiveInput(Input):
                 event_type="m.room.message",
                 content=self.interactive_message_content,
             )
-            await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
+            self.room.set_node_var(content="")
+            await self.room.update_menu(
+                node_id=self.id, state=RouteState.INPUT, update_node_vars=False
+            )
             if self.inactivity_options:
                 await self.inactivity_task()
 

@@ -410,10 +410,11 @@ class Room(DBRoom):
             f"The [room: {self.room_id}] with route [{self.bot_mxid}] will update his [node: "
             f"{self.route.node_id}] to [{node_id}] and his [state: {self.route.state}] to [{state}]"
         )
+        if update_node_vars and self.route.node_id != node_id:
+            self.route._node_vars = {}
+
         self.route.node_id = node_id
         self.route.state = state
-        if update_node_vars:
-            self.route._node_vars = {}
         await self.route.update()
 
     def set_node_var(self, **kwargs) -> None:

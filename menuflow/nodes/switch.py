@@ -127,7 +127,7 @@ class Switch(Base):
 
         return o_connection
 
-    async def get_case_by_id(self, id: str | int) -> str:
+    async def get_case_by_id(self, id: str | int | bool) -> str:
         id = safe_data_convertion(id)
 
         try:
@@ -255,8 +255,7 @@ class Switch(Base):
                 case_to_be_used = NodeStatus.ATTEMPT_EXCEEDED
                 self.room.set_node_var(status=case_to_be_used.value)
 
-        if case_to_be_used == NodeStatus.DEFAULT:
-            self.room.set_node_var(attempt=room_validation_attempts)
+        self.room.set_node_var(attempt=room_validation_attempts)
 
         case_to_be_used = case_to_be_used.value
 
