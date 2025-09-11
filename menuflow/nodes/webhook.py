@@ -276,6 +276,9 @@ class Webhook(Input):
             o_connection = await self.management_webhook(evt=evt)
 
             if o_connection:
+                if self.inactivity_options:
+                    await Util.cancel_task(task_name=self.room.room_id)
+
                 await self.room.matrix_client.algorithm(room=self.room)
 
             return
@@ -369,10 +372,6 @@ class Webhook(Input):
             self.log.debug(
                 f"Chat timeout is not set in node webhook for room: {self.room.room_id}"
             )
-            return
-
-        if Util.get_tasks_by_name(task_name=self.room.room_id):
-            self.log.debug(f"Task already exists for room: {self.room.room_id}")
             return
 
         self.log.debug(f"Inactivity loop starts in room: {self.room.room_id}")
