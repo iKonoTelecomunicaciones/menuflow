@@ -10,13 +10,11 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Form, FormMessage, FormMessageContent
 from ..room import Room
-from ..utils import Nodes, Util
+from ..utils import Nodes, NodeStatus, Util
 from .input import Input
 
 
 class FormInput(Input):
-    fail_attempts_by_room = {}
-
     def __init__(self, form_node_data: Form, room: Room, default_variables: dict) -> None:
         Input.__init__(self, form_node_data, room, default_variables)
         self.content = form_node_data
@@ -62,9 +60,6 @@ class FormInput(Input):
         return form_message
 
     async def __update_menu(self, case_id: str) -> str:
-        if self.room.room_id in self.fail_attempts_by_room:
-            del self.fail_attempts_by_room[self.room.room_id]
-
         o_connection = await self.get_case_by_id(case_id)
         await self.room.update_menu(o_connection)
         return o_connection
@@ -73,9 +68,9 @@ class FormInput(Input):
         if not self.validation_attempts:
             return
 
-        current_fail_attempts = self.fail_attempts_by_room.get(self.room.room_id, 0)
-        if current_fail_attempts >= self.validation_attempts:
-            await self.__update_menu("attempt_exceeded")
+        case_to_be_used = await self.manage_attempts()
+        if case_to_be_used == NodeStatus.ATTEMPT_EXCEEDED.value:
+            await self.__update_menu(case_to_be_used)
             return
 
         if self.validation_fail_message:
@@ -86,8 +81,6 @@ class FormInput(Input):
                 formatted_body=markdown(text=self.validation_fail_message, extensions=["nl2br"]),
             )
             await self.send_message(self.room.room_id, msg_content)
-
-        self.fail_attempts_by_room[self.room.room_id] = current_fail_attempts + 1
 
     async def run(self, evt: MessageEvent | None):
         """Send WhhatApp flow and capture the response of it and save it as variables.

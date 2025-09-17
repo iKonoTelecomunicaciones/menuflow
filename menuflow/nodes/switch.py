@@ -239,7 +239,20 @@ class Switch(Base):
 
         """
         cases = await self.load_cases()
+        case_to_be_used = await self.manage_attempts()
 
+        # Getting the default case
+        default_case = cases.get(case_to_be_used, {})
+
+        # Load variables defined in the case into the room
+        await self.load_variables(default_case)
+
+        # Getting the o_connection of the default case
+        default_o_connection = self.render_data(default_case.get("o_connection"))
+
+        return case_to_be_used, default_o_connection
+
+    async def manage_attempts(self) -> str:
         node_vars = self.room.route._node_vars
         room_validation_attempts = node_vars.get("attempt", 0) + 1
         config_attempts = self.validation_attempts
@@ -257,15 +270,4 @@ class Switch(Base):
 
         self.room.set_node_var(attempt=room_validation_attempts)
 
-        case_to_be_used = case_to_be_used.value
-
-        # Getting the default case
-        default_case = cases.get(case_to_be_used, {})
-
-        # Load variables defined in the case into the room
-        await self.load_variables(default_case)
-
-        # Getting the o_connection of the default case
-        default_o_connection = self.render_data(default_case.get("o_connection"))
-
-        return case_to_be_used, default_o_connection
+        return case_to_be_used.value
