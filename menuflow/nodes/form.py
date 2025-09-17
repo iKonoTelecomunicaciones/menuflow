@@ -69,6 +69,7 @@ class FormInput(Input):
             return
 
         case_to_be_used = await self.manage_attempts()
+        await self.room.route.update_node_vars()
         if case_to_be_used == NodeStatus.ATTEMPT_EXCEEDED.value:
             await self.__update_menu(case_to_be_used)
             return
