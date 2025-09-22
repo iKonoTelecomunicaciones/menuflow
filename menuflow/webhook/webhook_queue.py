@@ -90,12 +90,7 @@ class WebhookQueue(WebhookQueueDB):
         self.log.debug("Retrieving events from the database")
         events = await self.get_all_data()
 
-        if not events:
-            self.log.debug("No events found in the database")
-            return None
-
-        self.log.debug(f"Found {len(events)} events in the database")
-        return events
+        return events if events else None
 
     async def save_events_to_queue(self) -> None:
         """

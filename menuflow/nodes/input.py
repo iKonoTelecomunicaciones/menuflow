@@ -44,13 +44,7 @@ class Input(Switch, Message):
 
     @property
     def inactivity_options(self) -> Dict[str, Any]:
-        data: Dict = self.content.get("inactivity_options", {})
-        self.chat_timeout: int = data.get("chat_timeout", 0)
-        self.warning_message: str = self.render_data(data.get("warning_message", ""))
-        self.time_between_attempts: int = data.get("time_between_attempts", 0)
-        self.attempts: int = data.get("attempts", 0)
-
-        return data
+        return self.content.get("inactivity_options", {})
 
     async def _set_input_content(
         self, content: MediaMessageEventContent | LocationMessageEventContent
@@ -221,7 +215,7 @@ class Input(Switch, Message):
             The inactivity options.
 
         """
-        if self.chat_timeout is None and self.attempts is None:
+        if inactivity.get("chat_timeout") is None and inactivity.get("attempts") is None:
             return
 
         inactivity_handler = InactivityHandler(room=self.room, inactivity=inactivity)
@@ -242,6 +236,7 @@ class Input(Switch, Message):
                 o_connection=o_connection,
                 variables=self.room.all_variables | self.default_variables,
             )
+
         except asyncio.CancelledError:
             self.log.error(f"Inactivity handler cancelled for room: {self.room.room_id}")
         except Exception as e:
