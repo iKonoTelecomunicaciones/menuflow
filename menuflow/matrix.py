@@ -238,6 +238,12 @@ class MatrixHandler(MatrixClient):
             self.log.warning(f"Ignoring message in {room.room_id} pending invite")
             return
 
+        if room.route._node_vars.get("inactivity"):
+            self.log.info(f"Inactivity config detected for room: {room.room_id}")
+            await Util.cancel_task(task_name=room.room_id)
+            room.set_node_var(inactivity={})
+            await room.route.update_node_vars()
+
         await self.algorithm(room=room, evt=message)
 
     async def group_message(self, room: Room, message: MessageEvent, node: Node) -> bool:

@@ -10,7 +10,7 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Form, FormMessage, FormMessageContent
 from ..room import Room
-from ..utils import Nodes, NodeStatus, Util
+from ..utils import Nodes, NodeStatus
 from .input import Input
 
 
@@ -72,7 +72,7 @@ class FormInput(Input):
         await self.room.route.update_node_vars()
         if case_to_be_used == NodeStatus.ATTEMPT_EXCEEDED.value:
             await self.__update_menu(case_to_be_used)
-            return
+            return case_to_be_used
 
         if self.validation_fail_message:
             msg_content = TextMessageEventContent(
@@ -101,11 +101,11 @@ class FormInput(Input):
                 self.log.warning(
                     "A problem occurred getting user response, message type is not m.form_response"
                 )
-                await self.check_fail_attempts()
+                o_connection = await self.check_fail_attempts()
+                inactivity = self.inactivity_options
+                if inactivity and not o_connection:
+                    await self.timeout_active_chats(inactivity)
                 return
-
-            if self.inactivity_options:
-                await Util.cancel_task(task_name=self.room.room_id)
 
             await self.room.set_variable(self.variable, evt.content.get("form_data"))
             o_connection = await self.__update_menu("submitted")
@@ -132,8 +132,6 @@ class FormInput(Input):
                 content=self.form_message_content,
             )
             await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
-            if self.inactivity_options:
-                await self.inactivity_task()
 
             await send_node_event(
                 config=self.room.config,
@@ -147,58 +145,5 @@ class FormInput(Input):
                 variables=self.room.all_variables | self.default_variables,
             )
 
-    async def inactivity_task(self):
-        """It spawns a task to harass the client to enter information to input option
-
-        Parameters
-        ----------
-        client : MatrixClient
-            The MatrixClient object
-
-        """
-
-        self.log.debug(f"Inactivity loop starts in room: {self.room.room_id}")
-        asyncio.create_task(self.timeout_active_chats(), name=self.room.room_id)
-
-    async def timeout_active_chats(self):
-        """It sends messages in time intervals to communicate customer
-        that not entered information to input option.
-
-        Parameters
-        ----------
-        client : MatrixClient
-            The Matrix client object.
-
-        """
-
-        # wait the given time to start the task
-        await asyncio.sleep(self.chat_timeout)
-
-        count = 0
-        while True:
-            self.log.debug(f"Inactivity loop: {datetime.now()} -> {self.room.room_id}")
-            if self.attempts == count:
-                self.log.debug(f"INACTIVITY TRIES COMPLETED -> {self.room.room_id}")
-                o_connection = await self.__update_menu("timeout")
-
-                await send_node_event(
-                    config=self.room.config,
-                    send_event=self.content.get("send_event"),
-                    event_type=MenuflowNodeEvents.NodeInputTimeout,
-                    room_id=self.room.room_id,
-                    sender=self.room.matrix_client.mxid,
-                    node_id=self.id,
-                    o_connection=o_connection,
-                    variables=self.room.all_variables | self.default_variables,
-                )
-
-                await self.room.matrix_client.algorithm(room=self.room)
-                break
-
-            if self.warning_message:
-                await self.room.matrix_client.send_text(
-                    room_id=self.room.room_id, text=self.warning_message
-                )
-
-            await asyncio.sleep(self.time_between_attempts)
-            count += 1
+            if inactivity := self.inactivity_options:
+                await self.timeout_active_chats(inactivity)
