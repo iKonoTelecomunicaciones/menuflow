@@ -19,6 +19,7 @@ from mautrix.types import (
 )
 
 from .config import Config
+from .db.room import Room as DBRoom
 from .db.route import RouteState
 from .nodes import Base, FormInput, GPTAssistant, Input, InteractiveInput, Webhook
 from .room import Room
@@ -90,6 +91,9 @@ class MatrixHandler(MatrixClient):
             await self.handle_join(evt)
         elif evt.content.membership == Membership.LEAVE:
             if evt.state_key == self.mxid:
+                room: Room = await Room.get_by_room_id(room_id=evt.room_id, bot_mxid=self.mxid)
+                room.route._node_vars = {}
+                await room.route.update()
                 self.unlock_room(room_id=evt.room_id)
 
             if prev_membership == Membership.INVITE:
@@ -286,7 +290,9 @@ class MatrixHandler(MatrixClient):
                 f"Created task for group message [room: {room.room_id}] [node: {node.id}] in {node.group_messages_timeout} seconds"
             )
 
-    async def algorithm(self, room: Room, evt: Optional[MessageEvent] = None) -> None:
+    async def algorithm(
+        self, room: Room, evt: Optional[MessageEvent] = None, timeout_active: bool = False
+    ) -> None:
         """The algorithm function is the main function that runs the flow.
         It takes a room and an event as parameters
 
@@ -296,6 +302,8 @@ class MatrixHandler(MatrixClient):
             The room object.
         evt : Optional[MessageEvent]
             The event that triggered the algorithm.
+        timeout_active : bool
+            Whether the timeout is active.
         """
 
         node = self.flow.node(room=room)
@@ -315,7 +323,11 @@ class MatrixHandler(MatrixClient):
             if room.room_id in self.message_group_by_room:
                 del self.message_group_by_room[room.room_id]
 
-            await node.run(evt)
+            if (inactivity := node.inactivity_options) and timeout_active:
+                await node.timeout_active_chats(inactivity)
+            else:
+                await node.run(evt)
+
             if room.route.state == RouteState.INPUT:
                 return
         else:
@@ -329,3 +341,26 @@ class MatrixHandler(MatrixClient):
             return
 
         await self.algorithm(room=room, evt=evt)
+
+    async def create_inactivity_tasks(self) -> None:
+        """This function creates tasks for rooms that are in the input state
+        and in an inactive state after the last system reboot."""
+
+        inactivity_rooms: list[DBRoom] = await DBRoom.get_node_var_by_state(
+            state=RouteState.INPUT.value, variable_name="inactivity", menuflow_bot_mxid=self.mxid
+        )
+
+        for inactivity_room in inactivity_rooms:
+            room = await Room.get_by_room_id(
+                room_id=inactivity_room.get("room_id"), bot_mxid=self.mxid
+            )
+
+            if room:
+                self.log.info(f"Recreating inactivity task for room: {room.room_id}")
+                if room.matrix_client is None:
+                    room.matrix_client = self
+
+                self.lock_room(room_id=room.room_id)
+                asyncio.create_task(
+                    self.algorithm(room=room, timeout_active=True), name=room.room_id
+                )
