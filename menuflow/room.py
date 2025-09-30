@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from asyncio import Future, Lock
 from collections import defaultdict
 from logging import getLogger
@@ -20,6 +19,7 @@ from .db.room import Room as DBRoom
 from .db.route import Route, RouteState
 from .scope import Scope
 from .utils import JQ2Glom, Util
+from .utils.types import Scopes
 
 
 class Room(DBRoom):
@@ -240,6 +240,18 @@ class Room(DBRoom):
         if self.room_id:
             self.by_room_id[(bot_mxid, self.room_id)] = self
 
+    def _update_cache(self, room_id: RoomID) -> None:
+        """This function updates the cache for the room with the new variables in the different bot_mxids.
+
+        Parameters
+        ----------
+        room_id : RoomID
+            The room's ID.
+        """
+        for (_bot_mxid, _room_id), room in self.by_room_id.items():
+            if _room_id == room_id:
+                room.variables = self.variables
+
     async def clean_up(self):
         await Util.cancel_task(task_name=self.room_id)
         await self.route.clean_up()
@@ -321,6 +333,11 @@ class Room(DBRoom):
         entry.set_vars(new_variables)
         await entry.update_func()
 
+        # It's necessary to update the room cache with the new variable information in the different bot_mxids.
+        # Otherwise, the room variables may vary from one bot_mxid to another.
+        if scope == Scopes.ROOM:
+            self._update_cache(room_id=self.room_id)
+
     async def set_variables(self, variables: Dict) -> None:
         """It takes a dictionary of variable IDs and values, and sets the variables to the values
 
@@ -382,6 +399,11 @@ class Room(DBRoom):
 
         entry.set_vars(variables)
         await entry.update_func()
+
+        # It's necessary to update the room cache with the new variable information in the different bot_mxids.
+        # Otherwise, the room variables may vary from one bot_mxid to another.
+        if scope == Scopes.ROOM:
+            self._update_cache(room_id=self.room_id)
 
     async def del_variables(self, variables: List = []) -> None:
         """This function delete the variables in the room.
