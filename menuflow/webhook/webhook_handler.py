@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from collections import deque
+from copy import deepcopy
 
 from mautrix.types import RoomID
 from mautrix.util.logging import TraceLogger
@@ -55,6 +56,7 @@ class WebhookHandler:
 
         # Get the data from rooms that waiting for webhook event
         whebhook_data: dict[RoomID, Webhook] | None = await Webhook.get_whebhook_data()
+        whebhook_data_copy = deepcopy(whebhook_data)
 
         if not whebhook_data:
             self.log.debug("No rooms waiting for webhook event, saving to queue")
@@ -70,7 +72,7 @@ class WebhookHandler:
         message = "The event was not handled successfully"
         status = 202
 
-        for whebhook in whebhook_data.values():
+        for whebhook in whebhook_data_copy.values():
             room = await Room.get_by_room_id(room_id=whebhook.room_id, bot_mxid=whebhook.client)
             menu_client = await MenuClient.get(user_id=whebhook.client)
 
@@ -107,7 +109,7 @@ class WebhookHandler:
             message = "The event was handled successfully"
 
             # Execute event to the flow
-            asyncio.create_task(node.run(evt=event))
+            await node.run(evt=event)
             webhooks_to_delete.append(whebhook)
 
         # Get the event ID from the database
