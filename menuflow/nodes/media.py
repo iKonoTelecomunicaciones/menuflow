@@ -214,8 +214,9 @@ class Media(Message):
         try:
             media_message = self.media_cache[self.url]
 
-            if media_message.body != self.text:
-                media_message.body = self.text
+            ext = media_message.body.split(".")[-1] if "." in media_message.body else ""
+            if media_message.body != f"{self.text}.{ext}":
+                media_message.body = f"{self.text}.{ext}"
         except KeyError:
             media_message = await self.load_media()
             if media_message is None:
