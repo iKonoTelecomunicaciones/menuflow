@@ -4,11 +4,13 @@ import base64
 from io import BytesIO
 from typing import TYPE_CHECKING, Dict
 
+from markdown import markdown
 from mautrix.api import MediaPath, Method
 from mautrix.errors import MUnknown
 from mautrix.types import (
     AudioInfo,
     FileInfo,
+    Format,
     ImageInfo,
     MediaInfo,
     MediaMessageEventContent,
@@ -200,10 +202,16 @@ class Media(Message):
 
         if media_type:
             ext = media_type.split("/")[-1]
-            media_name = f"{self.text}.{ext}"
+            media_name = f"Media.{ext}"
 
         return MediaMessageEventContent(
-            msgtype=self.message_type, body=media_name, url=mxc, info=media_info
+            msgtype=self.message_type,
+            body=self.text,
+            format=Format.HTML,
+            formatted_body=markdown(text=self.text, extensions=["nl2br"]),
+            filename=media_name,
+            url=mxc,
+            info=media_info,
         )
 
     async def run(self):
