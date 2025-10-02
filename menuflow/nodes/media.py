@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import base64
-import mimetypes
 from io import BytesIO
 from typing import Dict
 
+from mautrix.api import MediaPath, Method
 from mautrix.errors import MUnknown
 from mautrix.types import (
     AudioInfo,
@@ -15,6 +15,7 @@ from mautrix.types import (
     MessageType,
     VideoInfo,
 )
+from mautrix.util import magic
 from mautrix.util.magic import mimetype
 
 from ..db.route import RouteState
@@ -61,6 +62,60 @@ class Media(Message):
 
         return media_info
 
+    async def get_content_uri(self, data: bytes) -> str:
+        """
+        Upload the media to synapse and get the mxc from synapse
+        Parameters
+        ----------
+        data: bytes
+            The data containing the ids of the media that whatsapp cloud api returns
+        Returns
+        -------
+            The mxc url of the media
+        """
+        # Upload the message media to Matrix
+        path = MediaPath.v1.create
+        method = Method.POST
+        mime_type = None
+        headers = {}
+
+        if isinstance(data, bytes):
+            mime_type = magic.mimetype(data)
+
+        if mime_type:
+            headers["Content-Type"] = mime_type
+
+        response = await self.room.matrix_client.api.request(
+            method, path, content=data, headers=headers
+        )
+        attachment = response.get("content_uri")
+
+        return attachment
+
+    async def get_media_url(self, data: bytes) -> tuple[str, str]:
+        """
+        Upload the media to synapse and get the mxc from synapse
+        Parameters
+        ----------
+        data: bytes
+            The data containing the ids of the media that whatsapp cloud api returns
+        Returns
+        -------
+            The mxc url of the media and the type of the media
+        """
+        headers = {}
+        if isinstance(data, bytes):
+            message_type = magic.mimetype(data)
+            headers["Content-Type"] = message_type
+
+        attachment = await self.get_content_uri(data)
+        server_name, media_matrix_id = self.room.matrix_client.api.parse_mxc_uri(attachment)
+        path = MediaPath.v3.upload[server_name][media_matrix_id]
+        method = Method.PUT
+        await self.room.matrix_client.api.request(method, path, content=data, headers=headers)
+
+        return attachment, message_type
+
     async def load_media(self) -> MediaMessageEventContent:
         """It downloads the media from the URL, uploads it to the Matrix server,
         and returns a MediaMessageEventContent object with the URL of the uploaded media
@@ -106,23 +161,8 @@ class Media(Message):
 
         media_info.size = len(data)
 
-        extension = {
-            "image/webp": ".webp",
-            "image/jpeg": ".jpg",
-            "video/mp4": ".mp4",
-            "audio/mp4": ".m4a",
-            "audio/ogg": ".ogg",
-            "application/pdf": ".pdf",
-        }.get(media_info.mimetype)
-
-        extension = extension or mimetypes.guess_extension(media_info.mimetype) or ""
-
-        file_name = f"{self.message_type.value[2:]}{extension}" if self.message_type else None
-
         try:
-            mxc = await self.room.matrix_client.upload_media(
-                data=data, mime_type=media_info.mimetype, filename=file_name
-            )
+            mxc, media_type = await self.get_media_url(data)
         except MUnknown as e:
             self.log.exception(f"error {e}")
             return
@@ -130,8 +170,14 @@ class Media(Message):
             self.log.exception(f"Message not receive :: error {e}")
             return
 
+        media_name = ""
+
+        if media_type:
+            ext = media_type.split("/")[-1]
+            media_name = f"{self.text}.{ext}"
+
         return MediaMessageEventContent(
-            msgtype=self.message_type, body=self.text, url=mxc, info=media_info
+            msgtype=self.message_type, body=media_name, url=mxc, info=media_info
         )
 
     async def run(self):
@@ -142,8 +188,9 @@ class Media(Message):
         try:
             media_message = self.media_cache[self.url]
 
-            if media_message.body != self.text:
-                media_message.body = self.text
+            ext = media_message.body.split(".")[-1] if "." in media_message.body else ""
+            if media_message.body != f"{self.text}.{ext}":
+                media_message.body = f"{self.text}.{ext}"
         except KeyError:
             media_message = await self.load_media()
             if media_message is None:
