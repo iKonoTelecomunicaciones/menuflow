@@ -640,6 +640,8 @@ class Util:
         -------
             A tuple containing the scope and key.
         """
+        if isinstance(variable_id, int):
+            variable_id = str(variable_id)
 
         parts = variable_id.split(".", maxsplit=1)
 
