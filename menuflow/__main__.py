@@ -5,6 +5,8 @@ from typing import Dict
 from mautrix.util.async_db import Database, DatabaseException
 from mautrix.util.program import Program
 
+from menuflow.webhook.webhook_queue import WebhookQueue
+
 from .config import Config
 from .db import init as init_db
 from .db import upgrade_table
@@ -17,7 +19,6 @@ from .repository.middlewares import EmailServer
 from .server import MenuFlowServer
 from .version import version
 from .web.management_api import ManagementAPI
-from .webhook.webhook_queue import WebhookQueue
 
 
 class MenuFlow(Program):
