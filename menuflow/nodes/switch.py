@@ -1,23 +1,19 @@
 from __future__ import annotations
 
-from typing import Dict, List
-
 from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Switch as SwitchModel
 from ..room import Room
-from ..utils import Nodes
+from ..utils import Nodes, NodeStatus
 from .base import Base, safe_data_convertion
 
 
 class Switch(Base):
-    # Keeps track of the number of validation attempts made in a switch node by room.
-    VALIDATION_ATTEMPTS_BY_ROOM: Dict[str, int] = {}
 
-    def __init__(self, switch_node_data: SwitchModel, room: Room, default_variables: Dict) -> None:
+    def __init__(self, switch_node_data: SwitchModel, room: Room, default_variables: dict) -> None:
         Base.__init__(self, room=room, default_variables=default_variables)
         self.log = self.log.getChild(switch_node_data.get("id"))
-        self.content: Dict = switch_node_data
+        self.content: dict = switch_node_data
 
     @property
     def validation(self) -> str:
@@ -42,10 +38,14 @@ class Switch(Base):
         return self.content.get("validation_fail").get("message")
 
     @property
-    def cases(self) -> List[Dict]:
+    def cases(self) -> list[dict]:
         return self.content.get("cases")
 
-    async def load_cases(self) -> Dict[str, str]:
+    @property
+    def set_variables(self) -> dict:
+        return self.render_data(self.content.get("set_variables", {}))
+
+    async def load_cases(self) -> dict[str, str]:
         """It loads the cases into a dictionary.
 
         Parameters
@@ -104,12 +104,13 @@ class Switch(Base):
         """
         o_connection = await self._run()
 
-        if update_state:
-            await self.room.update_menu(o_connection)
         if not o_connection:
             self.log.warning(f"o_connection is None in the switch node [{self.id}]")
-            await self.room.update_menu(node_id=self.id)
+            await self.room.update_menu(node_id=self.id, update_node_vars=False)
             return
+
+        if update_state:
+            await self.room.update_menu(o_connection)
 
         if generate_event:
             await send_node_event(
@@ -126,12 +127,12 @@ class Switch(Base):
 
         return o_connection
 
-    async def get_case_by_id(self, id: str | int) -> str:
+    async def get_case_by_id(self, id: str | int | bool) -> str:
         id = safe_data_convertion(id)
 
         try:
             cases = await self.load_cases()
-            case_result: Dict = cases[id]
+            case_result: dict = cases[id]
 
             # Load variables defined in the case into the room
             await self.load_variables(case_result.get("variables", {}))
@@ -141,9 +142,6 @@ class Switch(Base):
             self.log.debug(
                 f"The case [{case_o_connection}] has been obtained in the input node [{self.id}]"
             )
-
-            if self.validation_attempts and self.room.room_id in self.VALIDATION_ATTEMPTS_BY_ROOM:
-                del self.VALIDATION_ATTEMPTS_BY_ROOM[self.room.room_id]
 
         except KeyError:
             default_case, case_o_connection = await self.manage_case_exceptions()
@@ -191,10 +189,6 @@ class Switch(Base):
                 f"The case [{case_o_connection}] has been obtained in the input node [{self.id}]"
             )
 
-            # Delete the validation attempts of the room
-            if self.validation_attempts and self.room.room_id in self.VALIDATION_ATTEMPTS_BY_ROOM:
-                del self.VALIDATION_ATTEMPTS_BY_ROOM[self.room.room_id]
-
         if not case_o_connection:
             default_case, case_o_connection = await self.manage_case_exceptions()
             self.log.debug(
@@ -207,12 +201,12 @@ class Switch(Base):
 
         return case_o_connection
 
-    async def load_variables(self, variables: Dict) -> None:
+    async def load_variables(self, variables: dict) -> None:
         """This function loads variables defined in switch cases into the room.
 
         Parameters
         ----------
-        case : Dict
+        case : dict
             `case` is the selected switch case.
 
         """
@@ -245,21 +239,7 @@ class Switch(Base):
 
         """
         cases = await self.load_cases()
-
-        room_validation_attempts = self.VALIDATION_ATTEMPTS_BY_ROOM.get(self.room.room_id, 1)
-        if self.validation_attempts and room_validation_attempts >= self.validation_attempts:
-            if self.room.room_id in self.VALIDATION_ATTEMPTS_BY_ROOM:
-                del self.VALIDATION_ATTEMPTS_BY_ROOM[self.room.room_id]
-            case_to_be_used = "attempt_exceeded"
-        else:
-            case_to_be_used = "default"
-
-        if self.validation_attempts and case_to_be_used == "default":
-            self.log.critical(
-                f"Validation Attempts {room_validation_attempts} "
-                f"of {self.validation_attempts} for room {self.room.room_id}"
-            )
-            self.VALIDATION_ATTEMPTS_BY_ROOM[self.room.room_id] = room_validation_attempts + 1
+        case_to_be_used = await self.manage_attempts()
 
         # Getting the default case
         default_case = cases.get(case_to_be_used, {})
@@ -271,3 +251,23 @@ class Switch(Base):
         default_o_connection = self.render_data(default_case.get("o_connection"))
 
         return case_to_be_used, default_o_connection
+
+    async def manage_attempts(self) -> str:
+        node_vars = self.room.route._node_vars
+        room_validation_attempts = node_vars.get("attempt", 0) + 1
+        config_attempts = self.validation_attempts
+        case_to_be_used = NodeStatus.DEFAULT
+
+        if config_attempts:
+            self.log.critical(
+                f"Validation Attempts {room_validation_attempts} "
+                f"of {config_attempts} for room {self.room.room_id}"
+            )
+
+            if room_validation_attempts >= config_attempts:
+                case_to_be_used = NodeStatus.ATTEMPT_EXCEEDED
+                self.room.set_node_var(status=case_to_be_used.value)
+
+        self.room.set_node_var(attempt=room_validation_attempts)
+
+        return case_to_be_used.value

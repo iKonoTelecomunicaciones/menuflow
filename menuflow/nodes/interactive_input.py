@@ -8,7 +8,7 @@ from ..events.event_generator import send_node_event
 from ..repository import InteractiveInput as InteractiveInputModel
 from ..repository import InteractiveMessage
 from ..room import Room
-from ..utils import Nodes, Util
+from ..utils import Nodes
 from .input import Input
 
 
@@ -56,10 +56,8 @@ class InteractiveInput(Input):
                 await self.room.update_menu(node_id=self.id)
                 return
 
+            self.room.set_node_var(content=evt.content.body)
             o_connection = await self.input_text(text=evt.content.body)
-
-            if self.inactivity_options:
-                await Util.cancel_task(task_name=self.room.room_id)
 
             await send_node_event(
                 config=self.room.config,
@@ -82,9 +80,10 @@ class InteractiveInput(Input):
                 event_type="m.room.message",
                 content=self.interactive_message_content,
             )
-            await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
-            if self.inactivity_options:
-                await self.inactivity_task()
+            self.room.set_node_var(content="")
+            await self.room.update_menu(
+                node_id=self.id, state=RouteState.INPUT, update_node_vars=False
+            )
 
             await send_node_event(
                 config=self.room.config,
@@ -97,3 +96,6 @@ class InteractiveInput(Input):
                 o_connection=None,
                 variables=self.room.all_variables | self.default_variables,
             )
+
+            if inactivity := self.inactivity_options:
+                await self.timeout_active_chats(inactivity)

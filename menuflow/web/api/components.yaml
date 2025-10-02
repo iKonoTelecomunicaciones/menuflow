@@ -9,6 +9,18 @@ components:
           properties:
             message:
               type: string
+
+    BaseResponseDetailMessageData:
+      type: object
+      properties:
+        detail:
+          type: object
+          properties:
+            message:
+              type: string
+            data:
+              type: object
+              additionalProperties: true
     # End of base schemas
 
     # Schemas
@@ -77,7 +89,7 @@ components:
           type: object
       example:
         detail:
-          message: Parameter flow is required.
+          message: Parameter flow or flow_vars is required.
 
     GetFlowOk:
       type: object
@@ -86,6 +98,9 @@ components:
           type: integer
         flow:
           type: object
+        flow_vars:
+          type: object
+          additionalProperties: true
       example:
         id: 1
         flow:
@@ -98,6 +113,9 @@ components:
                 type: message
                 message: message_1
                 o_connection: message_2
+        flow_vars:
+          variable_1: value_1
+          variable_2: value_2
     GetAllFlowsOk:
       type: object
       properties:
@@ -119,6 +137,9 @@ components:
                     type: message
                     message: message_1
                     o_connection: message_2
+            flow_vars:
+              variable_1: value_1
+              variable_2: value_2
           - id: 2
             flow:
               menu:
@@ -130,7 +151,9 @@ components:
                     type: message
                     message: message_1
                     o_connection: message_2
-
+            flow_vars:
+              variable_1: value_1
+              variable_2: value_2
     GetModuleOk:
       type: object
       properties:
@@ -185,6 +208,9 @@ components:
           type: object
           additionalProperties: true
         route:
+          type: object
+          additionalProperties: true
+        node:
           type: object
           additionalProperties: true
 
@@ -512,6 +538,46 @@ components:
       example:
         detail:
           message: Template is required
+    GetNodeOk:
+      type: object
+      properties:
+        module_name:
+          type: string
+        node:
+          type: object
+          additionalProperties: true
+      example:
+        module_name: "Main"
+        node:
+          id: "start"
+          type: "message"
+          o_connection: "message_1"
+    GetListNodesOk:
+      type: object
+      properties:
+        nodes:
+          type: array
+      example:
+        nodes:
+          - module_id: 1
+            id: start
+            type: message
+            name: start
+            o_connection: message_1
+          - module_id: 1
+            id: message_1
+            type: message
+            name: message_1
+            o_connection: message_2
+    GetStatusOk:
+      type: object
+      properties:
+        status:
+          type: string
+        node_id:
+          type: string
+        client:
+          type: string
 
     # Error schemas
     ErrorReadingData:
@@ -680,6 +746,14 @@ components:
                         type: message
                         message: message_1
                         o_connection: message_2
+                  modules:
+                    - x: 501.04994916101714
+                      y: -627.2362469450213
+                      scale: 0.4092324994498387
+                      module: Main
+                flow_vars:
+                  variable_1: value_1
+                  variable_2: value_2
             GetAllFlows:
               value:
                 flows:
@@ -694,6 +768,14 @@ components:
                             type: message
                             message: message_1
                             o_connection: message_2
+                        modules:
+                          - x: 501.04994916101714
+                            y: -627.2362469450213
+                            scale: 0.4092324994498387
+                            module: Main
+                    flow_vars:
+                      variable_1: value_1
+                      variable_2: value_2
                   - id: 2
                     flow:
                       menu:
@@ -705,6 +787,14 @@ components:
                             type: message
                             message: message_1
                             o_connection: message_2
+                        modules:
+                          - x: 501.04994916101714
+                            y: -627.2362469450213
+                            scale: 0.4092324994498387
+                            module: Main
+                    flow_vars:
+                      variable_1: value_1
+                      variable_2: value_2
 
     GetFlowNotFound:
       description: Get flow not found.
@@ -717,7 +807,7 @@ components:
             GetFlowByIDNotFound:
               value:
                 detail:
-                  message: Flow with ID 1 not found.
+                  message: Flow with identifier "1" not found.
             GetFlowByUserIDNotFound:
               value:
                 detail:
@@ -1089,6 +1179,25 @@ components:
               value:
                 detail:
                   message: Module with name 'name' already exists in flow_id 1.
+    CreateModuleConflict:
+      description: Create module conflict.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessageData"
+          examples:
+            NodeAlreadyExists:
+              value:
+                detail:
+                  message: Node with ID 'id' already exists
+                  data:
+                    module_name: module_name
+            NodeIsRepeated:
+              value:
+                detail:
+                  message: Node with ID 'id' is repeated
+                  data:
+                    module_name: ''
 
     UpdateModuleSuccess:
       description: Update module success.
@@ -1142,6 +1251,25 @@ components:
               value:
                 detail:
                   message: Module with ID '1' not found in flow_id '1'
+    UpdateModuleConflict:
+      description: Update module conflict.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessageData"
+          examples:
+            NodeAlreadyExists:
+              value:
+                detail:
+                  message: Node with ID 'id' already exists
+                  data:
+                    module_name: module_name
+            NodeIsRepeated:
+              value:
+                detail:
+                  message: Node with ID 'id' is repeated
+                  data:
+                    module_name: ''
 
     DeleteModuleSuccess:
       description: Delete module success.
@@ -1212,6 +1340,9 @@ components:
               customer_room_id: "!KbOvLyPkXlKnJojGfS:darknet"
               bot_mxid: "@menubot1:darknet"
               puppet_mxid: "@acd1:darknet"
+            node:
+              variable_1: value_1
+              variable_2: value_2
     GetVariablesNotFound:
       description: Get variables not found.
       content:
@@ -1236,4 +1367,94 @@ components:
                 detail:
                   message: Scopes not found
 
+    GetListModulesSuccess:
+      description: Get list modules success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GetAllModulesOk"
+          example:
+            modules:
+              - id: 1
+                name: Main
+              - id: 2
+                name: Second
+    GetListModulesNotFound:
+      description: Get list modules not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: Flow with identifier "1" not found.
+
+    GetNodeSuccess:
+      description: Get node success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GetNodeOk"
+    GetNodeBadRequest:
+      description: Get node bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: Invalid or missing flow ID
+    GetNodeNotFound:
+      description: Get node not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: Node with ID 'start' not found in the database
+    GetListNodesSuccess:
+      description: Get list nodes success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GetListNodesOk"
+    GetListNodesNotFound:
+      description: Get list nodes not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: Flow with ID 1 not found in the database
+    GetStatusSuccess:
+      description: Get status success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GetStatusOk"
+          example:
+            status: "start"
+            node_id: "message_1"
+            client: "@bot:example.com"
+    GetStatusNotFound:
+      description: Get status not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            CurrentBotMxidNotFound:
+              value:
+                detail:
+                  message: current_bot_mxid not found in the room variables, send the bot_mxid in the query parameters
+            ClientNotFound:
+              value:
+                detail:
+                  message: Client '@bot_mxid:company' not found in room
+            RoomNotFound:
+              value:
+                detail:
+                  message: room_id '1' not found
   # End of responses

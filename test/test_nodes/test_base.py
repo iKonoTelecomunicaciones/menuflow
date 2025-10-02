@@ -139,3 +139,154 @@ class TestBase:
 
         # Verify that the data is saved correctly
         assert customer_room_id == base.render_data("{{ route.customer_room_id }}")
+
+    @pytest.mark.asyncio
+    async def test_crud_variables(self, base: Base):
+        """
+        It test if the crud variables method can get the variables from the route variable
+        """
+        data = {
+            # Basic
+            "simple": "value1",
+            "nested.level1": "value2",
+            "nested2.level1.level2": "value3",
+            # Config
+            "config.logging.list": ["value4", {}, ["sub_value1", "sub_value2"]],
+            "config.logging.list[1][0]": "sub_value0",
+            "config.logging.list[1].a": "value6",
+            "config.logging.list[1].b": "value7",
+            "config.logging.list[1].c": ["value8", {"value9": "value10"}],
+            "config.logging.list[1].c[0]": "value_test",
+            "config.logging.list[1].c[1].value9": "value11",
+            # Key5
+            "key5[data].subkey1[0]": "value8",
+            # Sections
+            "sections['key-with-dash'].value": "dash",
+            "sections['key.section.dot'].value": "dot",
+            "sections['key with spaces'].value": "spaces",
+            "sections['key_with_underscore'].value": "underscore",
+            "sections['key:with:colon'].value": "colon",
+            "sections['key$with$dollar'].value": "dollar",
+            "sections['key@with@at'].value": "at",
+            "sections['key#with#hash'].value": "hash",
+            "sections['key&with&ampersand'].value": "ampersand",
+            "sections['key*with*asterisk'].value": "asterisk",
+            "sections['key+with+plus'].value": "plus",
+            # Users
+            "users['@main1:ABC'].name": "Alice",
+            "users['@main1:ABC'].role": "admin",
+            "users['@main1:ABC'].passwd": "alice_passwd",
+            # Special
+            "special['key\nnewline'].value": "newline",
+            "special['key\r\nnewline'].value": "crlf",
+            "special['key\rnewline'].value": "cr",
+            "special['key\ttab'].value": "tab",
+            "special['key\vvertical'].value": "vertical",
+            "special['key\fformfeed'].value": "formfeed",
+            "special['key\bbackspace'].value": "backspace",
+            "special['key\aalert'].value": "alert",
+        }
+
+        # Save the data to the route variable
+        await base.room.set_variables(data)
+
+        # Get the data from the route variable
+        # Example: simple
+        assert await base.room.get_variable("simple") == "value1"
+
+        # Example: nested
+        expected = {"level1": "value2"}
+        assert await base.room.get_variable("nested") == expected
+
+        # Example: nested2
+        expected = {"level1": {"level2": "value3"}}
+        assert await base.room.get_variable("nested2") == expected
+
+        # Example: config
+        expected = {
+            "logging": {
+                "list": [
+                    "value4",
+                    {
+                        "0": "sub_value0",
+                        "a": "value6",
+                        "b": "value7",
+                        "c": ["value_test", {"value9": "value11"}],
+                    },
+                    ["sub_value1", "sub_value2"],
+                ]
+            }
+        }
+        assert await base.room.get_variable("config") == expected
+
+        # Example: key5
+        expected = {"data": {"subkey1": {"0": "value8"}}}
+        assert await base.room.get_variable("key5") == expected
+
+        # Example: sections
+        expected = {
+            "key-with-dash": {"value": "dash"},
+            "key.section.dot": {"value": "dot"},
+            "key with spaces": {"value": "spaces"},
+            "key_with_underscore": {"value": "underscore"},
+            "key:with:colon": {"value": "colon"},
+            "key$with$dollar": {"value": "dollar"},
+            "key@with@at": {"value": "at"},
+            "key#with#hash": {"value": "hash"},
+            "key&with&ampersand": {"value": "ampersand"},
+            "key*with*asterisk": {"value": "asterisk"},
+            "key+with+plus": {"value": "plus"},
+        }
+        assert await base.room.get_variable("sections") == expected
+
+        # Example: users
+        expected = {
+            "@main1:ABC": {"name": "Alice", "role": "admin", "passwd": "alice_passwd"},
+        }
+        assert await base.room.get_variable("users") == expected
+
+        # Example: special
+        expected = {
+            "key\nnewline": {"value": "newline"},
+            "key\r\nnewline": {"value": "crlf"},
+            "key\rnewline": {"value": "cr"},
+            "key\ttab": {"value": "tab"},
+            "key\vvertical": {"value": "vertical"},
+            "key\fformfeed": {"value": "formfeed"},
+            "key\bbackspace": {"value": "backspace"},
+            "key\aalert": {"value": "alert"},
+        }
+        assert await base.room.get_variable("special") == expected
+
+        # Delete the data from the route variable
+        await base.room.del_variables(
+            [
+                "config.logging.list[1].c[0]",
+                "config.logging.list[1].a",
+                "users['@main1:ABC']",
+                "key5[data].subkey1['0']",
+            ]
+        )
+
+        # Verify that the data is deleted in config
+        expected = {
+            "logging": {
+                "list": [
+                    "value4",
+                    {
+                        "0": "sub_value0",
+                        "b": "value7",
+                        "c": [{"value9": "value11"}],
+                    },
+                    ["sub_value1", "sub_value2"],
+                ]
+            }
+        }
+
+        assert await base.room.get_variable("config") == expected
+
+        # Verify that the data is deleted in key5
+        assert await base.room.get_variable("key5") == {"data": {"subkey1": {}}}
+
+        # Verify that the data is deleted in users
+        assert await base.room.get_variable("users") == {}

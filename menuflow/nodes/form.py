@@ -1,5 +1,3 @@
-import asyncio
-from datetime import datetime
 from typing import Any
 
 from markdown import markdown
@@ -10,13 +8,11 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Form, FormMessage, FormMessageContent
 from ..room import Room
-from ..utils import Nodes, Util
+from ..utils import Nodes, NodeStatus
 from .input import Input
 
 
 class FormInput(Input):
-    fail_attempts_by_room = {}
-
     def __init__(self, form_node_data: Form, room: Room, default_variables: dict) -> None:
         Input.__init__(self, form_node_data, room, default_variables)
         self.content = form_node_data
@@ -62,9 +58,6 @@ class FormInput(Input):
         return form_message
 
     async def __update_menu(self, case_id: str) -> str:
-        if self.room.room_id in self.fail_attempts_by_room:
-            del self.fail_attempts_by_room[self.room.room_id]
-
         o_connection = await self.get_case_by_id(case_id)
         await self.room.update_menu(o_connection)
         return o_connection
@@ -73,10 +66,11 @@ class FormInput(Input):
         if not self.validation_attempts:
             return
 
-        current_fail_attempts = self.fail_attempts_by_room.get(self.room.room_id, 0)
-        if current_fail_attempts >= self.validation_attempts:
-            await self.__update_menu("attempt_exceeded")
-            return
+        case_to_be_used = await self.manage_attempts()
+        await self.room.route.update_node_vars()
+        if case_to_be_used == NodeStatus.ATTEMPT_EXCEEDED.value:
+            await self.__update_menu(case_to_be_used)
+            return case_to_be_used
 
         if self.validation_fail_message:
             msg_content = TextMessageEventContent(
@@ -86,8 +80,6 @@ class FormInput(Input):
                 formatted_body=markdown(text=self.validation_fail_message, extensions=["nl2br"]),
             )
             await self.send_message(self.room.room_id, msg_content)
-
-        self.fail_attempts_by_room[self.room.room_id] = current_fail_attempts + 1
 
     async def run(self, evt: MessageEvent | None):
         """Send WhhatApp flow and capture the response of it and save it as variables.
@@ -107,11 +99,11 @@ class FormInput(Input):
                 self.log.warning(
                     "A problem occurred getting user response, message type is not m.form_response"
                 )
-                await self.check_fail_attempts()
+                o_connection = await self.check_fail_attempts()
+                inactivity = self.inactivity_options
+                if inactivity and not o_connection:
+                    await self.timeout_active_chats(inactivity)
                 return
-
-            if self.inactivity_options:
-                await Util.cancel_task(task_name=self.room.room_id)
 
             await self.room.set_variable(self.variable, evt.content.get("form_data"))
             o_connection = await self.__update_menu("submitted")
@@ -138,8 +130,6 @@ class FormInput(Input):
                 content=self.form_message_content,
             )
             await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
-            if self.inactivity_options:
-                await self.inactivity_task()
 
             await send_node_event(
                 config=self.room.config,
@@ -153,58 +143,5 @@ class FormInput(Input):
                 variables=self.room.all_variables | self.default_variables,
             )
 
-    async def inactivity_task(self):
-        """It spawns a task to harass the client to enter information to input option
-
-        Parameters
-        ----------
-        client : MatrixClient
-            The MatrixClient object
-
-        """
-
-        self.log.debug(f"Inactivity loop starts in room: {self.room.room_id}")
-        asyncio.create_task(self.timeout_active_chats(), name=self.room.room_id)
-
-    async def timeout_active_chats(self):
-        """It sends messages in time intervals to communicate customer
-        that not entered information to input option.
-
-        Parameters
-        ----------
-        client : MatrixClient
-            The Matrix client object.
-
-        """
-
-        # wait the given time to start the task
-        await asyncio.sleep(self.chat_timeout)
-
-        count = 0
-        while True:
-            self.log.debug(f"Inactivity loop: {datetime.now()} -> {self.room.room_id}")
-            if self.attempts == count:
-                self.log.debug(f"INACTIVITY TRIES COMPLETED -> {self.room.room_id}")
-                o_connection = await self.__update_menu("timeout")
-
-                await send_node_event(
-                    config=self.room.config,
-                    send_event=self.content.get("send_event"),
-                    event_type=MenuflowNodeEvents.NodeInputTimeout,
-                    room_id=self.room.room_id,
-                    sender=self.room.matrix_client.mxid,
-                    node_id=self.id,
-                    o_connection=o_connection,
-                    variables=self.room.all_variables | self.default_variables,
-                )
-
-                await self.room.matrix_client.algorithm(room=self.room)
-                break
-
-            if self.warning_message:
-                await self.room.matrix_client.send_text(
-                    room_id=self.room.room_id, text=self.warning_message
-                )
-
-            await asyncio.sleep(self.time_between_attempts)
-            count += 1
+            if inactivity := self.inactivity_options:
+                await self.timeout_active_chats(inactivity)

@@ -28,3 +28,17 @@ class Middlewares(SerializableEnum):
     LLM = "llm"
     ASR = "asr"
     TTM = "ttm"
+
+
+class Scopes(SerializableEnum):
+    UNKNOWN = "unknown"
+    ROOM = "room"
+    ROUTE = "route"
+    NODE = "node"
+
+
+class NodeStatus(SerializableEnum):
+    ATTEMPT_EXCEEDED = "attempt_exceeded"
+    DEFAULT = "default"
+    TIMEOUT = "timeout"
+    WEBHOOK = "webhook"

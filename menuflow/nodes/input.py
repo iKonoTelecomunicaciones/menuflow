@@ -14,6 +14,7 @@ from mautrix.types import (
 from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
+from ..inactivity_handler import InactivityHandler
 from ..repository import Input as InputModel
 from ..room import Room
 from ..utils import Middlewares, Nodes, Util
@@ -43,13 +44,7 @@ class Input(Switch, Message):
 
     @property
     def inactivity_options(self) -> Dict[str, Any]:
-        data: Dict = self.content.get("inactivity_options", {})
-        self.chat_timeout: int = data.get("chat_timeout", 0)
-        self.warning_message: str = self.render_data(data.get("warning_message", ""))
-        self.time_between_attempts: int = data.get("time_between_attempts", 0)
-        self.attempts: int = data.get("attempts", 0)
-
-        return data
+        return self.content.get("inactivity_options", {})
 
     async def _set_input_content(
         self, content: MediaMessageEventContent | LocationMessageEventContent
@@ -58,7 +53,7 @@ class Input(Switch, Message):
             input_content = (
                 content.serialize()
                 if isinstance(content, MediaMessageEventContent)
-                else content.geo_uri
+                else Util.extract_location_info(content)
             )
             await self.room.set_variable(self.variable, input_content)
             return await self.get_case_by_id(True)
@@ -94,10 +89,13 @@ class Input(Switch, Message):
                 await middlewares_sorted[Middlewares.LLM].run(text=given_text)
         else:
             try:
-                await self.room.set_variable(
-                    self.variable,
-                    int(text) if text.isdigit() else text,
-                )
+                if vars := self.set_variables:
+                    await self.load_variables(vars)
+                else:
+                    await self.room.set_variable(
+                        self.variable,
+                        int(text) if text.isdigit() else text,
+                    )
             except ValueError as e:
                 self.log.warning(e)
 
@@ -126,6 +124,8 @@ class Input(Switch, Message):
                 return
 
             if self.input_type == MessageType.TEXT:
+                self.room.set_node_var(content=evt.content.body)
+
                 o_connection = await self.input_text(
                     text=evt.content.body, middlewares_sorted=middlewares_sorted
                 )
@@ -167,9 +167,6 @@ class Input(Switch, Message):
             elif self.input_type == MessageType.LOCATION:
                 o_connection = await self.input_location(content=evt.content)
 
-            if self.inactivity_options:
-                await Util.cancel_task(task_name=self.room.room_id)
-
             await send_node_event(
                 config=self.room.config,
                 send_event=self.content.get("send_event"),
@@ -187,9 +184,11 @@ class Input(Switch, Message):
             # and the room state is set to input.
             self.log.debug(f"Room {self.room.room_id} enters input node {self.id}")
             await Message.run(self, update_state=False, generate_event=False)
-            await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
-            if self.inactivity_options:
-                await self.inactivity_task()
+
+            self.room.set_node_var(content="")
+            await self.room.update_menu(
+                node_id=self.id, state=RouteState.INPUT, update_node_vars=False
+            )
 
             await send_node_event(
                 config=self.room.config,
@@ -203,59 +202,42 @@ class Input(Switch, Message):
                 variables=self.room.all_variables | self.default_variables,
             )
 
-    async def inactivity_task(self):
-        """It spawns a task to harass the client to enter information to input option
+            if inactivity := self.inactivity_options:
+                await self.timeout_active_chats(inactivity)
 
-        Parameters
-        ----------
-        client : MatrixClient
-            The MatrixClient object
-
-        """
-
-        self.log.debug(f"Inactivity loop starts in room: {self.room.room_id}")
-        asyncio.create_task(self.timeout_active_chats(), name=self.room.room_id)
-
-    async def timeout_active_chats(self):
+    async def timeout_active_chats(self, inactivity: dict):
         """It sends messages in time intervals to communicate customer
         that not entered information to input option.
 
         Parameters
         ----------
-        client : MatrixClient
-            The Matrix client object.
+        inactivity : dict
+            The inactivity options.
 
         """
+        if inactivity.get("chat_timeout") is None and inactivity.get("attempts") is None:
+            return
 
-        # wait the given time to start the task
-        await asyncio.sleep(self.chat_timeout)
+        inactivity_handler = InactivityHandler(room=self.room, inactivity=inactivity)
+        try:
+            await asyncio.create_task(inactivity_handler.start(), name=self.room.room_id)
 
-        count = 0
-        while True:
-            self.log.debug(f"Inactivity loop: {datetime.now()} -> {self.room.room_id}")
-            if self.attempts == count:
-                self.log.debug(f"INACTIVITY TRIES COMPLETED -> {self.room.room_id}")
-                o_connection = await self.get_case_by_id("timeout")
-                await self.room.update_menu(node_id=o_connection, state=None)
+            self.log.debug(f"INACTIVITY TRIES COMPLETED -> {self.room.room_id}")
+            o_connection = await self.get_case_by_id("timeout")
+            await self.room.update_menu(node_id=o_connection, state=None)
 
-                await send_node_event(
-                    config=self.room.config,
-                    send_event=self.content.get("send_event"),
-                    event_type=MenuflowNodeEvents.NodeInputTimeout,
-                    room_id=self.room.room_id,
-                    sender=self.room.matrix_client.mxid,
-                    node_id=self.id,
-                    o_connection=o_connection,
-                    variables=self.room.all_variables | self.default_variables,
-                )
+            await send_node_event(
+                config=self.room.config,
+                send_event=self.content.get("send_event"),
+                event_type=MenuflowNodeEvents.NodeInputTimeout,
+                room_id=self.room.room_id,
+                sender=self.room.matrix_client.mxid,
+                node_id=self.id,
+                o_connection=o_connection,
+                variables=self.room.all_variables | self.default_variables,
+            )
 
-                await self.room.matrix_client.algorithm(room=self.room)
-                break
-
-            if self.warning_message:
-                await self.room.matrix_client.send_text(
-                    room_id=self.room.room_id, text=self.warning_message
-                )
-
-            await asyncio.sleep(self.time_between_attempts)
-            count += 1
+        except asyncio.CancelledError:
+            self.log.error(f"Inactivity handler cancelled for room: {self.room.room_id}")
+        except Exception as e:
+            self.log.error(f"Inactivity handler error for room: {self.room.room_id}: {e}")

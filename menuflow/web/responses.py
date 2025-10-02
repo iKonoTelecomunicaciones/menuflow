@@ -10,8 +10,42 @@ log: Logger = getLogger("menuflow.api.responses")
 
 
 class _Response:
+    @staticmethod
+    def _base_response(
+        status: HTTPStatus,
+        message: str | None = None,
+        uuid: str | None = None,
+        data: dict | None = None,
+        log_msg: str | None = None,
+    ) -> web.Response:
+
+        if message:
+            response = {"detail": {"message": message}}
+            if data:
+                response["detail"]["data"] = data
+        else:
+            response = data
+
+        log_msg = log_msg or response
+
+        log.info(f"({uuid}) -> {log_msg}" if uuid else log_msg)
+
+        return web.json_response(response, status=status)
+
+    def success(
+        self,
+        message: str = None,
+        uuid: str = None,
+        data: dict = None,
+        log_msg: str = None,
+    ) -> web.Response:
+        return self._base_response(
+            status=HTTPStatus.OK, message=message, uuid=uuid, data=data, log_msg=log_msg
+        )
+
     @property
-    def body_not_json(self) -> web.Response:
+    def body_not_json(self, uuid: str = "") -> web.Response:
+        log.debug(f"({uuid}) -> Request body is not JSON")
         return web.json_response(
             {"detail": {"message": "Request body is not JSON"}},
             status=HTTPStatus.BAD_REQUEST,
@@ -79,29 +113,34 @@ class _Response:
             status=HTTPStatus.CONFLICT,
         )
 
-    def ok(self, data: Optional[Dict] = {}, uuid: str = "") -> web.Response:
-        log.debug(f"({uuid}) -> {data}")
+    def ok(
+        self, data: Optional[Dict] = {}, uuid: str = "", log_msg: str | None = None
+    ) -> web.Response:
+        log.debug(f"({uuid}) -> {log_msg or data}")
         return web.json_response(data, status=HTTPStatus.OK)
 
-    @staticmethod
-    def created(data: dict) -> web.Response:
+    def created(self, data: dict, uuid: str = "", log_msg: str | None = None) -> web.Response:
+        log.debug(f"({uuid}) -> {log_msg or data}")
         return web.json_response(data, status=HTTPStatus.CREATED)
 
-    def bad_request(self, message: str, uuid: str = "") -> web.Response:
-        log.debug(f"({uuid}) -> {message}")
+    def bad_request(
+        self, message: str, uuid: str = "", log_msg: str | None = None
+    ) -> web.Response:
+        log.debug(f"({uuid}) -> {log_msg or message}")
         return web.json_response(
             {"detail": {"message": message}},
             status=HTTPStatus.BAD_REQUEST,
         )
 
-    def client_not_found(self, user_id: str) -> web.Response:
+    def client_not_found(self, user_id: str, uuid: str = "") -> web.Response:
+        log.debug(f"({uuid}) -> Client with given user ID {user_id} not found")
         return web.json_response(
             {"detail": {"message": f"Client with given user ID {user_id} not found"}},
             status=HTTPStatus.NOT_FOUND,
         )
 
-    def not_found(self, message: str, uuid: str = "") -> web.Response:
-        log.debug(f"({uuid}) -> {message}")
+    def not_found(self, message: str, uuid: str = "", log_msg: str | None = None) -> web.Response:
+        log.debug(f"({uuid}) -> {log_msg or message}")
         return web.json_response(
             {
                 "detail": {"message": message},
@@ -109,8 +148,10 @@ class _Response:
             status=HTTPStatus.NOT_FOUND,
         )
 
-    def unprocessable_entity(self, message: str, uuid: str = "") -> web.Response:
-        log.debug(f"({uuid}) -> {message}")
+    def unprocessable_entity(
+        self, message: str, uuid: str = "", log_msg: str | None = None
+    ) -> web.Response:
+        log.debug(f"({uuid}) -> {log_msg or message}")
         return web.json_response(
             {
                 "detail": {"message": message},
@@ -118,8 +159,10 @@ class _Response:
             status=HTTPStatus.UNPROCESSABLE_ENTITY,
         )
 
-    def server_error(self, message: str, uuid: str = "") -> web.Response:
-        log.error(f"({uuid}) -> {message}")
+    def server_error(
+        self, message: str, uuid: str = "", log_msg: str | None = None
+    ) -> web.Response:
+        log.error(f"({uuid}) -> {log_msg or message}")
         return web.json_response(
             {
                 "detail": {"message": message},
@@ -138,6 +181,15 @@ class _Response:
         return web.json_response(
             response_data,
             status=status,
+        )
+
+    def conflict(
+        self, message: str, uuid: str = "", data: list = None, log_msg: str | None = None
+    ) -> web.Response:
+        log.debug(f"({uuid}) -> {log_msg or message}")
+        return web.json_response(
+            {"detail": {"message": message, "data": data} if data else {"message": message}},
+            status=HTTPStatus.CONFLICT,
         )
 
 

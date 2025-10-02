@@ -12,7 +12,7 @@ from ...db.flow import Flow as DBFlow
 from ...db.room import Room as DBRoom
 from ...db.route import Route as DBRoute
 from ...flow_utils import FlowUtils
-from ...jinja.jinja_template import jinja_env
+from ...jinja.env import jinja_env
 from ...utils.errors import GettingDataError
 from ...utils.util import Util as Utils
 from ..base import get_config, get_flow_utils, routes
@@ -225,7 +225,7 @@ async def render_data(request: web.Request) -> web.Response:
         if not room_obj:
             return resp.not_found(f"Room '{room_id}' not found")
         else:
-            bot_mxid = room_obj._room_variables.get("current_bot_mxid")
+            bot_mxid = room_obj._variables.get("current_bot_mxid")
 
             if room_obj and bot_mxid:
                 route_obj = await DBRoute.get_by_room_and_client(
@@ -233,11 +233,14 @@ async def render_data(request: web.Request) -> web.Response:
                 )
                 flow_obj = await DBFlow.get_by_mxid(bot_mxid)
 
-                if room_obj._room_variables:
-                    dict_variables |= {"room": room_obj._room_variables}
+                if room_obj._variables:
+                    dict_variables |= {"room": room_obj._variables}
 
                 if route_obj.variables:
                     dict_variables |= {"route": route_obj._variables}
+
+                if route_obj.node_vars:
+                    dict_variables |= {"node": route_obj._node_vars}
 
                 if flow_obj.flow_vars:
                     dict_variables |= {"flow": flow_obj.flow_vars}

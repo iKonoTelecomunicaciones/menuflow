@@ -12,12 +12,13 @@ import holidays
 import jq
 from babel import Locale
 from jinja2 import TemplateSyntaxError, UndefinedError
-from mautrix.types import RoomID, UserID
+from mautrix.types import LocationInfo, LocationMessageEventContent, RoomID, UserID
 from mautrix.util.logging import TraceLogger
 from pycountry import countries, subdivisions
 
 from ..config import Config
-from ..jinja.jinja_template import jinja_env
+from ..jinja.env import jinja_env
+from ..utils.types import Scopes
 
 log: TraceLogger = getLogger("menuflow.util")
 
@@ -245,9 +246,7 @@ class Util:
             evaluated_body = html.unescape(evaluated_body.replace("'", '"'))
             literal_eval_body = ast.literal_eval(evaluated_body)
         except Exception as e:
-            log.debug(
-                f"Trying to evaluate data: {temp_rendered}, it seems to be a not valid JSON",
-            )
+            pass
         else:
             if isinstance(literal_eval_body, (dict, list)):
                 return literal_eval_body
@@ -622,3 +621,91 @@ class Util:
                 return type
 
         return value
+
+    @staticmethod
+    def get_scope_and_key(
+        variable_id: str,
+        default_scope: Scopes = Scopes.ROUTE,
+    ) -> tuple[Scopes, str]:
+        """Get the scope and key from a variable id
+
+        Parameters
+        ----------
+        variable_id : str
+            The variable id to get the scope and key from.
+        default_scope : Scopes
+            The default scope to use if the variable id does not have a scope.
+
+        Returns
+        -------
+            A tuple containing the scope and key.
+        """
+        if isinstance(variable_id, int):
+            variable_id = str(variable_id)
+
+        parts = variable_id.split(".", maxsplit=1)
+
+        if len(parts) == 2 and parts[0] in Scopes._value2member_map_:
+            scope: Scopes = Scopes._value2member_map_.get(parts[0], Scopes.UNKNOWN)
+            key = parts[1]
+        else:
+            scope: Scopes = default_scope
+            key = variable_id
+
+        return scope, key
+
+    @staticmethod
+    def extract_location_info(content: LocationMessageEventContent) -> dict:
+        """Extracts the location information from the content.
+
+        Parameters
+        ----------
+        content : LocationMessageEventContent
+            The content of the location message event.
+
+        Returns
+        -------
+        dict
+            The location information.
+        """
+
+        status = {"status": "success"}
+
+        latitude = longitude = None
+        try:
+            # The geo_uri is in the format "geo:latitude,longitude"
+            _, coords = content.geo_uri.split(":", 1)
+            latitude, longitude = coords.split(",", 1)
+        except ValueError:
+            log.error(
+                f"The geo_uri has changed, return the original geo_uri in response: {content.geo_uri}"
+            )
+            status.update({"status": "geo_uri_changed", "geo_uri": content.geo_uri})
+
+        data = content.body
+        if content.body.startswith("Location: "):
+            parts = content.body.removeprefix("Location: ").split("\n")
+            if len(parts) == 3:
+                data = {"name": parts[0], "address": parts[1], "url": parts[2]}
+            else:
+                log.warning(
+                    f"The body of the location message event content has changed, return the original body: {content.body}"
+                )
+                status["status"] = (
+                    "body_changed"
+                    if status["status"] == "success"
+                    else "body_changed_and_geo_uri_changed"
+                )
+
+        thumbnail = content.info
+        if isinstance(content.info, LocationInfo):
+            info = content.info.serialize()
+            thumbnail = {
+                k: info.get(k) for k in ("thumbnail_url", "thumbnail_info", "thumbnail_file")
+            }
+
+        return {
+            "location": {"latitude": latitude, "longitude": longitude, "data": data},
+            "thumbnail": thumbnail,
+            **status,
+        }

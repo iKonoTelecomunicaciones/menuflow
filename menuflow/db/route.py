@@ -35,6 +35,7 @@ class Route:
     state: RouteState = ib(default=RouteState.START)
     variables: str = ib(default="{}")
     stack: str = ib(default="{}")
+    node_vars: str = ib(default="{}")
 
     @classmethod
     def _from_row(cls, row: Record) -> Route | None:
@@ -55,13 +56,22 @@ class Route:
             self.state.value if self.state else None,
             self.variables,
             self.stack,
+            self.node_vars,
         )
 
-    _columns = "room, client, node_id, state, variables, stack"
+    _columns = "room, client, node_id, state, variables, stack, node_vars"
 
     @property
     def _variables(self) -> Dict:
         return json.loads(self.variables)
+
+    @property
+    def _node_vars(self) -> Dict:
+        return json.loads(self.node_vars)
+
+    @_node_vars.setter
+    def _node_vars(self, node_vars: dict) -> None:
+        self.node_vars = json.dumps(node_vars)
 
     @property
     def _stack(self) -> LifoQueue | None:
@@ -91,20 +101,39 @@ class Route:
         return cls._from_row(row) if row else route
 
     async def insert(self) -> str:
-        q = f"INSERT INTO route ({self._columns}) VALUES ($1, $2, $3, $4, $5, $6)"
+        q = f"INSERT INTO route ({self._columns}) VALUES ($1, $2, $3, $4, $5, $6, $7)"
         await self.db.execute(q, *self.values)
 
     async def update(self) -> None:
         q = """
-            UPDATE route SET node_id = $3, state = $4, variables = $5, stack = $6
+            UPDATE route SET node_id = $3, state = $4, variables = $5, stack = $6, node_vars = $7
             WHERE room = $1 and client = $2
         """
         await self.db.execute(q, *self.values)
 
-    async def clean_up(self) -> None:
+    async def clean_up(self, update_state: bool = True, preserve_constants: bool = False) -> None:
         log.info(f"Cleaning up route {self.client}")
-        self.state = RouteState.START
+
+        constants = (
+            ("customer_room_id", "bot_mxid", "customer_mxid", "puppet_mxid")
+            if preserve_constants
+            else ()
+        )
+
+        if update_state:
+            self.state = RouteState.START
         self.node_id = "start"
-        self.variables = json.dumps({"external": self._variables.pop("external", {})})
+        _vars = self._variables
+
+        self.variables = json.dumps(
+            {"external": _vars.pop("external", {}), **{c: _vars.pop(c, "") for c in constants}}
+        )
         self.stack = json.dumps({self.client: []})
         await self.update()
+
+    async def update_node_vars(self) -> None:
+        q = """
+            UPDATE route SET node_vars = $1
+            WHERE room = $2 and client = $3
+        """
+        await self.db.execute(q, self.node_vars, self.room, self.client)

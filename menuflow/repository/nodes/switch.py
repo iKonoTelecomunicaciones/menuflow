@@ -48,6 +48,9 @@ class Switch(FlowObject):
         o_connection: m3
       - id: attempt_exceeded
         o_connection: m4
+      set_variables:
+        node.opt: "1"
+        node.active: True
 
     - id: switch-2
       type: switch
@@ -55,6 +58,9 @@ class Switch(FlowObject):
       validation_fail:
         message: "Please enter a valid option"
         attempts: 3
+      set_variables:
+        node.opt: "1"
+        node.active: True
       cases:
       - case: "{% if route.opt == 1 %}True{% else %}False{% endif %}"
         o_connection: m1
@@ -75,3 +81,4 @@ class Switch(FlowObject):
     validation: str = ib(default=None)
     validation_fail: ValidationFail = ib(default=None)
     cases: List[Case] = ib(factory=list)
+    set_variables: Dict[str, Any] = ib(factory=dict)

@@ -111,6 +111,8 @@ create_module_doc = f"""
             $ref: '#/components/responses/CreateModuleBadRequest'
         '404':
             $ref: '#/components/responses/CreateModuleNotFound'
+        '409':
+            $ref: '#/components/responses/CreateModuleConflict'
         '500':
             $ref: '#/components/responses/InternalServerError'
   """
@@ -124,6 +126,12 @@ update_module_doc = f"""
         - Module
 
     parameters:
+        - name: flow_id
+          in: path
+          required: true
+          description: The ID of the flow to update the module.
+          schema:
+            type: integer
         - name: module_id
           in: path
           required: true
@@ -131,12 +139,6 @@ update_module_doc = f"""
           schema:
             type: integer
           example: 1
-        - name: flow_id
-          in: path
-          required: true
-          description: The ID of the flow to update the module.
-          schema:
-            type: integer
 
     requestBody:
         required: true
@@ -174,6 +176,8 @@ update_module_doc = f"""
             $ref: '#/components/responses/UpdateModuleBadRequest'
         '404':
             $ref: '#/components/responses/UpdateModuleNotFound'
+        '409':
+            $ref: '#/components/responses/UpdateModuleConflict'
         '500':
             $ref: '#/components/responses/InternalServerError'
   """
@@ -187,6 +191,12 @@ delete_module_doc = """
         - Module
 
     parameters:
+        - name: flow_id
+          in: path
+          required: true
+          description: The ID of the flow to delete the module.
+          schema:
+            type: integer
         - name: module_id
           in: path
           required: true
@@ -194,12 +204,6 @@ delete_module_doc = """
           schema:
             type: integer
           example: 1
-        - name: flow_id
-          in: path
-          required: true
-          description: The ID of the flow to delete the module.
-          schema:
-            type: integer
 
     responses:
         '200':
@@ -211,3 +215,35 @@ delete_module_doc = """
         '500':
             $ref: '#/components/responses/InternalServerError'
   """
+
+get_module_list_doc = """
+    ---
+    summary: Get a list of modules.
+    description: Get a list of modules.
+
+    tags:
+        - Module
+
+    parameters:
+        - name: flow_identifier
+          in: path
+          required: true
+          description: The ID or mxid of the flow to get the modules.
+          schema:
+            type: string
+        - in: query
+          name: fields
+          schema:
+            type: array
+            default: ["id", "name"]
+            items:
+              type: string
+          description: Fields to return the list of modules.
+    responses:
+        '200':
+            $ref: '#/components/responses/GetListModulesSuccess'
+        '404':
+            $ref: '#/components/responses/GetListModulesNotFound'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
+"""

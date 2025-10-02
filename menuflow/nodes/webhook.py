@@ -1,6 +1,4 @@
-import asyncio
 import json
-from datetime import datetime
 from time import time
 from typing import Any
 
@@ -11,7 +9,7 @@ from menuflow.db.route import RouteState
 from menuflow.events.event_generator import send_node_event
 from menuflow.events.event_types import MenuflowNodeEvents
 from menuflow.room import Room
-from menuflow.utils.types import Nodes
+from menuflow.utils.types import Nodes, NodeStatus
 from menuflow.utils.util import Util
 from menuflow.webhook.webhook_queue import WebhookQueue
 
@@ -21,8 +19,6 @@ from .input import Input
 
 
 class Webhook(Input):
-    webhook_id: str = "webhook"
-
     def __init__(self, webhook_data: WebhookModel, room: Room, default_variables: dict) -> None:
         Input.__init__(
             self, input_node_data=webhook_data, room=room, default_variables=default_variables
@@ -106,31 +102,8 @@ class Webhook(Input):
             sender=self.room.matrix_client.mxid,
             node_type=node_type,
             node_id=self.id,
-            o_connection=None,
+            o_connection=o_connection,
             variables=self.room.all_variables | self.default_variables,
-        )
-
-    async def change_state_to_input(self, webhook: ControllerWebhook) -> None:
-        """
-        This function changes the state of the room to input.
-        It also updates the menu for the room.
-        It sends a node event to the room with the webhook data.
-
-        Parameters
-        ----------
-        webhook : ControllerWebhook
-            The webhook data.
-        """
-        await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
-
-        if self.inactivity_options:
-            self.log.debug(f"Webhook inactivity options: {self.inactivity_options}")
-            self.inactivity_task(webhook)
-
-        await self.send_node_event(
-            o_connection=None,
-            event_type=MenuflowNodeEvents.NodeEntry,
-            node_type=Nodes.webhook,
         )
 
     async def management_message(self, evt: dict, webhook: ControllerWebhook) -> None:
@@ -146,12 +119,11 @@ class Webhook(Input):
         """
         o_connection = None
 
-        if evt.content.body.lower() != self.webhook_id:
+        if evt.content.body.lower() != NodeStatus.WEBHOOK.value:
             o_connection = await self.input_text(text=evt.content.body)
 
         if o_connection:
             self.log.debug(f"Deleting webhook from db: {self.room.room_id}")
-            await Util.cancel_task(task_name=self.room.room_id)
             await webhook.remove()
         else:
             if self.validation_fail_message:
@@ -164,10 +136,10 @@ class Webhook(Input):
                     ),
                 )
                 await self.send_message(self.room.room_id, msg_content)
+            if inactivity := self.inactivity_options:
+                await self.timeout_active_chats(inactivity)
 
-        await self.send_node_event(
-            o_connection=o_connection, event_type=MenuflowNodeEvents.NodeInputData
-        )
+        await self.send_node_event(o_connection=None, event_type=MenuflowNodeEvents.NodeInputData)
 
     async def management_webhook(self, evt: dict) -> str | None:
         """
@@ -185,12 +157,12 @@ class Webhook(Input):
             The connection data for the webhook.
             If the event is not valid, it returns None.
         """
-        variables = await self.set_variables(data=evt)
+        variables = await self.set_webhook_variables(data=evt)
 
         if variables:
             await self.room.set_variables(variables=variables)
 
-        o_connection = await self.get_case_by_id(self.webhook_id)
+        o_connection = await self.get_case_by_id(NodeStatus.WEBHOOK.value)
         await self.send_node_event(
             o_connection=o_connection, event_type=MenuflowNodeEvents.NodeInputData
         )
@@ -245,7 +217,7 @@ class Webhook(Input):
 
         return event_to_managed
 
-    async def run(self, evt: dict | None) -> dict:
+    async def run(self, evt: dict | MessageEvent | None) -> dict:
         """
         This function runs the webhook and sends the event data to the webhook URL.
         It also checks if the event data matches the filter for the webhook.
@@ -268,25 +240,40 @@ class Webhook(Input):
                     f"""Error decoding JSON for event {event_to_manage.id}.
                     Event: {event_to_manage.event}"""
                 )
-                return
 
             return
 
+        # Webhook endpoint entry execution
         if not isinstance(evt, MessageEvent) and self.room.route.state == RouteState.INPUT:
-            o_connection = await self.management_webhook(evt=evt)
-
-            if o_connection:
-                await self.room.matrix_client.algorithm(room=self.room)
-
+            await self.management_webhook(evt=evt)
+            await Util.cancel_task(task_name=self.room.room_id)
             return
 
         if self.room.route.state != RouteState.INPUT:
-            await self.change_state_to_input(webhook)
+            await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
+
+            await self.send_node_event(
+                o_connection=None,
+                event_type=MenuflowNodeEvents.NodeEntry,
+                node_type=Nodes.webhook,
+            )
+
+            inactivity = self.inactivity_options
+            if inactivity and not Util.get_tasks_by_name(task_name=self.room.room_id):
+                if not inactivity.get("chat_timeout") or inactivity.get("chat_timeout") <= 0:
+                    self.log.debug(
+                        f"Chat timeout is not set in node webhook for room: {self.room.room_id}"
+                    )
+                    return
+                await self.timeout_active_chats(inactivity)
+
+                self.log.debug(f"Deleting webhook from db: {self.room.room_id}")
+                await webhook.remove()
+
             return
 
         if isinstance(evt, MessageEvent):
             await self.management_message(evt=evt, webhook=webhook)
-            return
 
     def validate_webhook_filter(self, filter: str, event_data: dict) -> bool:
         """
@@ -317,9 +304,9 @@ class Webhook(Input):
         if not webhook_filter == filter_db:
             self.log.debug(
                 f"Webhook filter does not match the filter for room {self.room.room_id}"
+                f"Webhook filter for room {self.room.room_id}: {webhook_filter}"
+                f"Filter from db in webhook node for {self.room.room_id}: {filter}"
             )
-            self.log.debug(f"Webhook filter for room {self.room.room_id}: {webhook_filter}")
-            self.log.debug(f"Filter from db in webhook node for {self.room.room_id}: {filter}")
             return False
 
         # Check if the room is waiting for a webhook event validating the filter
@@ -337,112 +324,12 @@ class Webhook(Input):
         if not jq_result.get("result")[0]:
             self.log.debug(
                 f"Webhook filter does not match the event data for room {self.room.room_id}"
+                f"Webhook filter: {webhook_filter}"
+                f"Event data: {event_data}"
             )
-            self.log.debug(f"Webhook filter: {webhook_filter}")
-            self.log.debug(f"Event data: {event_data}")
             return False
 
         return True
-
-    @property
-    def inactivity_options(self) -> dict[str, Any]:
-        """
-        This property returns the inactivity options for the webhook.
-        """
-        data: dict = self.content.get("inactivity_options", {})
-        self.chat_timeout: int = data.get("chat_timeout", 0)
-
-        return data
-
-    def inactivity_task(self, webhook: ControllerWebhook):
-        """It spawns a task to harass the client to enter information to input option
-
-        Parameters
-        ----------
-        client : MatrixClient
-            The MatrixClient object
-
-        """
-        self.chat_timeout = self.inactivity_options.get("chat_timeout", 0)
-
-        if not self.chat_timeout or self.chat_timeout <= 0:
-            self.log.debug(
-                f"Chat timeout is not set in node webhook for room: {self.room.room_id}"
-            )
-            return
-
-        if Util.get_tasks_by_name(task_name=self.room.room_id):
-            self.log.debug(f"Task already exists for room: {self.room.room_id}")
-            return
-
-        self.log.debug(f"Inactivity loop starts in room: {self.room.room_id}")
-        return asyncio.create_task(self.timeout_active_chats(webhook), name=self.room.room_id)
-
-    def calculate_timeout(self, time_out_db: int) -> int:
-        """
-        This function calculates the timeout for the webhook.
-        Parameters
-        ----------
-        time_out_db : int
-            The timeout value from the database.
-        Returns
-        -------
-        int
-            The calculated timeout value. If the value is less than 0, it returns 0.
-        """
-
-        if not time_out_db or time_out_db <= 0:
-            self.log.debug(f"Chat timeout is not set for room: {self.room.room_id}")
-            return 0
-
-        self.log.debug(f"Chat timeout is set for room: {self.room.room_id}")
-
-        # Calculate the timeout
-        time_out = int(time()) - time_out_db
-        time_out = self.chat_timeout - abs(time_out)
-
-        if time_out <= 0:
-            return 0
-
-        return time_out
-
-    async def timeout_active_chats(self, webhook: ControllerWebhook):
-        """It wait in time interval to cancel the webhook request and go to the next node
-
-        Parameters
-        ----------
-        client : MatrixClient
-            The Matrix client object.
-
-        """
-        time_out = self.calculate_timeout(
-            time_out_db=webhook.subscription_time,
-        )
-
-        # wait the given time to start the task
-        await asyncio.sleep(time_out)
-
-        self.log.debug(f"Inactivity loop: {datetime.now()} -> {self.room.room_id}")
-
-        o_connection = await self.get_case_by_id("timeout")
-        await self.room.update_menu(node_id=o_connection, state=None)
-
-        await send_node_event(
-            config=self.room.config,
-            send_event=self.content.get("send_event"),
-            event_type=MenuflowNodeEvents.NodeInputTimeout,
-            room_id=self.room.room_id,
-            sender=self.room.matrix_client.mxid,
-            node_id=self.id,
-            o_connection=o_connection,
-            variables=self.room.all_variables | self.default_variables,
-        )
-
-        await self.room.matrix_client.algorithm(room=self.room)
-
-        self.log.debug(f"INACTIVITY COMPLETED -> {self.room.room_id}")
-        self.log.debug(f"Deleting webhook from db: {self.room.room_id}")
-        await webhook.remove()
 
     def validate_jq_data(self, data: dict, variable: dict, default_value: dict) -> dict:
         """
@@ -471,7 +358,7 @@ class Webhook(Input):
             )
         return jq_result.get("result")
 
-    async def set_variables(self, data: dict):
+    async def set_webhook_variables(self, data: dict):
         """
         This function sets the variables for the webhook.
 
