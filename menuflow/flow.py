@@ -75,13 +75,15 @@ class Flow:
         flow_mxid: Optional[str] = None,
         content: Optional[Dict] = None,
         config: Optional[Config] = None,
+        cancel_tasks: bool = True,
     ) -> Flow:
         self.data = await FlowModel.load_flow(flow_mxid=flow_mxid, content=content, config=config)
         self.nodes = self.data.nodes or []
         self.nodes_by_id: Dict[str, Dict] = {}
 
         util = Util(config)
-        await util.cancel_tasks()
+        if cancel_tasks:
+            await util.cancel_tasks()
 
     def _add_node_to_cache(self, node_data: Dict):
         self.nodes_by_id[node_data.get("id")] = node_data

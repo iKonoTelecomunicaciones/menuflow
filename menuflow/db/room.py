@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar, Dict
 
 from asyncpg import Record
 from attr import dataclass
-from mautrix.types import RoomID
+from mautrix.types import RoomID, UserID
 from mautrix.util.async_db import Database
 
 fake_db = Database.create("") if TYPE_CHECKING else None
@@ -53,3 +53,18 @@ class Room:
             return
 
         return cls._from_row(row)
+
+    @classmethod
+    async def get_node_var_by_state(
+        cls, state: str, variable_name: str, menuflow_bot_mxid: UserID
+    ) -> dict:
+        fields = ("room_id", "node_vars", "node_id", "state", "client")
+        q = f"""
+            SELECT {", ".join(fields)}
+            FROM route as rt
+            JOIN room as ro ON rt.room = ro.id
+            WHERE rt.state=$1 AND
+                rt.node_vars->$2 <> '{{}}' AND
+                rt.client = $3
+        """
+        return await cls.db.fetch(q, state, variable_name, menuflow_bot_mxid)

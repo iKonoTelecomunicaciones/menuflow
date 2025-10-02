@@ -104,9 +104,12 @@ class MenuClient(DBClient):
         self.started = False
         self.sync_ok = True
         self.flow_cls = Flow()
-        await self.flow_cls.load_flow(flow_mxid=self.id, config=self.menuflow.config)
+        await self.flow_cls.load_flow(
+            flow_mxid=self.id, config=self.menuflow.config, cancel_tasks=False
+        )
         self.matrix_handler: MatrixHandler = self._make_client()
         asyncio.create_task(self.matrix_handler.load_all_room_constants())
+        await self.matrix_handler.create_inactivity_tasks()
         # if self.enable_crypto:
         #     self._prepare_crypto()
         # else:
