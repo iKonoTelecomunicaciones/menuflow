@@ -123,18 +123,17 @@ class Util:
         """
 
         tasks = all_tasks()
-        for task in tasks:
-            if task.get_name() == task_name:
-                return task
+        return [task for task in tasks if task.get_name() == task_name]
 
     @classmethod
     async def cancel_task(self, task_name: str):
         """It cancels the inactivity task that is running in the background"""
 
-        task = self.get_tasks_by_name(task_name)
-        if task:
-            task.cancel()
-            log.debug(f"TASK CANCEL -> {task_name}")
+        if tasks := self.get_tasks_by_name(task_name):
+            for task in tasks:
+                task.cancel()
+
+            log.debug(f"{len(tasks)} tasks canceled for name -> {task_name}")
 
     @classmethod
     def is_within_range(self, number: int, start: int, end: int) -> bool:
@@ -385,8 +384,9 @@ class Util:
 
     async def cancel_tasks(self) -> None:
         tasks = all_tasks()
+        regex_room_id = self.config["menuflow.regex.room_id"]
         for task in tasks:
-            if match(self.config["menuflow.regex.room_id"], task.get_name()):
+            if match(regex_room_id, task.get_name()):
                 task.cancel()
 
     # Function to fix malformed lists

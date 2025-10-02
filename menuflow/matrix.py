@@ -290,9 +290,7 @@ class MatrixHandler(MatrixClient):
                 f"Created task for group message [room: {room.room_id}] [node: {node.id}] in {node.group_messages_timeout} seconds"
             )
 
-    async def algorithm(
-        self, room: Room, evt: Optional[MessageEvent] = None, timeout_active: bool = False
-    ) -> None:
+    async def algorithm(self, room: Room, evt: Optional[MessageEvent] = None) -> None:
         """The algorithm function is the main function that runs the flow.
         It takes a room and an event as parameters
 
@@ -302,8 +300,6 @@ class MatrixHandler(MatrixClient):
             The room object.
         evt : Optional[MessageEvent]
             The event that triggered the algorithm.
-        timeout_active : bool
-            Whether the timeout is active.
         """
 
         node = self.flow.node(room=room)
@@ -323,10 +319,7 @@ class MatrixHandler(MatrixClient):
             if room.room_id in self.message_group_by_room:
                 del self.message_group_by_room[room.room_id]
 
-            if (inactivity := node.inactivity_options) and timeout_active:
-                await node.timeout_active_chats(inactivity)
-            else:
-                await node.run(evt)
+            await node.run(evt)
 
             if room.route.state == RouteState.INPUT:
                 return
@@ -350,17 +343,35 @@ class MatrixHandler(MatrixClient):
             state=RouteState.INPUT.value, variable_name="inactivity", menuflow_bot_mxid=self.mxid
         )
 
+        recreate_rooms = []
         for inactivity_room in inactivity_rooms:
             room = await Room.get_by_room_id(
                 room_id=inactivity_room.get("room_id"), bot_mxid=self.mxid
             )
 
-            if room:
-                self.log.info(f"Recreating inactivity task for room: {room.room_id}")
+            task_name = f"inactivity_restored_{room.room_id}"
+            if room and not Util.get_tasks_by_name(task_name):
+                self.log.critical(
+                    f"Recreating inactivity task for room: {room.room_id} in {self.mxid}"
+                )
+
+                self.lock_room(room_id=room.room_id)
                 if room.matrix_client is None:
                     room.matrix_client = self
 
-                self.lock_room(room_id=room.room_id)
-                asyncio.create_task(
-                    self.algorithm(room=room, timeout_active=True), name=room.room_id
-                )
+                node = self.flow.node(room=room)
+                if inactivity := node.inactivity_options:
+                    task = asyncio.create_task(
+                        node.timeout_active_chats(inactivity), name=task_name
+                    )
+                    # This ensures that the algorithm runs after the inactivity_options task completes.
+                    task.add_done_callback(
+                        lambda _task, _room=room: asyncio.ensure_future(self.algorithm(room=_room))
+                    )  # _task is required because add_done_callback always passes the completed task as the first argument.
+                    recreate_rooms.append(room.room_id)
+
+        if recreate_rooms:
+            self.log.info(
+                f"[{len(recreate_rooms)} rooms] inactivity_option tasks that were in progress have been recreated in {self.mxid}"
+                f" {recreate_rooms=}"
+            )

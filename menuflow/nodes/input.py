@@ -202,7 +202,9 @@ class Input(Switch, Message):
                 variables=self.room.all_variables | self.default_variables,
             )
 
-            if inactivity := self.inactivity_options:
+            if (inactivity := self.inactivity_options) and not Util.get_tasks_by_name(
+                task_name=self.room.room_id
+            ):
                 await self.timeout_active_chats(inactivity)
 
     async def timeout_active_chats(self, inactivity: dict):
@@ -236,8 +238,11 @@ class Input(Switch, Message):
                 o_connection=o_connection,
                 variables=self.room.all_variables | self.default_variables,
             )
+            return
 
         except asyncio.CancelledError:
             self.log.error(f"Inactivity handler cancelled for room: {self.room.room_id}")
         except Exception as e:
             self.log.error(f"Inactivity handler error for room: {self.room.room_id}: {e}")
+        finally:
+            await Util.cancel_task(task_name=f"inactivity_restored_{self.room.room_id}")
