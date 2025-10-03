@@ -92,17 +92,16 @@ class NatsPublisher:
 
         for config in config_list:
             log.info(f"Handling stream: {config.name} with subjects: {config.subjects}...")
-            stream_exists = None
+            nats_error = None
 
             try:
-                stream_exists = await js.stream_info(
-                    name=config.name, subjects_filter=config.subjects[0]
-                )
+                await js.stream_info(name=config.name, subjects_filter=config.subjects[0])
                 log.info(f"Stream {config.name} already exists")
             except Error as e:
+                nats_error = e.description
                 log.error(f"Error getting stream info: {e.description} - {e.args}")
 
-            if not stream_exists:
+            if nats_error and "stream not found" in nats_error:
                 log.info(f"Stream {config.name} does not exist, creating...")
                 try:
                     await js.add_stream(config=config)
