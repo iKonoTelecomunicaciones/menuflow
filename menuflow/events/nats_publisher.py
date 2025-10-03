@@ -114,13 +114,14 @@ class NatsPublisher:
                 log.info(f"Stream {config.name} created successfully")
                 continue
 
-            try:
-                log.info(f"Updating stream {config.name}...")
-                await js.update_stream(config=config)
-            except Error as e:
-                log.error(f"Error updating stream: {e.description} - {e.args}")
-                log.info(f"Retrying to update stream {config.name}...")
-                config.num_replicas = None
-                await js.update_stream(config=config)
+            if not nats_error:
+                try:
+                    log.info(f"Updating stream {config.name}...")
+                    await js.update_stream(config=config)
+                except Error as e:
+                    log.error(f"Error updating stream: {e.description} - {e.args}")
+                    log.info(f"Retrying to update stream {config.name}...")
+                    config.num_replicas = None
+                    await js.update_stream(config=config)
 
-            log.info(f"Stream {config.name} updated successfully")
+                log.info(f"Stream {config.name} updated successfully")
