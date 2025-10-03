@@ -5,7 +5,7 @@ from nats import connect as nats_connect
 from nats.aio.client import Client as NATSClient
 from nats.js.api import RetentionPolicy, StreamConfig
 from nats.js.client import JetStreamContext
-from nats.js.errors import ServerError
+from nats.js.errors import Error
 
 from ..config import Config
 
@@ -92,22 +92,21 @@ class NatsPublisher:
 
         for config in config_list:
             log.info(f"Handling stream: {config.name} with subjects: {config.subjects}...")
-            stream_exists = None
+            nats_error = None
 
             try:
-                stream_exists = await js.stream_info(
-                    name=config.name, subjects_filter=config.subjects[0]
-                )
+                await js.stream_info(name=config.name, subjects_filter=config.subjects[0])
                 log.info(f"Stream {config.name} already exists")
-            except ServerError as e:
-                log.error(f"Error getting stream info: {e.err_code} - {e.description}")
+            except Error as e:
+                nats_error = e.description
+                log.error(f"Error getting stream info: {e.description} - {e.args}")
 
-            if not stream_exists:
+            if nats_error and "stream not found" in nats_error:
                 log.info(f"Stream {config.name} does not exist, creating...")
                 try:
                     await js.add_stream(config=config)
-                except ServerError as e:
-                    log.error(f"Error creating stream: {e.err_code} - {e.description}")
+                except Error as e:
+                    log.error(f"Error creating stream: {e.description} - {e.args}")
                     log.info(f"Retrying to create stream {config.name}...")
                     config.num_replicas = None
                     await js.add_stream(config=config)
@@ -115,13 +114,14 @@ class NatsPublisher:
                 log.info(f"Stream {config.name} created successfully")
                 continue
 
-            try:
-                log.info(f"Updating stream {config.name}...")
-                await js.update_stream(config=config)
-            except ServerError as e:
-                log.error(f"Error updating stream: {e.err_code} - {e.description}")
-                log.info(f"Retrying to update stream {config.name}...")
-                config.num_replicas = None
-                await js.update_stream(config=config)
+            if not nats_error:
+                try:
+                    log.info(f"Updating stream {config.name}...")
+                    await js.update_stream(config=config)
+                except Error as e:
+                    log.error(f"Error updating stream: {e.description} - {e.args}")
+                    log.info(f"Retrying to update stream {config.name}...")
+                    config.num_replicas = None
+                    await js.update_stream(config=config)
 
-            log.info(f"Stream {config.name} updated successfully")
+                log.info(f"Stream {config.name} updated successfully")
