@@ -5,7 +5,7 @@ from nats import connect as nats_connect
 from nats.aio.client import Client as NATSClient
 from nats.js.api import RetentionPolicy, StreamConfig
 from nats.js.client import JetStreamContext
-from nats.js.errors import ServerError
+from nats.js.errors import Error
 
 from ..config import Config
 
@@ -99,14 +99,14 @@ class NatsPublisher:
                     name=config.name, subjects_filter=config.subjects[0]
                 )
                 log.info(f"Stream {config.name} already exists")
-            except ServerError as e:
+            except Error as e:
                 log.error(f"Error getting stream info: {e.err_code} - {e.description}")
 
             if not stream_exists:
                 log.info(f"Stream {config.name} does not exist, creating...")
                 try:
                     await js.add_stream(config=config)
-                except ServerError as e:
+                except Error as e:
                     log.error(f"Error creating stream: {e.err_code} - {e.description}")
                     log.info(f"Retrying to create stream {config.name}...")
                     config.num_replicas = None
@@ -118,7 +118,7 @@ class NatsPublisher:
             try:
                 log.info(f"Updating stream {config.name}...")
                 await js.update_stream(config=config)
-            except ServerError as e:
+            except Error as e:
                 log.error(f"Error updating stream: {e.err_code} - {e.description}")
                 log.info(f"Retrying to update stream {config.name}...")
                 config.num_replicas = None
