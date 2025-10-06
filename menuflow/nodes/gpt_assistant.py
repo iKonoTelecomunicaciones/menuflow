@@ -14,6 +14,7 @@ from ..db.route import RouteState
 from ..repository import GPTAssistant as GPTAssistantModel
 from ..room import Room
 from ..utils import Middlewares, Util
+from ..utils.util import Util as Utils
 from .switch import Switch
 
 if TYPE_CHECKING:
@@ -226,7 +227,11 @@ class GPTAssistant(Switch):
         """
 
         self.log.debug(f"Inactivity loop starts in room: {self.room.room_id}")
-        create_task(self.timeout_active_chats(), name=self.room.room_id)
+        Utils.create_task_by_metadata(
+            self.timeout_active_chats(),
+            name=self.room.room_id,
+            metadata={"bot_mxid": self.room.bot_mxid},
+        )
 
     async def timeout_active_chats(self):
         """It sends messages in time intervals to communicate customer

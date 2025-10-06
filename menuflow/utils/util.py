@@ -1,4 +1,5 @@
 import ast
+import asyncio
 import datetime
 import html
 import json
@@ -382,11 +383,22 @@ class Util:
 
         return False
 
-    async def cancel_tasks(self) -> None:
-        tasks = all_tasks()
+    async def cancel_tasks(self, **kwargs) -> None:
+        """Cancel tasks by metadata.
+
+        Parameters
+        ----------
+        kwargs : dict
+            The metadata to cancel the tasks.
+        """
+
         regex_room_id = self.config["menuflow.regex.room_id"]
-        for task in tasks:
-            if match(regex_room_id, task.get_name()):
+        for task in all_tasks():
+            metadata = getattr(task, "metadata", {})
+            if match(regex_room_id, task.get_name()) and all(
+                metadata.get(k) == v for k, v in kwargs.items()
+            ):
+                log.info(f"Cancelling task: {task.get_name()} with metadata: {kwargs}")
                 task.cancel()
 
     # Function to fix malformed lists
@@ -709,3 +721,24 @@ class Util:
             "thumbnail": thumbnail,
             **status,
         }
+
+    @staticmethod
+    def create_task_by_metadata(coro, *, name: str = None, metadata: dict = None) -> Task:
+        """Create a task by name and metadata.
+
+        Parameters
+        ----------
+        coro: coroutine
+            The coroutine to create the task from.
+        name: str
+            The name of the task.
+        metadata: dict
+            The metadata of the task.
+
+        Returns
+        -------
+            The created task.
+        """
+        task = asyncio.create_task(coro, name=name)
+        task.metadata = metadata or {}
+        return task

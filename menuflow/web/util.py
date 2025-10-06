@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from copy import deepcopy
 from logging import Logger, getLogger
@@ -175,3 +176,22 @@ class Util:
         for db_client in db_clients:
             client = MenuClient.cache[db_client.id]
             await client.flow_cls.load_flow(flow_mxid=client.id, content=content, config=config)
+
+            await Util.wait_until_no_tasks(
+                prefix="inactivity_restored_", metadata={"bot_mxid": client.id}
+            )
+            await client.matrix_handler.create_inactivity_tasks()
+
+    @staticmethod
+    async def wait_until_no_tasks(prefix: str, check_interval=0.3, metadata: dict = None) -> None:
+        """Wait until no tasks with the given prefix are running."""
+        metadata = metadata or {}
+        while True:
+            tasks = [
+                t
+                for t in asyncio.all_tasks()
+                if t.get_name().startswith(prefix) and t.metadata == metadata
+            ]
+            if not tasks:
+                break
+            await asyncio.sleep(check_interval)
