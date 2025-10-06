@@ -435,7 +435,7 @@ class Room(DBRoom):
         if update_node_vars and self.route.node_id != node_id:
             self.route._node_vars = {}
 
-        self.route.node_id = node_id
+        self.route.node_id = node_id.value if isinstance(node_id, RouteState) else node_id
         self.route.state = state
         await self.route.update()
 

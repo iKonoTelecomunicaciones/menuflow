@@ -365,7 +365,7 @@ class MatrixHandler(MatrixClient):
                     self.log.warning(
                         f"Node was not found for room: {room.room_id} in {self.mxid} and will be updated to start"
                     )
-                    await room.update_menu(node_id="start")
+                    await room.update_menu(node_id=RouteState.START)
                     continue
 
                 if inactivity := node.inactivity_options:
