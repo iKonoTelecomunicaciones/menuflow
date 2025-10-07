@@ -70,11 +70,14 @@ set_variables_doc = """
                             type: object
                         bot_mxid:
                             type: string
+                        conversation_uuid:
+                            type: string
                 example:
                     variables:
                         var1: value
                         var2: value
                     bot_mxid: "@bot:example.com"
+                    conversation_uuid: "1234567890"
     responses:
         '201':
             $ref: '#/components/responses/VariablesSetSuccess'
