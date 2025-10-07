@@ -1,9 +1,8 @@
+import asyncio
 import html
 import json
 import mimetypes
 import re
-from asyncio import create_task, sleep
-from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 import openai
@@ -11,10 +10,10 @@ from mautrix.types import MessageEvent, MessageType, RoomID
 from mautrix.util.magic import mimetype
 
 from ..db.route import RouteState
+from ..inactivity_handler import InactivityHandler
 from ..repository import GPTAssistant as GPTAssistantModel
 from ..room import Room
 from ..utils import Middlewares, Util
-from ..utils.util import Util as Utils
 from .switch import Switch
 
 if TYPE_CHECKING:
@@ -69,12 +68,7 @@ class GPTAssistant(Switch):
 
     @property
     def inactivity_options(self) -> Dict[str, Any]:
-        data: Dict = self.content.get("inactivity_options", {})
-        self.chat_timeout: int = data.get("chat_timeout", 0)
-        self.warning_message: str = self.render_data(data.get("warning_message", ""))
-        self.time_between_attempts: int = data.get("time_between_attempts", 0)
-        self.attempts: int = data.get("attempts", 0)
-        return data
+        return self.content.get("inactivity_options", {})
 
     @property
     def group_messages_timeout(self) -> int:
@@ -145,7 +139,7 @@ class GPTAssistant(Switch):
         )
 
         while run.status == "in_progress" or run.status == "queued":
-            await sleep(1)
+            await asyncio.sleep(1)
             run = self.client.beta.threads.runs.retrieve(thread_id=self.thread.id, run_id=run.id)
 
             if run.status == "completed":
@@ -213,55 +207,42 @@ class GPTAssistant(Switch):
             await self.room.matrix_client.send_text(room_id=self.room.room_id, text=message)
             await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
 
-            if self.inactivity_options:
-                await self.inactivity_task()
+            if (inactivity := self.inactivity_options) and not Util.get_tasks_by_name(
+                task_name=self.room.room_id
+            ):
+                await self.timeout_active_chats(inactivity)
 
-    async def inactivity_task(self):
-        """It spawns a task to harass the client to enter information to input option
-
-        Parameters
-        ----------
-        client : MatrixClient
-            The MatrixClient object
-
-        """
-
-        self.log.debug(f"Inactivity loop starts in room: {self.room.room_id}")
-        Utils.create_task_by_metadata(
-            self.timeout_active_chats(),
-            name=self.room.room_id,
-            metadata={"bot_mxid": self.room.bot_mxid},
-        )
-
-    async def timeout_active_chats(self):
+    async def timeout_active_chats(self, inactivity: dict):
         """It sends messages in time intervals to communicate customer
         that not entered information to input option.
 
         Parameters
         ----------
-        client : MatrixClient
-            The Matrix client object.
+        inactivity : dict
+            The inactivity options.
 
         """
+        if inactivity.get("chat_timeout") is None and inactivity.get("attempts") is None:
+            return
 
-        # wait the given time to start the task
-        await sleep(self.chat_timeout)
+        if inactivity.get("warning_message"):
+            inactivity["warning_message"] = self.render_data(inactivity["warning_message"])
 
-        count = 0
-        while True:
-            self.log.debug(f"Inactivity loop: {datetime.now()} -> {self.room.room_id}")
-            if self.attempts == count:
-                self.log.debug(f"INACTIVITY TRIES COMPLETED -> {self.room.room_id}")
-                o_connection = await self.get_case_by_id("timeout")
-                await self.room.update_menu(node_id=o_connection, state=None)
+        inactivity_handler = InactivityHandler(room=self.room, inactivity=inactivity)
+        try:
+            metadata = {"bot_mxid": self.room.bot_mxid}
+            await Util.create_task_by_metadata(
+                inactivity_handler.start(), name=self.room.room_id, metadata=metadata
+            )
 
-                await self.room.matrix_client.algorithm(room=self.room)
-                break
+            self.log.debug(f"INACTIVITY TRIES COMPLETED -> {self.room.room_id}")
+            o_connection = await self.get_case_by_id("timeout")
+            await self.room.update_menu(node_id=o_connection, state=None)
+            return
 
-            if self.warning_message:
-                await self.room.matrix_client.send_text(
-                    room_id=self.room.room_id, text=self.warning_message
-                )
-
-            await sleep(self.time_between_attempts)
-            count += 1
+        except asyncio.CancelledError:
+            self.log.error(f"Inactivity handler cancelled for room: {self.room.room_id}")
+        except Exception as e:
+            self.log.error(f"Inactivity handler error for room: {self.room.room_id}: {e}")
+        finally:
+            await Util.cancel_task(task_name=f"inactivity_restored_{self.room.room_id}")
