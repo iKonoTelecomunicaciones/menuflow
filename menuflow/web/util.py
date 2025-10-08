@@ -186,12 +186,21 @@ class Util:
     async def wait_until_no_tasks(prefix: str, check_interval=0.3, metadata: dict = None) -> None:
         """Wait until no tasks with the given prefix are running."""
         metadata = metadata or {}
+        count = 0
         while True:
             tasks = [
                 t
                 for t in asyncio.all_tasks()
-                if t.get_name().startswith(prefix) and t.metadata == metadata
+                if t.get_name().startswith(prefix)
+                and all(getattr(t, "metadata", {}).get(k) == v for k, v in metadata.items())
             ]
+            log.info(f"Tasks: {tasks}")
             if not tasks:
+                if count == 0:
+                    msg = f"No tasks with prefix {prefix} and metadata {metadata} have been found"
+                else:
+                    msg = f"All tasks with prefix {prefix} and metadata {metadata} have been cancelled"
+                log.info(msg)
                 break
+            count += 1
             await asyncio.sleep(check_interval)

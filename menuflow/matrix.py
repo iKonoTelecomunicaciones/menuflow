@@ -352,7 +352,7 @@ class MatrixHandler(MatrixClient):
 
             task_name = f"inactivity_restored_{room.room_id}"
             if room and not Util.get_tasks_by_name(task_name):
-                self.log.critical(
+                self.log.warning(
                     f"Recreating inactivity task for room: {room.room_id} in {self.mxid}"
                 )
 
