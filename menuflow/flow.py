@@ -81,9 +81,9 @@ class Flow:
         self.nodes = self.data.nodes or []
         self.nodes_by_id: Dict[str, Dict] = {}
 
-        util = Util(config)
         if cancel_tasks:
-            await util.cancel_tasks()
+            util = Util(config)
+            await util.cancel_tasks(bot_mxid=flow_mxid)
 
     def _add_node_to_cache(self, node_data: Dict):
         self.nodes_by_id[node_data.get("id")] = node_data

@@ -222,7 +222,10 @@ class Input(Switch, Message):
 
         inactivity_handler = InactivityHandler(room=self.room, inactivity=inactivity)
         try:
-            await asyncio.create_task(inactivity_handler.start(), name=self.room.room_id)
+            metadata = {"bot_mxid": self.room.bot_mxid}
+            await Util.create_task_by_metadata(
+                inactivity_handler.start(), name=self.room.room_id, metadata=metadata
+            )
 
             self.log.debug(f"INACTIVITY TRIES COMPLETED -> {self.room.room_id}")
             o_connection = await self.get_case_by_id("timeout")

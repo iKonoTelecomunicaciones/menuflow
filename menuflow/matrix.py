@@ -243,7 +243,8 @@ class MatrixHandler(MatrixClient):
             return
 
         node = self.flow.node(room=room)
-        if room.route._node_vars.get("inactivity"):
+
+        if node and room.route._node_vars.get("inactivity"):
             self.log.info(f"Inactivity config detected for room: {room.room_id}")
             await Util.cancel_task(task_name=room.room_id)
             if not isinstance(node, Webhook):
@@ -345,13 +346,13 @@ class MatrixHandler(MatrixClient):
 
         recreate_rooms = []
         for inactivity_room in inactivity_rooms:
-            room = await Room.get_by_room_id(
+            room: Room = await Room.get_by_room_id(
                 room_id=inactivity_room.get("room_id"), bot_mxid=self.mxid
             )
 
             task_name = f"inactivity_restored_{room.room_id}"
             if room and not Util.get_tasks_by_name(task_name):
-                self.log.critical(
+                self.log.warning(
                     f"Recreating inactivity task for room: {room.room_id} in {self.mxid}"
                 )
 
@@ -360,10 +361,18 @@ class MatrixHandler(MatrixClient):
                     room.matrix_client = self
 
                 node = self.flow.node(room=room)
+                if node is None:
+                    self.log.warning(
+                        f"Node was not found for room: {room.room_id} in {self.mxid} and will be updated to start"
+                    )
+                    await room.update_menu(node_id=RouteState.START)
+                    continue
+
                 if inactivity := node.inactivity_options:
                     task = asyncio.create_task(
                         node.timeout_active_chats(inactivity), name=task_name
                     )
+                    task.metadata = {"bot_mxid": self.mxid}
                     # This ensures that the algorithm runs after the inactivity_options task completes.
                     task.add_done_callback(
                         lambda _task, _room=room: asyncio.ensure_future(self.algorithm(room=_room))
