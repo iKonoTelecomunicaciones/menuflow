@@ -194,7 +194,7 @@ class Util:
                 if t.get_name().startswith(prefix)
                 and all(getattr(t, "metadata", {}).get(k) == v for k, v in metadata.items())
             ]
-            log.info(f"Tasks: {tasks}")
+
             if not tasks:
                 if count == 0:
                     msg = f"No tasks with prefix {prefix} and metadata {metadata} have been found"
@@ -202,5 +202,6 @@ class Util:
                     msg = f"All tasks with prefix {prefix} and metadata {metadata} have been cancelled"
                 log.info(msg)
                 break
+
             count += 1
             await asyncio.sleep(check_interval)
