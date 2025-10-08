@@ -113,14 +113,17 @@ async def set_variables(request: web.Request) -> web.Response:
     room_id = request.match_info["room_id"]
     variables = data.get("variables", {})
     bot_mxid = data.get("bot_mxid", None)
+    conversation_uuid = data.get("conversation_uuid", None)
 
     try:
         room: Room = await Room.get_by_room_id(room_id, bot_mxid)
         await room.set_variable(variable_id="external", value=variables)
+        if conversation_uuid:
+            await room.set_variable(variable_id="room.conversation_uuid", value=conversation_uuid)
     except Exception as e:
         return resp.server_error(str(e), uuid)
 
-    return resp.ok({"detail": {"message": "Variables set successfully"}}, uuid)
+    return resp.success(message="Variables set successfully", uuid=uuid)
 
 
 @routes.patch("/v1/client/{mxid}/flow")
