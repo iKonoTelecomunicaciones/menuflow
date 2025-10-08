@@ -220,6 +220,9 @@ class Input(Switch, Message):
         if inactivity.get("chat_timeout") is None and inactivity.get("attempts") is None:
             return
 
+        if inactivity.get("warning_message"):
+            inactivity["warning_message"] = self.render_data(inactivity["warning_message"])
+
         inactivity_handler = InactivityHandler(room=self.room, inactivity=inactivity)
         try:
             metadata = {"bot_mxid": self.room.bot_mxid}
