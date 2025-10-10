@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import time
 from io import BytesIO
 from typing import TYPE_CHECKING, Dict
 
@@ -219,13 +220,22 @@ class Media(Message):
         self.log.debug(f"Room {self.room.room_id} enters media node {self.id}")
 
         o_connection = await self.get_o_connection()
-        try:
-            media_message = self.media_cache[self.url]
+        now = time.time()
 
-            ext = media_message.body.split(".")[-1] if "." in media_message.body else ""
-            if media_message.body != f"{self.text}.{ext}":
-                media_message.body = f"{self.text}.{ext}"
-        except KeyError:
+        media_cache_obj = self.media_cache.get(self.url)
+        media_message = None
+
+        if media_cache_obj:
+            metadata = media_cache_obj.get("metadata", {})
+            ttl = metadata.get("ttl")
+
+            if ttl and ttl > now:
+                media_message = media_cache_obj["media_message"]
+                ext = media_message.body.split(".")[-1] if "." in media_message.body else ""
+                if media_message.body != f"{self.text}.{ext}":
+                    media_message.body = f"{self.text}.{ext}"
+
+        if not media_message:
             media_message = await self.load_media()
             if media_message is None:
                 await self.room.update_menu(
@@ -233,7 +243,10 @@ class Media(Message):
                     state=RouteState.END if not o_connection else None,
                 )
                 return
-            self.media_cache[self.url] = media_message
+
+            time_to_live = self.room.config["menuflow.media_cache.time_to_live"] * 24 * 60 * 60
+            metadata = {"ttl": now + (time_to_live)}
+            self.media_cache[self.url] = {"media_message": media_message, "metadata": metadata}
 
         await self.send_message(room_id=self.room.room_id, content=media_message)
 
