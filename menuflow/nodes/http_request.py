@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import TYPE_CHECKING
 
@@ -130,7 +131,9 @@ class HTTPRequest(Switch):
             request_params_ctx = {}
 
         try:
-            timeout = ClientTimeout(total=self.config["menuflow.timeouts.http_request"])
+            exception, status = None, 500
+            timeout_config = self.config["menuflow.timeouts.http_request"]
+            timeout = ClientTimeout(total=timeout_config)
             response = await self.session.request(
                 self.method,
                 self.url,
@@ -138,11 +141,19 @@ class HTTPRequest(Switch):
                 trace_request_ctx=request_params_ctx,
                 timeout=timeout,
             )
+        except asyncio.TimeoutError:
+            exception, status = "TimeoutError", 408
+            self.log.warning(
+                f"Request timeout after {timeout_config}s [method: {self.method}] [url: {self.url}]"
+            )
         except Exception as e:
+            exception, status = e, 500
             self.log.exception(f"Error in http_request node: {e}")
-            o_connection = await self.get_case_by_id(id=500)
+
+        if exception:
+            o_connection = await self.get_case_by_id(id=status)
             await self.room.update_menu(node_id=o_connection, state=None)
-            return 500, e, o_connection
+            return status, exception, o_connection
 
         self.log.debug(
             f"node: {self.id} method: {self.method} url: {self.url} status: {response.status}"
