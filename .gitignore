@@ -17,3 +17,4 @@ settings.json
 # Version files
 menuflow/version.py
 menuflow/__init__.py
+.prettier*

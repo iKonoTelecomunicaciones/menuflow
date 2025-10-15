@@ -21,6 +21,7 @@ class Module(SerializableAttrs):
 
     id: int = ib(default=None)
     flow_id: int = ib(factory=int)
+    tag_id: int = ib(default=None)
     name: str = ib(default=None)
     nodes: list = ib(factory=list)
     position: dict = ib(factory=dict)
@@ -37,6 +38,7 @@ class Module(SerializableAttrs):
         return cls(
             id=row["id"],
             flow_id=row["flow_id"],
+            tag_id=row["tag_id"],
             name=row["name"],
             nodes=json.loads(row["nodes"]),
             position=json.loads(row["position"]),
@@ -52,9 +54,16 @@ class Module(SerializableAttrs):
         return data
 
     @classmethod
-    async def get_by_id(cls, id: int, flow_id: int) -> Module | None:
-        q = f"SELECT id, {cls._columns} FROM module WHERE id=$1 AND flow_id=$2"
-        row = await cls.db.fetchrow(q, id, flow_id)
+    async def get_by_id(cls, id: int, flow_id: int, tag_id: int) -> Module | None:
+        if tag_id:
+            q = f"SELECT id, {cls._columns} FROM module WHERE id=$1 AND tag_id=$2"
+            row = await cls.db.fetchrow(q, id, tag_id)
+        elif flow_id:
+            q = f"SELECT id, {cls._columns} FROM module WHERE id=$1 AND flow_id=$2"
+            row = await cls.db.fetchrow(q, id, flow_id)
+        else:
+            q = f"SELECT id, {cls._columns} FROM module WHERE id=$1"
+            row = await cls.db.fetchrow(q, id)
 
         return cls._from_row(row) if row else None
 
@@ -89,8 +98,12 @@ class Module(SerializableAttrs):
             return await cls.db.fetchval(q, name, flow_id, module_id)
 
     async def insert(self) -> int:
-        q = "INSERT INTO module (flow_id, name, nodes, position) VALUES ($1, $2, $3, $4) RETURNING id"
-        return await self.db.fetchval(q, self.flow_id, *self.values)
+        if self.tag_id:
+            q = "INSERT INTO module (tag_id, name, nodes, position) VALUES ($1, $2, $3, $4) RETURNING id"
+            return await self.db.fetchval(q, self.tag_id, *self.values)
+        else:
+            q = "INSERT INTO module (flow_id, name, nodes, position) VALUES ($1, $2, $3, $4) RETURNING id"
+            return await self.db.fetchval(q, self.flow_id, *self.values)
 
     async def update(self) -> None:
         q = "UPDATE module SET name=$2, nodes=$3, position=$4 WHERE id=$1"
@@ -102,10 +115,18 @@ class Module(SerializableAttrs):
 
     @classmethod
     async def get_node_by_id(
-        cls, flow_id: int, node_id: str, add_module_name: bool = True
+        cls, flow_id: int, tag_id: int, node_id: str, add_module_name: bool = True
     ) -> dict | None:
         q = "SELECT m.name AS module_name, node " if add_module_name else "SELECT node "
-        q += "FROM module m CROSS JOIN LATERAL jsonb_array_elements(m.nodes) AS node WHERE m.flow_id = $1 AND node->>'id' = $2"
-        row = await cls.db.fetchrow(q, flow_id, node_id)
+
+        # Soportar búsqueda por flow_id (legacy) o tag_id (nuevo)
+        if tag_id:
+            q += "FROM module m CROSS JOIN LATERAL jsonb_array_elements(m.nodes) AS node WHERE m.tag_id = $1 AND node->>'id' = $2"
+            row = await cls.db.fetchrow(q, tag_id, node_id)
+        elif flow_id:
+            q += "FROM module m CROSS JOIN LATERAL jsonb_array_elements(m.nodes) AS node WHERE m.flow_id = $1 AND node->>'id' = $2"
+            row = await cls.db.fetchrow(q, flow_id, node_id)
+        else:
+            return None
 
         return cls._to_dict(row, ["node"]) if row else None

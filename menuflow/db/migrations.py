@@ -179,3 +179,76 @@ async def upgrade_v10(conn: Connection) -> None:
     await conn.execute(
         "ALTER TABLE route ADD COLUMN IF NOT EXISTS node_vars JSONB DEFAULT '{}'::jsonb"
     )
+
+
+@upgrade_table.register(description="Add tag table and modify flow and module tables structure")
+async def upgrade_v11(conn: Connection) -> None:
+    # Only if the tag table exists, delete from the module table the records that do not correspond to the id of the tag whose name is 'current'
+    await conn.execute(
+        """ DO $$
+            BEGIN
+                IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'tag') THEN
+                    DELETE FROM module
+                    WHERE tag_id NOT IN (
+                        SELECT id FROM tag WHERE name = 'current'
+                    );
+                END IF;
+            END $$;
+        """
+    )
+
+    # Delete tag table if exists
+    await conn.execute("DROP TABLE IF EXISTS tag")
+
+    # Create tag table
+    await conn.execute(
+        """CREATE TABLE tag (
+            id          SERIAL PRIMARY KEY,
+            flow_id     INT NOT NULL,
+            name        TEXT,
+            create_date TIMESTAMP WITH TIME ZONE DEFAULT now(),
+            author      TEXT,
+            active      BOOLEAN NOT NULL DEFAULT false,
+            flow_vars   JSONB DEFAULT '{}'::jsonb
+        )"""
+    )
+
+    # Add foreign key constraint to flow table
+    await conn.execute(
+        "ALTER TABLE tag ADD CONSTRAINT fk_tag_flow FOREIGN KEY (flow_id) REFERENCES flow(id)"
+    )
+
+    # Add unique constraint for name per flow
+    await conn.execute(
+        "ALTER TABLE tag ADD CONSTRAINT idx_unique_tag_name_flow_id UNIQUE (name, flow_id)"
+    )
+
+    # Add create_date to flow table
+    await conn.execute(
+        "ALTER TABLE flow ADD COLUMN IF NOT EXISTS create_date TIMESTAMP WITH TIME ZONE DEFAULT now()"
+    )
+
+    # Add tag_id to module table
+    await conn.execute("ALTER TABLE module ADD COLUMN IF NOT EXISTS tag_id INT")
+
+    # Migrate existing flow_vars data to tag table (create default tags for existing flows)
+    await conn.execute(
+        """INSERT INTO tag (flow_id, flow_vars, create_date, active, name)
+           SELECT id, flow_vars, now(), true, 'current'
+           FROM flow
+        """
+    )
+
+    # update existing modules to set tag_id to the active tag of the corresponding flow
+    await conn.execute(
+        """UPDATE module
+            SET tag_id = t.id
+            FROM tag AS t
+            WHERE module.flow_id = t.flow_id
+        """
+    )
+
+    # Create indexes for better performance
+    await conn.execute("CREATE INDEX idx_tag_flow_id ON tag (flow_id)")
+    await conn.execute("CREATE INDEX idx_tag_create_date ON tag (create_date)")
+    await conn.execute("CREATE INDEX IF NOT EXISTS idx_flow_create_date ON flow (create_date)")
