@@ -229,7 +229,7 @@ async def upgrade_v11(conn: Connection) -> None:
     )
 
     # Add tag_id to module table
-    await conn.execute("ALTER TABLE module ADD COLUMN IF NOT EXISTS tag_id INT")
+    await conn.execute("ALTER TABLE module ADD COLUMN IF NOT EXISTS tag_id INT NOT NULL")
 
     # Migrate existing flow_vars data to tag table (create default tags for existing flows)
     await conn.execute(

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, ClassVar
 from datetime import datetime
+from typing import TYPE_CHECKING, ClassVar
 
 from asyncpg import Record
 from attr import dataclass, ib
@@ -38,7 +38,7 @@ class Flow(SerializableAttrs):
             id=row["id"],
             flow=json.loads(row["flow"]),
             flow_vars=json.loads(row["flow_vars"]) if row.get("flow_vars") else {},
-            create_date=row.get("create_date"), 
+            create_date=row.get("create_date"),
         )
 
     @classmethod
@@ -70,7 +70,7 @@ class Flow(SerializableAttrs):
 
         return cls._from_row(row)
 
-    #cuando se crea un nuevo flujo se crea con la fecha actual
+    # cuando se crea un nuevo flujo se crea con la fecha actual
     async def insert(self) -> int:
         q = "INSERT INTO flow (flow, flow_vars, create_date) VALUES ($1, $2, $3) RETURNING id"
         return await self.db.fetchval(q, *self.get_values, datetime.now())

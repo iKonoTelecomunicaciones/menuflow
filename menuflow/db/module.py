@@ -54,16 +54,16 @@ class Module(SerializableAttrs):
         return data
 
     @classmethod
-    async def get_by_id(cls, id: int, flow_id: int, tag_id: int) -> Module | None:
-        if tag_id:
-            q = f"SELECT id, {cls._columns} FROM module WHERE id=$1 AND tag_id=$2"
-            row = await cls.db.fetchrow(q, id, tag_id)
-        elif flow_id:
-            q = f"SELECT id, {cls._columns} FROM module WHERE id=$1 AND flow_id=$2"
-            row = await cls.db.fetchrow(q, id, flow_id)
-        else:
-            q = f"SELECT id, {cls._columns} FROM module WHERE id=$1"
-            row = await cls.db.fetchrow(q, id)
+    async def get_by_id(cls, id: int, flow_id: int) -> Module | None:
+        q = f"SELECT id, {cls._columns} FROM module WHERE id=$1 AND flow_id=$2"
+        row = await cls.db.fetchrow(q, id, flow_id)
+
+        return cls._from_row(row) if row else None
+
+    @classmethod
+    async def get_by_tag_id(cls, id: int, tag_id: int) -> Module | None:
+        q = f"SELECT id, {cls._columns} FROM module WHERE id=$1 AND tag_id=$2"
+        row = await cls.db.fetchrow(q, id, tag_id)
 
         return cls._from_row(row) if row else None
 
@@ -98,12 +98,8 @@ class Module(SerializableAttrs):
             return await cls.db.fetchval(q, name, flow_id, module_id)
 
     async def insert(self) -> int:
-        if self.tag_id:
-            q = "INSERT INTO module (tag_id, name, nodes, position) VALUES ($1, $2, $3, $4) RETURNING id"
-            return await self.db.fetchval(q, self.tag_id, *self.values)
-        else:
-            q = "INSERT INTO module (flow_id, name, nodes, position) VALUES ($1, $2, $3, $4) RETURNING id"
-            return await self.db.fetchval(q, self.flow_id, *self.values)
+        q = "INSERT INTO module (flow_id, name, nodes, position) VALUES ($1, $2, $3, $4) RETURNING id"
+        return await self.db.fetchval(q, self.flow_id, *self.values)
 
     async def update(self) -> None:
         q = "UPDATE module SET name=$2, nodes=$3, position=$4 WHERE id=$1"
@@ -115,18 +111,10 @@ class Module(SerializableAttrs):
 
     @classmethod
     async def get_node_by_id(
-        cls, flow_id: int, tag_id: int, node_id: str, add_module_name: bool = True
+        cls, flow_id: int, node_id: str, add_module_name: bool = True
     ) -> dict | None:
         q = "SELECT m.name AS module_name, node " if add_module_name else "SELECT node "
-
-        # Support searching by tag_id if provided (for versioned flows)
-        if tag_id:
-            q += "FROM module m CROSS JOIN LATERAL jsonb_array_elements(m.nodes) AS node WHERE m.tag_id = $1 AND node->>'id' = $2"
-            row = await cls.db.fetchrow(q, tag_id, node_id)
-        elif flow_id:
-            q += "FROM module m CROSS JOIN LATERAL jsonb_array_elements(m.nodes) AS node WHERE m.flow_id = $1 AND node->>'id' = $2"
-            row = await cls.db.fetchrow(q, flow_id, node_id)
-        else:
-            return None
+        q += "FROM module m CROSS JOIN LATERAL jsonb_array_elements(m.nodes) AS node WHERE m.flow_id = $1 AND node->>'id' = $2"
+        row = await cls.db.fetchrow(q, flow_id, node_id)
 
         return cls._to_dict(row, ["node"]) if row else None
