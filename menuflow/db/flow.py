@@ -70,7 +70,7 @@ class Flow(SerializableAttrs):
 
         return cls._from_row(row)
 
-    # cuando se crea un nuevo flujo se crea con la fecha actual
+    # Create a new flow with current and return the new flow ID
     async def insert(self) -> int:
         q = "INSERT INTO flow (flow, flow_vars, create_date) VALUES ($1, $2, $3) RETURNING id"
         return await self.db.fetchval(q, *self.get_values, datetime.now())

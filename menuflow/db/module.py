@@ -16,7 +16,7 @@ log: Logger = getLogger("menuflow.db.module")
 @dataclass
 class Module(SerializableAttrs):
     db: ClassVar[Database] = fake_db
-    _columns: ClassVar[str] = "flow_id, name, nodes, position"
+    _columns: ClassVar[str] = "flow_id, name, nodes, position, tag_id"
     _json_columns: ClassVar[str] = "nodes, position"
 
     id: int = ib(default=None)
@@ -98,8 +98,12 @@ class Module(SerializableAttrs):
             return await cls.db.fetchval(q, name, flow_id, module_id)
 
     async def insert(self) -> int:
-        q = "INSERT INTO module (flow_id, name, nodes, position) VALUES ($1, $2, $3, $4) RETURNING id"
-        return await self.db.fetchval(q, self.flow_id, *self.values)
+        if self.tag_id:
+            q = "INSERT INTO module (flow_id, name, nodes, position, tag_id) VALUES ($1, $2, $3, $4, $5) RETURNING id"
+            return await self.db.fetchval(q, self.flow_id, *self.values, self.tag_id)
+        else:
+            q = "INSERT INTO module (flow_id, name, nodes, position) VALUES ($1, $2, $3, $4) RETURNING id"
+            return await self.db.fetchval(q, self.flow_id, *self.values)
 
     async def update(self) -> None:
         q = "UPDATE module SET name=$2, nodes=$3, position=$4 WHERE id=$1"
