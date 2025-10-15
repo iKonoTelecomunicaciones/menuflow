@@ -119,7 +119,7 @@ class Module(SerializableAttrs):
     ) -> dict | None:
         q = "SELECT m.name AS module_name, node " if add_module_name else "SELECT node "
 
-        # Soportar búsqueda por flow_id (legacy) o tag_id (nuevo)
+        # Support searching by tag_id if provided (for versioned flows)
         if tag_id:
             q += "FROM module m CROSS JOIN LATERAL jsonb_array_elements(m.nodes) AS node WHERE m.tag_id = $1 AND node->>'id' = $2"
             row = await cls.db.fetchrow(q, tag_id, node_id)
