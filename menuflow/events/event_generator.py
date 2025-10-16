@@ -30,6 +30,7 @@ async def send_node_event(
             node_id=kwargs.get("node_id"),
             o_connection=kwargs.get("o_connection"),
             variables=kwargs.get("variables"),
+            conversation_uuid=kwargs.get("conversation_uuid"),
         )
     elif event_type == MenuflowNodeEvents.NodeInputData:
         event = NodeInputData(
@@ -41,6 +42,7 @@ async def send_node_event(
             node_id=kwargs.get("node_id"),
             o_connection=kwargs.get("o_connection"),
             variables=kwargs.get("variables"),
+            conversation_uuid=kwargs.get("conversation_uuid"),
         )
     elif event_type == MenuflowNodeEvents.NodeInputTimeout:
         event = NodeInputTimeout(
@@ -52,6 +54,7 @@ async def send_node_event(
             node_id=kwargs.get("node_id"),
             o_connection=kwargs.get("o_connection"),
             variables=kwargs.get("variables"),
+            conversation_uuid=kwargs.get("conversation_uuid"),
         )
 
     await event.send(config=config)
