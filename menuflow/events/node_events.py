@@ -14,6 +14,7 @@ class NodeEntry(BaseEvent):
     node_id: str = ib(factory=str)
     o_connection: str = ib(default=None)
     variables: Dict = ib(factory=dict)
+    conversation_uuid: str | None = ib(default=None)
 
 
 @dataclass
@@ -22,6 +23,7 @@ class NodeInputData(BaseEvent):
     node_id: str = ib(factory=str)
     o_connection: str = ib(factory=str)
     variables: Dict = ib(factory=dict)
+    conversation_uuid: str | None = ib(default=None)
 
 
 @dataclass
@@ -30,3 +32,4 @@ class NodeInputTimeout(BaseEvent):
     node_id: str = ib(factory=str)
     o_connection: str = ib(factory=str)
     variables: Dict = ib(factory=dict)
+    conversation_uuid: str | None = ib(default=None)
