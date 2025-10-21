@@ -219,7 +219,7 @@ async def upgrade_v11(conn: Connection) -> None:
     )
 
     # Add tag_id to module table
-    await conn.execute("ALTER TABLE module ADD COLUMN tag_id INT NOT NULL")
+    await conn.execute("ALTER TABLE module ADD COLUMN tag_id INT")
 
     # Add foreign key constraint to tag table
     await conn.execute(
@@ -248,6 +248,9 @@ async def upgrade_v11(conn: Connection) -> None:
         """
     )
 
+    # Set tag_id as NOT NULL
+    await conn.execute("ALTER TABLE module ALTER COLUMN tag_id SET NOT NULL")
+
     # Create initial tag for each flow
     await conn.execute(
         """INSERT INTO tag (flow_id, flow_vars, create_date, active, name)
@@ -275,3 +278,4 @@ async def upgrade_v11(conn: Connection) -> None:
     await conn.execute("CREATE INDEX idx_tag_flow_id ON tag (flow_id)")
     await conn.execute("CREATE INDEX idx_tag_create_date ON tag (create_date)")
     await conn.execute("CREATE INDEX IF NOT EXISTS idx_flow_create_date ON flow (create_date)")
+    await conn.execute("CREATE INDEX idx_module_tag_id ON module (tag_id)")
