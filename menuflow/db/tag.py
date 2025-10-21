@@ -54,7 +54,7 @@ class Tag(SerializableAttrs):
     @classmethod
     async def get_by_flow_id(cls, flow_id: int, active_only: bool = True) -> list[Tag]:
         if active_only:
-            q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 AND active=TRUE ORDER BY create_date DESC"
+            q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 AND active=true ORDER BY create_date DESC"
         else:
             q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 ORDER BY create_date DESC"
 
@@ -75,7 +75,7 @@ class Tag(SerializableAttrs):
         q = "DELETE FROM tag WHERE id=$1"
         await self.db.execute(q, self.id)
 
-    async def soft_delete(self) -> None:
+    async def deactivate(self) -> None:
         """Marca el tag como inactivo en lugar de eliminarlo"""
         self.active = False
         await self.update()

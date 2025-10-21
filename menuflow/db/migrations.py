@@ -183,19 +183,9 @@ async def upgrade_v10(conn: Connection) -> None:
 
 @upgrade_table.register(description="Add tag table and modify flow and module tables structure")
 async def upgrade_v11(conn: Connection) -> None:
-    # Only if the tag table exists, delete from the module table the records that do not correspond to the id of the tag whose name is 'current'
-    await conn.execute(
-        """ DO $$
-            BEGIN
-                IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'tag') THEN
-                    DELETE FROM module
-                    WHERE tag_id NOT IN (
-                        SELECT id FROM tag WHERE name = 'current'
-                    );
-                END IF;
-            END $$;
-        """
-    )
+
+    # Remove column tag_id from module table
+    await conn.execute("ALTER TABLE module DROP COLUMN IF EXISTS tag_id")
 
     # Delete tag table if exists
     await conn.execute("DROP TABLE IF EXISTS tag")
@@ -229,12 +219,22 @@ async def upgrade_v11(conn: Connection) -> None:
     )
 
     # Add tag_id to module table
-    await conn.execute("ALTER TABLE module ADD COLUMN IF NOT EXISTS tag_id INT NOT NULL")
+    await conn.execute("ALTER TABLE module ADD COLUMN tag_id INT NOT NULL")
+
+    # Add foreign key constraint to tag table
+    await conn.execute(
+        "ALTER TABLE module ADD CONSTRAINT fk_module_tag FOREIGN KEY (tag_id) REFERENCES tag(id)"
+    )
+
+    # Drop the old unique constraint from module table (flow_id based)
+    await conn.execute(
+        "ALTER TABLE module DROP CONSTRAINT IF EXISTS idx_unique_module_name_flow_id"
+    )
 
     # Migrate existing flow_vars data to tag table (create default tags for existing flows)
     await conn.execute(
         """INSERT INTO tag (flow_id, flow_vars, create_date, active, name)
-           SELECT id, flow_vars, now(), true, 'current'
+           SELECT id, flow_vars, now(), false, 'current'
            FROM flow
         """
     )
@@ -246,6 +246,29 @@ async def upgrade_v11(conn: Connection) -> None:
             FROM tag AS t
             WHERE module.flow_id = t.flow_id
         """
+    )
+
+    # Create initial tag for each flow
+    await conn.execute(
+        """INSERT INTO tag (flow_id, flow_vars, create_date, active, name)
+           SELECT id, flow_vars, now(), true, 'initial'
+           FROM flow
+        """
+    )
+
+    # Copy modules from current tag to initial tag
+    await conn.execute(
+        """INSERT INTO module (flow_id, name, nodes, position, tag_id)
+           SELECT m.flow_id, m.name, m.nodes, m.position, t_initial.id
+           FROM module m
+           JOIN tag t_current ON m.tag_id = t_current.id AND t_current.name = 'current'
+           JOIN tag t_initial ON t_current.flow_id = t_initial.flow_id AND t_initial.name = 'initial'
+        """
+    )
+
+    # Add new unique constraint to module table for tag_id
+    await conn.execute(
+        "ALTER TABLE module ADD CONSTRAINT idx_unique_module_name_tag_id UNIQUE (name, tag_id)"
     )
 
     # Create indexes for better performance
