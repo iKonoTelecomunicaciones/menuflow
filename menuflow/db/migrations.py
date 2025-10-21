@@ -231,6 +231,11 @@ async def upgrade_v11(conn: Connection) -> None:
     # Add tag_id to module table
     await conn.execute("ALTER TABLE module ADD COLUMN IF NOT EXISTS tag_id INT NOT NULL")
 
+    # Drop the old unique constraint from module table (flow_id based)
+    await conn.execute(
+        "ALTER TABLE module DROP CONSTRAINT IF EXISTS idx_unique_module_name_flow_id"
+    )
+
     # Migrate existing flow_vars data to tag table (create default tags for existing flows)
     await conn.execute(
         """INSERT INTO tag (flow_id, flow_vars, create_date, active, name)
@@ -246,6 +251,11 @@ async def upgrade_v11(conn: Connection) -> None:
             FROM tag AS t
             WHERE module.flow_id = t.flow_id
         """
+    )
+
+    # Add unique constraint to module table for tag id
+    await conn.execute(
+        "ALTER TABLE module ADD CONSTRAINT idx_unique_module_name_tag_id UNIQUE (name, tag_id)"
     )
 
     # Create indexes for better performance
