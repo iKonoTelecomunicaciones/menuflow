@@ -102,5 +102,5 @@ class Message(Base):
                 node_id=self.id,
                 o_connection=o_connection,
                 variables=self.room.all_variables | self.default_variables,
-                conversation_uuid=await self.room.conversation_uuid,
+                conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
             )

@@ -176,7 +176,7 @@ class Input(Switch, Message):
                 node_id=self.id,
                 o_connection=o_connection,
                 variables=self.room.all_variables | self.default_variables,
-                conversation_uuid=await self.room.conversation_uuid,
+                conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
             )
         else:
             # This is the case where the room is not in the input state
@@ -201,7 +201,7 @@ class Input(Switch, Message):
                 node_id=self.id,
                 o_connection=None,
                 variables=self.room.all_variables | self.default_variables,
-                conversation_uuid=await self.room.conversation_uuid,
+                conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
             )
 
             if (inactivity := self.inactivity_options) and not Util.get_tasks_by_name(
@@ -245,7 +245,7 @@ class Input(Switch, Message):
                 node_id=self.id,
                 o_connection=o_connection,
                 variables=self.room.all_variables | self.default_variables,
-                conversation_uuid=await self.room.conversation_uuid,
+                conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
             )
             return
 

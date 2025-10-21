@@ -49,7 +49,6 @@ class Room(DBRoom):
         self.bot_mxid: UserID = None
         self.route: Route = None
         self.matrix_client: MatrixClient = None
-        self._conversation_uuid: str = None
 
     @property
     async def get_ghost_number(self) -> str | None:
@@ -449,15 +448,3 @@ class Room(DBRoom):
             The node variables to update.
         """
         self.route._node_vars = {**self.route._node_vars, **kwargs}
-
-    @property
-    async def conversation_uuid(self) -> str:
-        """This function returns the conversation UUID of the room.
-
-        Returns
-        -------
-            The conversation UUID of the room.
-        """
-        if not self._conversation_uuid:
-            self._conversation_uuid = await self.get_variable("room.conversation_uuid")
-        return self._conversation_uuid
