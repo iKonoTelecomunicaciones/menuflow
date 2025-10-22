@@ -125,7 +125,7 @@ class Tag(SerializableAttrs):
         await self.db.execute(q, self.id)
         return True
 
-    async def soft_delete(self) -> None:
+    async def deactivate(self) -> None:
         """Marca el tag como inactivo en lugar de eliminarlo"""
         self.active = False
         await self.update()

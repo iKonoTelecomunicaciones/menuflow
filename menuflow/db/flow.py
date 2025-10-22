@@ -82,8 +82,8 @@ class Flow(SerializableAttrs):
 
     # Create a new flow with current and return the new flow ID
     async def insert(self) -> int:
-        q = "INSERT INTO flow (flow, flow_vars, create_date) VALUES ($1, $2, $3) RETURNING id"
-        return await self.db.fetchval(q, *self.get_values, datetime.now())
+        q = "INSERT INTO flow (flow, flow_vars) VALUES ($1, $2) RETURNING id"
+        return await self.db.fetchval(q, *self.get_values)
 
     async def update(self) -> None:
         q = "UPDATE flow SET flow=$2, flow_vars=$3 WHERE id=$1"
