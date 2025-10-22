@@ -46,6 +46,8 @@ def convert_to_bool(item) -> dict | list | str:
 class Util:
     config: Config
     _main_matrix_regex = "[\\w-]+:[\\w.-]"
+    _jinja_open_delims = ["{{", "{%", "{#"]
+    _jinja_close_delims = ["}}", "%}", "#}"]
 
     def __init__(self, config: Config):
         self.config = config
@@ -186,13 +188,15 @@ class Util:
             return json.loads(f.read())
 
     @classmethod
-    def evaluate_data(
+    def jinja_render(
         cls,
         data: str | dict,
         variables: dict = {},
         return_errors: bool = False,
     ) -> dict | list | str:
-        """It takes a string, evaluates it using Jinja, and returns the result
+        """Takes a string, renders it with Jinja, and returns the result.
+        Handles HTML entities and Python literal representations,
+        safely converting them to their actual characters.
 
         Parameters
         ----------
@@ -279,22 +283,35 @@ class Util:
             A dictionary, list or string.
 
         """
-        dict_variables = default_variables | all_variables
-        copy_data = deepcopy(data)
 
-        if isinstance(copy_data, dict):
-            for key, value in copy_data.items():
-                copy_data[key] = cls.render_data(value, default_variables, all_variables)
-            return copy_data
-        elif isinstance(copy_data, list):
-            return [cls.render_data(item, default_variables, all_variables) for item in copy_data]
-        elif isinstance(copy_data, str):
-            rendered = cls.evaluate_data(copy_data, dict_variables, return_errors)
-            return (
-                rendered if isinstance(rendered, (dict, list)) else cls.convert_to_type(rendered)
-            )
+        if isinstance(data, (dict, list)):
+            _data = deepcopy(data)
         else:
-            return copy_data
+            _data = data
+
+        if isinstance(_data, dict):
+            for key, value in _data.items():
+                _data[key] = cls.render_data(value, default_variables, all_variables)
+            return _data
+
+        elif isinstance(_data, list):
+            return [cls.render_data(item, default_variables, all_variables) for item in _data]
+
+        elif isinstance(_data, str):
+            has_jinja_delims = any(
+                open in _data and close in _data
+                for open, close in zip(cls._jinja_open_delims, cls._jinja_close_delims)
+            )
+            if has_jinja_delims:
+                dict_variables = default_variables | all_variables
+                rendered = cls.jinja_render(_data, dict_variables, return_errors)
+
+                if isinstance(rendered, (dict, list)):
+                    return rendered
+                else:
+                    return cls.convert_to_type(rendered)
+
+        return _data
 
     # TODO: remove this function when all flows are migrated to the new render data
     @classmethod
@@ -602,7 +619,10 @@ class Util:
     @staticmethod
     def convert_to_type(value: str) -> str | int | float | bool | None:
         """
-        It takes a string and returns the type of the value.
+        Convert a string representation into its corresponding Python type.
+
+        This method attempts to interpret a string and return its most likely
+        Python type.
 
         Parameters
         ----------
@@ -612,7 +632,40 @@ class Util:
         Returns
         -------
             The value converted to the appropriate type.
+
+        Examples
+        --------
+            Basic numeric conversion:
+            >>> convert_to_type("123")
+            123
+            >>> convert_to_type("45.67")
+            45.67
+
+            Boolean and None conversion:
+            >>> convert_to_type("true")
+            True
+            >>> convert_to_type("False")
+            False
+            >>> convert_to_type("None")
+            None
+
+            Quoted strings:
+            >>> convert_to_type("'Hello'")
+            'Hello'
+            >>> convert_to_type('"World"')
+            'World'
+
+            Non-convertible strings remain unchanged:
+            >>> convert_to_type("Hello123")
+            'Hello123'
+            >>> convert_to_type("12a")
+            '12a'
+
         """
+
+        enclosers = value[0] + value[-1] if value else ""
+        if enclosers == '""' or enclosers == "''":
+            return value[1:-1]
 
         permitted_types = {
             True: ("true", "True"),
