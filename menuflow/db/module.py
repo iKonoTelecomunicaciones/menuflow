@@ -16,12 +16,11 @@ log: Logger = getLogger("menuflow.db.module")
 @dataclass
 class Module(SerializableAttrs):
     db: ClassVar[Database] = fake_db
-    _columns: ClassVar[str] = "flow_id, name, nodes, position, tag_id"
+    _columns: ClassVar[str] = "flow_id, name, nodes, position"
     _json_columns: ClassVar[str] = "nodes, position"
 
     id: int = ib(default=None)
     flow_id: int = ib(factory=int)
-    tag_id: int = ib(default=None)
     name: str = ib(default=None)
     nodes: list = ib(factory=list)
     position: dict = ib(factory=dict)
@@ -38,7 +37,6 @@ class Module(SerializableAttrs):
         return cls(
             id=row["id"],
             flow_id=row["flow_id"],
-            tag_id=row["tag_id"],
             name=row["name"],
             nodes=json.loads(row["nodes"]),
             position=json.loads(row["position"]),
@@ -57,13 +55,6 @@ class Module(SerializableAttrs):
     async def get_by_id(cls, id: int, flow_id: int) -> Module | None:
         q = f"SELECT id, {cls._columns} FROM module WHERE id=$1 AND flow_id=$2"
         row = await cls.db.fetchrow(q, id, flow_id)
-
-        return cls._from_row(row) if row else None
-
-    @classmethod
-    async def get_by_tag_id(cls, id: int, tag_id: int) -> Module | None:
-        q = f"SELECT id, {cls._columns} FROM module WHERE id=$1 AND tag_id=$2"
-        row = await cls.db.fetchrow(q, id, tag_id)
 
         return cls._from_row(row) if row else None
 
@@ -98,12 +89,8 @@ class Module(SerializableAttrs):
             return await cls.db.fetchval(q, name, flow_id, module_id)
 
     async def insert(self) -> int:
-        if self.tag_id:
-            q = "INSERT INTO module (flow_id, name, nodes, position, tag_id) VALUES ($1, $2, $3, $4, $5) RETURNING id"
-            return await self.db.fetchval(q, self.flow_id, *self.values, self.tag_id)
-        else:
-            q = "INSERT INTO module (flow_id, name, nodes, position) VALUES ($1, $2, $3, $4) RETURNING id"
-            return await self.db.fetchval(q, self.flow_id, *self.values)
+        q = "INSERT INTO module (flow_id, name, nodes, position) VALUES ($1, $2, $3, $4) RETURNING id"
+        return await self.db.fetchval(q, self.flow_id, *self.values)
 
     async def update(self) -> None:
         q = "UPDATE module SET name=$2, nodes=$3, position=$4 WHERE id=$1"
