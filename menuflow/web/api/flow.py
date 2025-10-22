@@ -9,6 +9,7 @@ from ...config import Config
 from ...db.flow import Flow as DBFlow
 from ...db.flow_backup import FlowBackup
 from ...db.module import Module as DBModule
+from ...db.tag import Tag as DBTag
 from ..base import get_config, routes
 from ..docs.flow import (
     create_or_update_flow_doc,

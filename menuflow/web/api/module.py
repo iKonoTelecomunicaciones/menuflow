@@ -45,7 +45,7 @@ async def get_module(request: web.Request) -> web.Response:
 
     try:
         if module_id:
-            module = await DBModule.get_by_id(int(module_id), flow_id)
+            module = await DBModule.get_by_id(int(module_id))
 
             if not module:
                 return resp.not_found(f"Module with ID {module_id} not found", uuid)
@@ -169,7 +169,7 @@ async def update_module(request: web.Request) -> web.Response:
         if not flow:
             return resp.not_found(f"Flow with ID '{flow_id}' not found in the database", uuid)
 
-        module = await DBModule.get_by_id(module_id, flow_id)
+        module = await DBModule.get_by_id(module_id)
 
     except JSONDecodeError:
         return resp.body_not_json(uuid)
@@ -248,7 +248,7 @@ async def delete_module(request: web.Request) -> web.Response:
         if not await DBFlow.check_exists(flow_id):
             return resp.not_found(f"Flow with ID '{flow_id}' not found in the database", uuid)
 
-        module = await DBModule.get_by_id(module_id, flow_id)
+        module = await DBModule.get_by_id(module_id)
         if not module:
             return resp.not_found(
                 f"Module with ID {module_id} not found in flow_id {flow_id}", uuid
