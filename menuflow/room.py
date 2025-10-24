@@ -311,7 +311,7 @@ class Room(DBRoom):
         scope, key = Util.get_scope_and_key(variable_id)
 
         self.log.debug(
-            f"Saving variable [{variable_id}] to room [{self.room_id}] in scope {scope.value} "
+            f"Saving variable [{variable_id}] to room [{self.room_id}] in scope [{scope.value}] "
             f":: content [{value}]"
         )
 
