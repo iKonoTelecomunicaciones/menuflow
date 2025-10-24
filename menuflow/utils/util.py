@@ -212,38 +212,45 @@ class Util:
             A dictionary, list or string.
 
         """
-        try:
-            template = jinja_env.from_string(data)
-            temp_rendered = template.render(variables)
-        except TemplateSyntaxError as e:
-            txt_error = f"func_name: {e.name}, \nline: {e.lineno}, \nerror: {e.message}"
-            log.warning(txt_error)
+        temp_rendered = data
+        has_jinja_delims = any(
+            open in data and close in data
+            for open, close in zip(cls._jinja_open_delims, cls._jinja_close_delims)
+        )
 
-            if return_errors:
-                log.exception(e)
-                raise Exception(txt_error)
-            return None
-        except UndefinedError as e:
-            tb_list = traceback.extract_tb(e.__traceback__)
-            traceback_info = tb_list[-1]
-            func_name = traceback_info.name
-            line: int | None = traceback_info.lineno
+        if has_jinja_delims:
+            try:
+                template = jinja_env.from_string(data)
+                temp_rendered = template.render(variables)
+            except TemplateSyntaxError as e:
+                txt_error = f"func_name: {e.name}, \nline: {e.lineno}, \nerror: {e.message}"
+                log.warning(txt_error)
 
-            txt_error = f"func_name: {func_name}, \nline: {line}, \nerror: {e}"
-            log.warning(txt_error)
+                if return_errors:
+                    log.exception(e)
+                    raise Exception(txt_error)
+                return None
+            except UndefinedError as e:
+                tb_list = traceback.extract_tb(e.__traceback__)
+                traceback_info = tb_list[-1]
+                func_name = traceback_info.name
+                line: int | None = traceback_info.lineno
 
-            if return_errors:
-                log.exception(e)
-                raise Exception(txt_error)
-            return None
-        except Exception as e:
-            log.warning(
-                f"Error rendering data: {e}",
-            )
-            if return_errors:
-                log.exception(e)
-                raise e
-            return None
+                txt_error = f"func_name: {func_name}, \nline: {line}, \nerror: {e}"
+                log.warning(txt_error)
+
+                if return_errors:
+                    log.exception(e)
+                    raise Exception(txt_error)
+                return None
+            except Exception as e:
+                log.warning(
+                    f"Error rendering data: {e}",
+                )
+                if return_errors:
+                    log.exception(e)
+                    raise e
+                return None
 
         try:
             evaluated_body = temp_rendered
@@ -284,6 +291,9 @@ class Util:
 
         """
 
+        if not (isinstance(data, (str, dict, list)) and data):
+            return data
+
         if isinstance(data, (dict, list)):
             _data = deepcopy(data)
         else:
@@ -298,18 +308,13 @@ class Util:
             return [cls.render_data(item, default_variables, all_variables) for item in _data]
 
         elif isinstance(_data, str):
-            has_jinja_delims = any(
-                open in _data and close in _data
-                for open, close in zip(cls._jinja_open_delims, cls._jinja_close_delims)
-            )
-            if has_jinja_delims:
-                dict_variables = default_variables | all_variables
-                rendered = cls.jinja_render(_data, dict_variables, return_errors)
+            dict_variables = default_variables | all_variables
+            rendered = cls.jinja_render(_data, dict_variables, return_errors)
 
-                if isinstance(rendered, (dict, list)):
-                    return rendered
-                else:
-                    return cls.convert_to_type(rendered)
+            if isinstance(rendered, (dict, list)):
+                return rendered
+            else:
+                return cls.convert_to_type(rendered)
 
         return _data
 

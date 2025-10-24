@@ -64,7 +64,7 @@ class TestBase:
             }
         )
 
-        assert "{'key': 'value'}" == base.render_data("{'key': 'value'}")
+        assert {"key": "value"} == base.render_data("{'key': 'value'}")
 
         assert "0030" == base.render_data("{{ route.code }}")
         assert None == base.render_data("{{ route.empty }}")
@@ -80,19 +80,42 @@ class TestBase:
         assert {"number": "{{ flow.number }"} == base.render_data({"number": "{{ flow.number }"})
         assert 10 == base.render_data("{{ flow.counter }}")
         assert "10" == base.render_data("'{{ flow.counter }}'")
+        assert "10" == base.render_data("{{ flow.counter | string | to_json}}")
         assert "010" == base.render_data("0{{ flow.counter }}")
         assert " 10" == base.render_data(" {{ flow.counter }}")
+        assert True == base.render_data("{{ '1' | bool }}")
         assert "10 " == base.render_data("{{ flow.counter }} ")
         assert "https://catfact.ninja/fact/87684525412/61481488798" == base.render_data(
             "{{ flow.cat_fatc_url }}/{{ flow.number }}/{{ flow.str_number }}"
         )
         assert {"key": "value"} == base.render_data("{{ flow.dictionary }}")
         assert True == base.render_data("{{ flow.bool }}")
+        assert True == base.render_data("{{ flow.bool | bool }}")
+
         assert True == base.render_data("{{ flow.bool_str }}")
         assert "True" == base.render_data('"{{ flow.bool }}"')
+
         assert "true" == base.render_data('"{{ flow.bool_str }}"')
         assert None == base.render_data("{{ flow.none_str }}")
         assert None == base.render_data("{{ flow.none }}")
+
+        assert None == base.render_data("None")
+        assert None == base.render_data("none")
+        assert True == base.render_data("True")
+        assert True == base.render_data("true")
+        assert False == base.render_data("False")
+        assert False == base.render_data("false")
+        assert 1 == base.render_data("1")
+        assert 1.0 == base.render_data("1.0")
+
+        assert ["admin", "user"] == base.render_data("[\"admin\", \"user\"]") # fmt: skip
+        assert {"key": "value"} == base.render_data("{\n  \"key\": \"value\"\n}") # fmt: skip
+        assert {"key": "value ñ"} == base.render_data("{\n  \"key\": \"value ñ\"\n}") # fmt: skip
+        assert {"key": "🙂"} == base.render_data("{\n  \"key\": \"🙂\"\n}") # fmt: skip
+        assert {"emoji": "🙂"} == base.render_data("{\n  \"emoji\": \"\U0001f642\"\n}") # fmt: skip
+        assert "🙂" == base.render_data("\U0001f642")
+        assert [True, False] == base.render_data("[True, False]")
+        assert [True, False] == base.render_data(["true", "false"])
 
     def test_render_complex_data(self, base: Base):
         """
@@ -196,20 +219,15 @@ class TestBase:
         # Save the rendered data to the route variable
         await base.room.set_variable("test_data", data_rendered)
 
-        # Verify that the data is saved correctly
-        assert await base.room.get_variable("test_data") == data_rendered
-
-        # Get the data from the route variable
+        # Get the test data in route variable
         test_data = await base.room.get_variable("test_data")
-        customer_room_id = test_data.get("accounts")[0].get("rooms")[0]
 
-        # Verify that the data is saved correctly
-        assert customer_room_id == base.render_data("{{ route.customer_room_id }}")
-
-        # Verify that the data is saved correctly
+        # Verify that the test data is saved correctly
+        assert test_data == data_rendered
+        assert test_data.get("accounts")[0].get("rooms")[0] == base.render_data(
+            "{{ route.customer_room_id }}"
+        )
         assert scope_vars.get("route.string_number") == test_data.get("string_number")
-
-        # Verify that the scope variables are saved correctly
         assert scope_vars.get("route.number") == test_data.get("number")
 
     @pytest.mark.asyncio
@@ -364,25 +382,26 @@ class TestBase:
         assert await base.room.get_variable("users") == {}
 
     @pytest.mark.asyncio
-    async def test_body(self, base: Base):
+    async def test_body_str(self, base: Base):
         """
         It test if a route variable can save a body as a string
         and if it correctly replaces the placeholders with the corresponding values.
         """
-        scope_vars = scope_variables()
-        data = """{
-            "Cat_name": "{{ flow.cat_name }}",
-            "Foo": ["bar", "foo"],
-            "number": {{ route.number }},
-            "string_number": "{{ route.string_number }}",
-            "dictionary": {{ route.dictionary }},
-            "accounts": [
-                {
-                    "account_id": 1,
-                    "rooms": ["{{ route.customer_room_id }}"],
-                }
-            ],
-        }"""
+        scope_vars = {
+            "edad": 30,
+            "roles": ["admin", "user"],
+            "roles_str": "[\"admin\", \"user\"]", # fmt: skip
+            "activo": True,
+            "nombre": "\\n \ud83d\ude42\u00d1\u00f1John Doe",
+            "direccion": {
+                "calle": "\t123 Main St",
+                "Hola": '🙂 Mundo\n"Cruelñ"\\',
+                "ciudad": "Anytown",
+                "codigo_postal": "12345",
+            },
+        }
+
+        data = """{\n  \"nombre\": \"{{ route.nombre }}\",\n  \"edad\": {{ route.edad }},\n  \"activo\": {{ route.activo }},\n\n  \"roles\": [\n    {% for rol in route.roles %}\n\"{{ rol }}\"{% if not loop.last %},{% endif %}\n    {% endfor %}\n  ],\n\n  \"direccion\": {\n    \"calle\": \"{{ route.direccion.calle }}\",\n    \"Hola\": \"🙂 Mundo\\n\\\"Cruelñ\\\"\\\\\",\n    \"ciudad\": \"{{ route.direccion.ciudad }}\",\n    \"codigo_postal\": \"{{ route.direccion.codigo_postal }}\"\n  },\n  \"flow_name\" : {{ flow.nombre | quote}}\n}"""
 
         # Set the scope variables
         await base.room.set_variables(scope_vars)
@@ -393,20 +412,14 @@ class TestBase:
         # Save the rendered data to the route variable
         await base.room.set_variable("test_data", data_rendered)
 
-        # Verify that the data is saved correctly
-        assert await base.room.get_variable("test_data") == data_rendered
-
-        # Get the data from the route variable
+        # Get the test data in route variable
         test_data = await base.room.get_variable("test_data")
-        customer_room_id = test_data.get("accounts")[0].get("rooms")[0]
 
-        # Verify that the data is saved correctly
-        assert customer_room_id == base.render_data("{{ route.customer_room_id }}")
-
-        # Verify that the data is saved correctly
-        assert scope_vars.get("route.string_number") == test_data.get("string_number")
-
-        # Verify that the scope variables are saved correctly
-        assert scope_vars.get("route.number") == test_data.get("number")
-
-        assert scope_vars.get("route.dictionary") == test_data.get("dictionary")
+        # Verify that the test data is saved correctly
+        assert test_data == data_rendered
+        assert "\n 🙂ÑñJohn Doe" == test_data.get("nombre")
+        assert scope_vars.get("edad") == test_data.get("edad")
+        assert scope_vars.get("activo") == test_data.get("activo")
+        assert scope_vars.get("roles") == test_data.get("roles")
+        assert scope_vars.get("direccion") == test_data.get("direccion")
+        # assert scope_vars.get("roles_str") == test_data.get("roles_str")
