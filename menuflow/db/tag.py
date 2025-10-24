@@ -52,6 +52,12 @@ class Tag(SerializableAttrs):
         return cls._from_row(row) if row else None
 
     @classmethod
+    async def get_current_tag(cls, flow_id: int) -> Tag | None:
+        q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id = $1 AND name = 'current'"
+        row = await cls.db.fetchrow(q, flow_id)
+        return cls._from_row(row) if row else None
+
+    @classmethod
     async def get_by_flow_id(cls, flow_id: int, active_only: bool = True) -> list[Tag]:
         if active_only:
             q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 AND active=true ORDER BY create_date DESC"
@@ -63,13 +69,15 @@ class Tag(SerializableAttrs):
 
     async def insert(self) -> int:
         q = """INSERT INTO tag (flow_id, create_date, author, active, name, flow_vars)
-               VALUES ($1, NOW(), $3, $4, $5, $6) RETURNING id"""
-        return await self.db.fetchval(q, *self.values)
+            VALUES ($1, NOW(), $2, $3, $4, $5) RETURNING id"""
+        return await self.db.fetchval(
+            q, self.flow_id, self.author, self.active, self.name, json.dumps(self.flow_vars)
+        )
 
     async def update(self) -> None:
-        q = """UPDATE tag SET flow_id=$2, author=$3, active=$4, name=$5, flow_vars=$6
-               WHERE id=$1"""
-        await self.db.execute(q, self.id, *self.values)
+        q = """UPDATE tag SET flow_vars=$2
+           WHERE id=$1"""
+        return await self.db.execute(q, self.id, json.dumps(self.flow_vars))
 
     async def delete(self) -> None:
         q = "DELETE FROM tag WHERE id=$1"
