@@ -234,7 +234,7 @@ async def upgrade_v11(conn: Connection) -> None:
     # Migrate existing flow_vars data to tag table (create default tags for existing flows)
     await conn.execute(
         """INSERT INTO tag (flow_id, flow_vars, create_date, active, name)
-           SELECT id, flow_vars, now(), false, 'current'
+           SELECT id, flow_vars, now(), true, 'current'
            FROM flow
         """
     )
@@ -250,24 +250,6 @@ async def upgrade_v11(conn: Connection) -> None:
 
     # Set tag_id as NOT NULL
     await conn.execute("ALTER TABLE module ALTER COLUMN tag_id SET NOT NULL")
-
-    # Create initial tag for each flow
-    await conn.execute(
-        """INSERT INTO tag (flow_id, flow_vars, create_date, active, name)
-           SELECT id, flow_vars, now(), true, 'initial'
-           FROM flow
-        """
-    )
-
-    # Copy modules from current tag to initial tag
-    await conn.execute(
-        """INSERT INTO module (flow_id, name, nodes, position, tag_id)
-           SELECT m.flow_id, m.name, m.nodes, m.position, t_initial.id
-           FROM module m
-           JOIN tag t_current ON m.tag_id = t_current.id AND t_current.name = 'current'
-           JOIN tag t_initial ON t_current.flow_id = t_initial.flow_id AND t_initial.name = 'initial'
-        """
-    )
 
     # Add new unique constraint to module table for tag_id
     await conn.execute(
