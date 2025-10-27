@@ -100,8 +100,16 @@ async def create_client(request: web.Request) -> web.Response:
         current_tag = DBTag(
             flow_id=new_flow_id, name="current", flow_vars={}, author="system", active=True
         )
-        await current_tag.insert()
+        tag_id = await current_tag.insert()
 
+        main_module = DBModule(
+            flow_id=new_flow_id,
+            name="main",
+            nodes=[],
+            position={},
+            tag_id=tag_id,
+        )
+        await main_module.insert()
         log.info(f"({uuid}) -> Created new flow with ID {new_flow_id} for client")
 
     return await _create_client(data, flow_id=new_flow_id, uuid=uuid)
