@@ -114,7 +114,9 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
         flow_id = await new_flow.insert()
 
         # Create a current tag for the new flow
-        current_tag = DBTag(flow_id=flow_id, name="current", flow_vars=variables, active=True)
+        current_tag = DBTag(
+            flow_id=flow_id, name="current", flow_vars=variables, author="system", active=True
+        )
         tag_id = await current_tag.insert()
 
         if incoming_flow:

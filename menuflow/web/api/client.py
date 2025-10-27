@@ -16,6 +16,7 @@ from ...db.flow import Flow as DBFlow
 from ...db.module import Module as DBModule
 from ...db.room import Room as DBRoom
 from ...db.route import Route as DBRoute
+from ...db.tag import Tag as DBTag
 from ...menu import MenuClient
 from ...room import Room
 from ..base import get_config, routes
@@ -95,6 +96,13 @@ async def create_client(request: web.Request) -> web.Response:
     if MenuClient.menuflow.config["menuflow.load_flow_from"] == "database":
         new_flow = DBFlow(flow_vars={})
         new_flow_id = await new_flow.insert()
+
+        current_tag = DBTag(
+            flow_id=new_flow_id, name="current", flow_vars={}, author="system", active=True
+        )
+        await current_tag.insert()
+
+        log.info(f"({uuid}) -> Created new flow with ID {new_flow_id} for client")
 
     return await _create_client(data, flow_id=new_flow_id, uuid=uuid)
 
