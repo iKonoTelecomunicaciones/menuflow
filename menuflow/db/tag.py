@@ -48,7 +48,7 @@ class Tag(SerializableAttrs):
 
     @classmethod
     async def get_by_id(cls, id: int) -> Tag | None:
-        q = f"SELECT id, flow_id, create_date, author, active, name, flow_vars FROM tag WHERE id=$1"
+        q = f"SELECT id, {cls._columns} FROM tag WHERE id=$1"
         row = await cls.db.fetchrow(q, id)
         if not row:
             return None
@@ -57,7 +57,7 @@ class Tag(SerializableAttrs):
 
     @classmethod
     async def get_by_flow_id(cls, flow_id: int) -> list[Tag]:
-        q = f"SELECT id, flow_id, create_date, author, active, name, flow_vars FROM tag WHERE flow_id=$1 ORDER BY create_date DESC"
+        q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 ORDER BY create_date DESC"
         rows = await cls.db.fetch(q, flow_id)
         if not rows:
             return []
@@ -66,7 +66,7 @@ class Tag(SerializableAttrs):
 
     @classmethod
     async def get_by_name(cls, flow_id: int, name: str) -> Tag | None:
-        q = f"SELECT id, flow_id, create_date, author, active, name, flow_vars FROM tag WHERE flow_id=$1 AND name=$2"
+        q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 AND name=$2"
         row = await cls.db.fetchrow(q, flow_id, name)
         if not row:
             return None
@@ -74,22 +74,21 @@ class Tag(SerializableAttrs):
         return cls._from_row(row)
 
     @classmethod
-    async def active_tag(cls, tag_id: int) -> list[Tag]:
-        q = f"UPDATE tag SET active=true WHERE id=$1"
+    async def activate_tag(cls, tag_id: int) -> list[Tag]:
+        q = "UPDATE tag SET active=true WHERE id=$1"
         result = await cls.db.execute(q, tag_id)
 
         return result
 
     @classmethod
-    async def set_inactive_by_flow_id(cls, flow_id: int) -> None:
-        q = "UPDATE tag SET active=false WHERE flow_id=$1"
+    async def deactivate_tags(cls, flow_id: int) -> None:
+        q = "UPDATE tag SET active=false WHERE flow_id=$1 AND active=true"
         await cls.db.execute(q, flow_id)
 
     async def insert(self) -> int:
-        q = """INSERT INTO tag (flow_id, create_date, author, active, name, flow_vars)
-            VALUES ($1, NOW(), $2, $3, $4, $5) RETURNING id"""
+        q = """INSERT INTO tag (flow_id, author, active, name, flow_vars)
+            VALUES ($1, $2, $3, $4, $5) RETURNING id"""
 
-        # Verificar si flow_vars ya es string JSON o es dict
         flow_vars_json = (
             self.flow_vars if isinstance(self.flow_vars, str) else json.dumps(self.flow_vars)
         )

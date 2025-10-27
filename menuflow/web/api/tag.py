@@ -28,14 +28,14 @@ async def get_tags_by_flow(request: web.Request) -> web.Response:
         if tag_id:
             try:
                 id = int(tag_id)
-                tag = await DBTag.get_by_id(id)
-                if not tag:
-                    return resp.not_found(f"Tag with ID {id} not found", uuid)
-
-                return resp.ok(tag.to_dict(), uuid)
-
             except ValueError:
                 return resp.bad_request("tag_id must be a valid integer", uuid)
+
+            tag = await DBTag.get_by_id(id)
+            if not tag:
+                return resp.not_found(f"Tag with ID {id} not found", uuid)
+
+            return resp.ok(tag.to_dict(), uuid)
         elif tag_name:
             log.debug(f"({uuid}) -> Getting tag '{tag_name}' for flow_id: {flow_id}")
             tag = await DBTag.get_by_name(flow_id, tag_name)
