@@ -77,11 +77,11 @@ class Flow(SerializableAttrs):
     @classmethod
     async def get_current_tag(cls, mxid: str) -> int | None:
         q = """
-            SELECT tag.id AS id
+            SELECT tag.id
             FROM flow
-            JOIN client as c ON flow.id = c.flow
+            JOIN client ON flow.id = client.flow
             JOIN tag ON flow.id = tag.flow_id
-            WHERE c.id = $1 AND tag.name = 'current'
+            WHERE client.id = $1 AND tag.name = 'current'
         """
         row = await cls.db.fetchrow(q, mxid)
 
