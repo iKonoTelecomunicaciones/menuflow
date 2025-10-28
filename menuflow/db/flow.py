@@ -62,13 +62,33 @@ class Flow(SerializableAttrs):
 
     @classmethod
     async def get_by_mxid(cls, mxid: str) -> Flow | None:
-        q = "SELECT f.id, f.flow, f.flow_vars, f.create_date FROM flow as f JOIN client as c ON f.id = c.flow WHERE c.id = $1"
+        q = """
+            SELECT f.id, f.flow, f.flow_vars, f.create_date
+            FROM flow as f JOIN client as c ON f.id = c.flow
+            WHERE c.id = $1
+        """
         row = await cls.db.fetchrow(q, mxid)
 
         if not row:
             return
 
         return cls._from_row(row)
+
+    @classmethod
+    async def get_current_tag(cls, mxid: str) -> int | None:
+        q = """
+            SELECT tag.id
+            FROM flow
+            JOIN client ON flow.id = client.flow
+            JOIN tag ON flow.id = tag.flow_id
+            WHERE client.id = $1 AND tag.name = 'current'
+        """
+        row = await cls.db.fetchrow(q, mxid)
+
+        if not row:
+            return
+
+        return row
 
     # Create a new flow with current and return the new flow ID
     async def insert(self) -> int:
