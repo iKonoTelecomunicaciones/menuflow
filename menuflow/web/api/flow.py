@@ -281,59 +281,59 @@ async def publish_flow(request: web.Request) -> web.Response:
 
     try:
         flow_id = int(request.match_info["flow_id"])
-        flow = await DBFlow.get_by_id(flow_id)
-        if not flow:
-            return resp.not_found(f"Flow with ID {flow_id} not found", uuid)
-
-        try:
-            data = await request.json()
-
-        except JSONDecodeError:
-            return resp.body_not_found(f"Invalid JSON in request body", uuid)
-
-        name = data.get("name")
-        author = data.get("author")
-
-        if not name or not author:
-            return resp.bad_request("Parameters 'name' and 'author' are required", uuid)
-
-        log.debug(f"({uuid}) -> creating new tag '{name}' for flow ID {flow_id}")
-
-        current_tag = await DBModule.get_current_tag(flow_id)
-        if not current_tag:
-            return resp.not_found(f"No tags found for flow ID {flow_id}", uuid)
-
-        log.debug(f"({uuid}) -> Found current tag with ID {current_tag["id"]}")
-
-        new_tag = DBTag(
-            flow_id=flow_id,
-            name=name,
-            author=author,
-            flow_vars=current_tag["flow_vars"],
-            active=False,
-        )
-
-        await DBTag.deactivate_tags(flow_id)
-
-        tag_id = await new_tag.insert()
-
-        log.debug(f"({uuid}) -> New tag created with ID {tag_id}")
-
-        copied_module_ids = await DBModule.copy_modules_from_tag(current_tag["id"], tag_id)
-
-        await DBTag.activate_tag(tag_id)
-
-        return resp.ok(
-            {
-                "detail": {
-                    "message": f"Flow published successfully as tag '{name}'",
-                    "data": {"tag_id": tag_id, "copied_module_ids": copied_module_ids},
-                }
-            },
-            uuid,
-        )
     except ValueError:
         return resp.bad_request("Flow ID must be an integer", uuid)
-    except Exception as e:
-        log.error(f"({uuid}) -> Error publishing flow: {e}", exc_info=True)
-        return resp.internal_error(str(e), uuid)
+
+    flow = await DBFlow.get_by_id(flow_id)
+    if not flow:
+        return resp.not_found(f"Flow with ID {flow_id} not found", uuid)
+
+    try:
+        data = await request.json()
+
+    except JSONDecodeError:
+        return resp.body_not_found(f"Invalid JSON in request body", uuid)
+
+    name = data.get("name")
+    author = data.get("author")
+
+    if not name or not author:
+        return resp.bad_request("Parameters 'name' and 'author' are required", uuid)
+
+    log.debug(f"({uuid}) -> creating new tag '{name}' for flow ID {flow_id}")
+
+    current_tag = await DBModule.get_current_tag(flow_id)
+    if not current_tag:
+        return resp.not_found(f"No tags found for flow ID {flow_id}", uuid)
+
+    log.debug(f"({uuid}) -> Found current tag with ID {current_tag["id"]}")
+
+    new_tag = DBTag(
+        flow_id=flow_id,
+        name=name,
+        author=author,
+        flow_vars=current_tag["flow_vars"],
+        active=False,
+    )
+
+    await DBTag.deactivate_tags(flow_id)
+
+    tag_id = await new_tag.insert()
+
+    log.debug(f"({uuid}) -> New tag created with ID {tag_id}")
+
+    result = await DBModule.copy_modules_from_tag(current_tag["id"], tag_id)
+
+    if not result.get("success"):
+        return resp.internal_error(f"Error copying modules: {result.get('error')}", uuid)
+
+    await DBTag.activate_tag(tag_id)
+
+    return resp.ok(
+        {
+            "detail": {
+                "message": f"Flow published successfully as tag '{name}'",
+            }
+        },
+        uuid,
+    )
