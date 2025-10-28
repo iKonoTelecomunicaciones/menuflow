@@ -272,3 +272,64 @@ async def get_backup(request: web.Request) -> web.Response:
         uuid=uuid,
         log_msg=f"Returning {count} backups for flow {flow_id}",
     )
+
+
+@routes.post("/v1/flow/{flow_id}/publish")
+async def publish_flow(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Publishing flow")
+
+    try:
+        flow_id = int(request.match_info["flow_id"])
+    except ValueError:
+        return resp.bad_request("Flow ID must be an integer", uuid)
+
+    flow = await DBFlow.get_by_id(flow_id)
+    if not flow:
+        return resp.not_found(f"Flow with ID {flow_id} not found", uuid)
+
+    try:
+        data = await request.json()
+    except JSONDecodeError:
+        return resp.body_not_found("Invalid JSON in request body", uuid)
+
+    name = data.get("name")
+    author = data.get("author")
+
+    if not name or not author:
+        return resp.bad_request("Parameters 'name' and 'author' are required", uuid)
+
+    log.debug(f"({uuid}) -> creating new tag '{name}' for flow ID {flow_id}")
+
+    current_tag = await DBModule.get_current_tag(flow_id)
+    if not current_tag:
+        return resp.not_found(f"No current tag found for flow ID {flow_id}", uuid)
+
+    log.debug(f"({uuid}) -> Found current tag with ID for flow {flow_id}: {current_tag["id"]}")
+
+    new_tag = DBTag(
+        flow_id=flow_id,
+        name=name,
+        author=author,
+        flow_vars=current_tag["flow_vars"],
+        active=False,
+    )
+    tag_id = await new_tag.insert()
+
+    log.debug(f"({uuid}) -> New tag created for flow {flow_id} with ID {tag_id}")
+
+    result = await DBModule.copy_modules_from_tag(current_tag["id"], tag_id)
+    if not result.get("success"):
+        return resp.internal_error(f"Error copying modules: {result.get('error')}", uuid)
+
+    await DBTag.deactivate_tags(flow_id)
+    await DBTag.activate_tag(tag_id)
+
+    return resp.ok(
+        {
+            "detail": {
+                "message": f"Flow published successfully with tag '{name}'",
+            }
+        },
+        uuid,
+    )

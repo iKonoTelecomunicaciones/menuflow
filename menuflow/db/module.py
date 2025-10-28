@@ -136,3 +136,27 @@ class Module(SerializableAttrs):
         row = await cls.db.fetchrow(q, flow_id, node_id)
 
         return cls._to_dict(row, ["node"]) if row else None
+
+    @classmethod
+    async def copy_modules_from_tag(cls, source_tag_id: int, target_tag_id: int) -> list[int]:
+        log.info(f"Copying modules from tag {source_tag_id} to tag {target_tag_id}")
+
+        q = f"""
+            INSERT INTO module (flow_id, name, nodes, position, tag_id)
+            SELECT flow_id, name, nodes, position, {target_tag_id}
+            FROM module
+            WHERE tag_id={source_tag_id}
+        """
+        try:
+            result = await cls.db.execute(q)
+            log.info(
+                f"""Modules copied successfully from tag
+                {source_tag_id} to tag {target_tag_id}: {result}"""
+            )
+            return {"success": True}
+        except Exception as e:
+            log.error(
+                f"""Error copying modules from tag {source_tag_id}
+                      to tag {target_tag_id}: {e}"""
+            )
+            return {"success": False, "error": str(e)}
