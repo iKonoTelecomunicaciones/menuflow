@@ -149,9 +149,10 @@ class Module(SerializableAttrs):
         """
         try:
             result = await cls.db.execute(q)
-            log.info(f"Modules copied successfully: {result}")
-
+            log.info(
+                f"Modules copied successfully from tag {source_tag_id} to tag {target_tag_id}: {result}"
+            )
             return {"success": True}
         except Exception as e:
-            log.error(f"Error copying modules: {e}")
+            log.error(f"Error copying modules from tag {source_tag_id} to tag {target_tag_id}: {e}")
             return {"success": False, "error": str(e)}
