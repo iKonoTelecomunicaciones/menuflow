@@ -58,6 +58,12 @@ class Tag(SerializableAttrs):
         return cls._from_row(row) if row else None
 
     @classmethod
+    async def get_active_tag(cls, flow_id: int) -> Tag | None:
+        q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id = $1 AND active = true"
+        row = await cls.db.fetchrow(q, flow_id)
+        return cls._from_row(row) if row else None
+
+    @classmethod
     async def get_by_flow_id(cls, flow_id: int, active_only: bool = True) -> list[Tag]:
         if active_only:
             q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 AND active=true ORDER BY create_date DESC"
