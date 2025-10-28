@@ -54,30 +54,37 @@ class Module(SerializableAttrs):
         return data
 
     @classmethod
-    async def get_by_id(cls, id: int, flow_id: int) -> Module | None:
-        q = f"SELECT id, {cls._columns} FROM module WHERE id=$1 AND flow_id=$2"
-        row = await cls.db.fetchrow(q, id, flow_id)
-
-        return cls._from_row(row) if row else None
+    async def get_current_tag(cls, flow_id: int) -> Record | None:
+        q = "SELECT * FROM tag WHERE flow_id=$1 AND name='current'"
+        tag = await cls.db.fetchrow(q, flow_id)
+        return tag if tag else None
 
     @classmethod
-    async def get_by_tag_id(cls, id: int, tag_id: int) -> Module | None:
-        q = f"SELECT id, {cls._columns} FROM module WHERE id=$1 AND tag_id=$2"
-        row = await cls.db.fetchrow(q, id, tag_id)
+    async def get_by_id(cls, id: int) -> Module | None:
+        q = f"SELECT id, {cls._columns} FROM module WHERE id=$1 "
+        row = await cls.db.fetchrow(q, id)
 
         return cls._from_row(row) if row else None
 
     @classmethod
     async def get_by_name(cls, name: str, flow_id: int) -> Module | None:
-        q = f"SELECT id, {cls._columns} FROM module WHERE name=$1 AND flow_id=$2"
-        row = await cls.db.fetchrow(q, name, flow_id)
+        current_tag = await cls.get_current_tag(flow_id)
+
+        q = f"SELECT id, {cls._columns} FROM module WHERE name=$1 AND tag_id=$3"
+        row = await cls.db.fetchrow(q, name, current_tag["id"])
 
         return cls._from_row(row) if row else None
 
     @classmethod
     async def get_by_fields(cls, flow_id: int, fields: list) -> list:
-        q = f"SELECT {', '.join(fields)} FROM module WHERE flow_id=$1 ORDER BY name ASC"
-        rows = await cls.db.fetch(q, flow_id)
+        current_tag = await cls.get_current_tag(flow_id)
+
+        if not current_tag:
+            log.warning(f"No current tag found for flow_id: {flow_id}")
+            return []
+
+        q = f"SELECT {', '.join(fields)} FROM module WHERE tag_id=$1 ORDER BY name ASC"
+        rows = await cls.db.fetch(q, current_tag["id"])
 
         return [cls._to_dict(row, cls._json_columns.split(",")) for row in rows] if rows else []
 
@@ -105,27 +112,58 @@ class Module(SerializableAttrs):
             return await cls.db.fetchval(q, name, flow_id, module_id)
 
     async def insert(self) -> int:
-        if self.tag_id:
-            q = "INSERT INTO module (flow_id, name, nodes, position, tag_id) VALUES ($1, $2, $3, $4, $5) RETURNING id"
-            return await self.db.fetchval(q, self.flow_id, *self.values, self.tag_id)
-        else:
-            q = "INSERT INTO module (flow_id, name, nodes, position) VALUES ($1, $2, $3, $4) RETURNING id"
-            return await self.db.fetchval(q, self.flow_id, *self.values)
+        current_tag = await self.get_current_tag(self.flow_id)
+
+        if not current_tag:
+            log.warning(f"No current tag found for flow_id: {self.flow_id}")
+            return None
+
+        q = """INSERT INTO module (flow_id, name, nodes, position, tag_id)
+            VALUES ($1, $2, $3, $4, $5) RETURNING id"""
+        return await self.db.fetchval(q, self.flow_id, *self.values, current_tag["id"])
 
     async def update(self) -> None:
         q = "UPDATE module SET name=$2, nodes=$3, position=$4 WHERE id=$1"
         await self.db.execute(q, self.id, *self.values)
 
     async def delete(self) -> None:
-        q = "DELETE FROM module WHERE id=$1 AND flow_id=$2"
-        await self.db.execute(q, self.id, self.flow_id)
+        q = "DELETE FROM module WHERE id=$1"
+        await self.db.execute(q, self.id)
 
     @classmethod
     async def get_node_by_id(
         cls, flow_id: int, node_id: str, add_module_name: bool = True
     ) -> dict | None:
         q = "SELECT m.name AS module_name, node " if add_module_name else "SELECT node "
-        q += "FROM module m CROSS JOIN LATERAL jsonb_array_elements(m.nodes) AS node WHERE m.flow_id = $1 AND node->>'id' = $2"
+        q += """
+            FROM module m
+            CROSS JOIN LATERAL jsonb_array_elements(m.nodes) AS node
+            WHERE m.flow_id = $1 AND node->>'id' = $2
+        """
         row = await cls.db.fetchrow(q, flow_id, node_id)
 
         return cls._to_dict(row, ["node"]) if row else None
+
+    @classmethod
+    async def copy_modules_from_tag(cls, source_tag_id: int, target_tag_id: int) -> list[int]:
+        log.info(f"Copying modules from tag {source_tag_id} to tag {target_tag_id}")
+
+        q = f"""
+            INSERT INTO module (flow_id, name, nodes, position, tag_id)
+            SELECT flow_id, name, nodes, position, {target_tag_id}
+            FROM module
+            WHERE tag_id={source_tag_id}
+        """
+        try:
+            result = await cls.db.execute(q)
+            log.info(
+                f"""Modules copied successfully from tag
+                {source_tag_id} to tag {target_tag_id}: {result}"""
+            )
+            return {"success": True}
+        except Exception as e:
+            log.error(
+                f"""Error copying modules from tag {source_tag_id}
+                      to tag {target_tag_id}: {e}"""
+            )
+            return {"success": False, "error": str(e)}
