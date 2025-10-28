@@ -70,7 +70,12 @@ class Tag(SerializableAttrs):
     @classmethod
     async def get_by_flow_id(cls, flow_id: int, active_only: bool = True) -> list[Tag]:
         if active_only:
-            q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 AND active=true ORDER BY create_date DESC"
+            q = f"""
+                SELECT id, {cls._columns}
+                FROM tag
+                WHERE flow_id=$1 AND active=true
+                ORDER BY create_date DESC
+            """
         else:
             q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 ORDER BY create_date DESC"
 
