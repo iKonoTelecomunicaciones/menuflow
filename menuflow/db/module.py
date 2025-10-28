@@ -155,5 +155,8 @@ class Module(SerializableAttrs):
             )
             return {"success": True}
         except Exception as e:
-            log.error(f"Error copying modules from tag {source_tag_id} to tag {target_tag_id}: {e}")
+            log.error(
+                f"""Error copying modules from tag {source_tag_id}
+                      to tag {target_tag_id}: {e}"""
+            )
             return {"success": False, "error": str(e)}
