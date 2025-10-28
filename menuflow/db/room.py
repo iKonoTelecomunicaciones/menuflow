@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, ClassVar, Dict
 
 from asyncpg import Record
@@ -30,6 +31,10 @@ class Room:
         )
 
     _columns = "room_id, variables"
+
+    @property
+    def _room_variables(self) -> Dict:
+        return json.loads(self.variables) if self.variables else {}
 
     async def insert(self) -> str:
         q = f"INSERT INTO room ({self._columns}) VALUES ($1, $2)"

@@ -40,7 +40,7 @@ class Room(DBRoom):
         id: int = None,
         variables: str = "{}",
     ) -> None:
-        self._variables: Dict = json.loads(variables)
+        # self._variables: Dict = json.loads(variables)
         super().__init__(id=id, room_id=room_id, variables=f"{variables}")
         self.log = self.log.getChild(self.room_id)
         self.bot_mxid: UserID = None
@@ -180,7 +180,7 @@ class Room(DBRoom):
 
     @property
     def all_variables(self) -> Dict:
-        return {"room": self._variables, "route": self.route._variables}
+        return {"room": self._room_variables, "route": self.route._variables}
 
     @classmethod
     @async_getter_lock
@@ -232,6 +232,11 @@ class Room(DBRoom):
     def _add_to_cache(self, bot_mxid: UserID) -> None:
         if self.room_id:
             self.by_room_id[(bot_mxid, self.room_id)] = self
+
+    def _update_cache(self, room_id: RoomID) -> None:
+        for (_bot_mxid, _room_id), room in self.by_room_id.items():
+            if _room_id == room_id:
+                room.variables = self.variables
 
     async def clean_up(self):
         await Util.cancel_task(task_name=self.room_id)
@@ -287,7 +292,7 @@ class Room(DBRoom):
             f":: content [{value}]"
         )
 
-        new_variables = self._variables if scope == "room" else self.route._variables
+        new_variables = self._room_variables if scope == "room" else self.route._variables
         if isinstance(value, Obj):
             new_variables[key] = value.serialize()
         else:
@@ -298,6 +303,9 @@ class Room(DBRoom):
         else:
             self.route.variables = json.dumps(new_variables)
         await self.update() if scope == "room" else await self.route.update()
+
+        if scope == "room":
+            self._update_cache(room_id=self.room_id)
 
     async def set_variables(self, variables: Dict) -> None:
         """It takes a dictionary of variable IDs and values, and sets the variables to the values
@@ -331,7 +339,7 @@ class Room(DBRoom):
             scope = "route"
             key = variable_id
 
-        variables: Dict = self._variables if scope == "room" else self.route._variables
+        variables: Dict = self._room_variables if scope == "room" else self.route._variables
         if not variables:
             self.log.debug(f"Variables in the room {self.room_id} are empty")
             return
@@ -350,6 +358,9 @@ class Room(DBRoom):
         else:
             self.route.variables = json.dumps(variables)
         await self.update() if scope == "room" else await self.route.update()
+
+        if scope == "room":
+            self._update_cache(room_id=self.room_id)
 
     async def del_variables(self, variables: List = []) -> None:
         """This function delete the variables in the room.
