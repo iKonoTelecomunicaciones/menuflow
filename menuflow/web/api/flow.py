@@ -299,7 +299,7 @@ async def publish_flow(request: web.Request) -> web.Response:
 
         log.debug(f"({uuid}) -> creating new tag '{name}' for flow ID {flow_id}")
 
-        current_tag = await DBModule.find_tag(flow_id)
+        current_tag = await DBModule.get_current_tag(flow_id)
         if not current_tag:
             return resp.not_found(f"No tags found for flow ID {flow_id}", uuid)
 
@@ -313,7 +313,7 @@ async def publish_flow(request: web.Request) -> web.Response:
             active=False,
         )
 
-        await DBTag.set_inactive_by_flow_id(flow_id)
+        await DBTag.deactivate_tags(flow_id)
 
         tag_id = await new_tag.insert()
 
@@ -321,7 +321,7 @@ async def publish_flow(request: web.Request) -> web.Response:
 
         copied_module_ids = await DBModule.copy_modules_from_tag(current_tag["id"], tag_id)
 
-        await DBTag.active_tag(tag_id)
+        await DBTag.activate_tag(tag_id)
 
         return resp.ok(
             {
