@@ -48,7 +48,7 @@ async def get_tags_by_flow(request: web.Request) -> web.Response:
 
         else:
             log.debug(f"({uuid}) -> Getting all tags for flow_id: {flow_id}")
-            tags = await DBTag.get_by_flow_id(flow_id)
+            tags = await DBTag.get_flow_tags(flow_id)
             if not tags:
                 return resp.not_found(f"No tags found for flow_id {flow_id}", uuid)
 

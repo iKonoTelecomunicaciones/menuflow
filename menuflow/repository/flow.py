@@ -42,7 +42,6 @@ class Flow(SerializableAttrs):
             raise ValueError(f"No active tag found for flow {flow_mxid}")
 
         modules = await DBModule.all_by_tag_id(tag_db.id)
-        log.critical(f"Reload flow")
         return tag_db.flow_vars, [node for module in modules for node in module.get("nodes", [])]
 
     @classmethod

@@ -96,7 +96,7 @@ class Module(SerializableAttrs):
         return [cls._from_row(row) for row in rows] if rows else []
 
     @classmethod
-    async def all_by_tag_id(cls, tag_id: int) -> list:
+    async def get_tag_modules(cls, tag_id: int) -> list:
         q = f"SELECT id, {cls._columns} FROM module WHERE tag_id=$1"
         rows = await cls.db.fetch(q, tag_id)
 

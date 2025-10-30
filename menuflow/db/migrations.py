@@ -238,8 +238,8 @@ async def upgrade_v11(conn: Connection) -> None:
 
     # Migrate existing flow_vars data to tag table (create default tags for existing flows)
     await conn.execute(
-        """INSERT INTO tag (flow_id, flow_vars, create_date, active, name)
-           SELECT id, flow_vars, now(), true, 'current'
+        """INSERT INTO tag (flow_id, flow_vars, active, name)
+           SELECT id, flow_vars, true, 'current'
            FROM flow
         """
     )
