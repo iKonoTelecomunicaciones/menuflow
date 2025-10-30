@@ -96,6 +96,13 @@ class Module(SerializableAttrs):
         return [cls._from_row(row) for row in rows] if rows else []
 
     @classmethod
+    async def get_tag_modules(cls, tag_id: int) -> list:
+        q = f"SELECT id, {cls._columns} FROM module WHERE tag_id=$1"
+        rows = await cls.db.fetch(q, tag_id)
+
+        return [cls._from_row(row) for row in rows] if rows else []
+
+    @classmethod
     async def check_exists_by_name(cls, name: str, flow_id: int, module_id: int = None) -> bool:
         if not module_id:
             q = "SELECT EXISTS(SELECT 1 FROM module WHERE name=$1 AND flow_id=$2)"

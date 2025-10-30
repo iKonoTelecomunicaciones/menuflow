@@ -56,8 +56,21 @@ class Tag(SerializableAttrs):
         return cls._from_row(row) if row else None
 
     @classmethod
-    async def get_by_flow_id(cls, flow_id: int) -> list[Tag]:
+    async def get_current_tag(cls, flow_id: int) -> Tag | None:
+        q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id = $1 AND name = 'current'"
+        row = await cls.db.fetchrow(q, flow_id)
+        return cls._from_row(row) if row else None
+
+    @classmethod
+    async def get_active_tag(cls, flow_id: int) -> Tag | None:
+        q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id = $1 AND active = true"
+        row = await cls.db.fetchrow(q, flow_id)
+        return cls._from_row(row) if row else None
+
+    @classmethod
+    async def get_flow_tags(cls, flow_id: int) -> list[Tag]:
         q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 ORDER BY create_date DESC"
+
         rows = await cls.db.fetch(q, flow_id)
         if not rows:
             return []

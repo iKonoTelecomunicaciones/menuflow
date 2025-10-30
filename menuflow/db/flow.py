@@ -64,7 +64,8 @@ class Flow(SerializableAttrs):
     async def get_by_mxid(cls, mxid: str) -> Flow | None:
         q = """
             SELECT f.id, f.flow, f.flow_vars, f.create_date
-            FROM flow as f JOIN client as c ON f.id = c.flow
+            FROM flow as f
+            JOIN client as c ON f.id = c.flow
             WHERE c.id = $1
         """
         row = await cls.db.fetchrow(q, mxid)

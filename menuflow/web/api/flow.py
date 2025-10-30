@@ -56,8 +56,12 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
         if not flow:
             return resp.not_found(f"Flow with ID {flow_id} not found", uuid)
 
+        current_tag = await DBTag.get_current_tag(int(flow_id))
+        if not current_tag:
+            return resp.not_found(f"Current tag not found for flow {flow_id}", uuid)
+
         if incoming_flow:
-            modules = await DBModule.all(int(flow_id))
+            modules = await DBModule.all_by_tag_id(current_tag.id)
 
             if modules:
                 for module_obj in modules:
@@ -82,6 +86,7 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
                     name=name,
                     nodes=node.get("nodes", []),
                     position=positions.get(name, {}),
+                    tag_id=current_tag.id,
                 )
                 await module_obj.insert()
 
@@ -91,8 +96,10 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
             flow.flow = incoming_flow
 
         flow.flow_vars = variables
+        current_tag.flow_vars = variables
 
         await flow.update()
+        await current_tag.update()
 
         if config["menuflow.load_flow_from"] == "database":
             modules = await DBModule.all(int(flow_id))
@@ -106,6 +113,12 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
         new_flow = DBFlow(flow=incoming_flow, flow_vars=variables)
         flow_id = await new_flow.insert()
 
+        # Create a current tag for the new flow
+        current_tag = DBTag(
+            flow_id=flow_id, name="current", flow_vars=variables, author="system", active=True
+        )
+        tag_id = await current_tag.insert()
+
         if incoming_flow:
             for name, node in nodes.items():
                 module_obj = DBModule(
@@ -113,6 +126,7 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
                     name=name,
                     nodes=node.get("nodes", []),
                     position=positions.get(name, {}),
+                    tag_id=tag_id,
                 )
                 await module_obj.insert()
 
@@ -144,7 +158,9 @@ async def get_flow(request: web.Request) -> web.Response:
                 return resp.not_found(f"Flow with mxid {client_mxid} not found", uuid)
             flow_id = flow.id
 
-        modules = await DBModule.all(int(flow_id))
+        # Get the current tag for this flow
+        current_tag = await DBTag.get_current_tag(int(flow_id))
+        modules = await DBModule.all_by_tag_id(current_tag.id)
 
         if not flow_format and modules or flow.flow == {}:
             log.debug(f"({uuid}) -> New flow format detected, parsing modules to flow format")
@@ -153,12 +169,12 @@ async def get_flow(request: web.Request) -> web.Response:
                 "id": flow.id,
                 "flow": {
                     "menu": {
-                        "flow_variables": flow.flow_vars,
+                        "flow_variables": current_tag.flow_vars,
                         "nodes": nodes,
                     },
                     "modules": positions,
                 },
-                "flow_vars": flow.flow_vars,
+                "flow_vars": current_tag.flow_vars,
             }
         else:  # TODO: This is a temporary solution to return the flow when they are not yet in the module table
             log.warning(f"({uuid}) -> Old flow format detected, returning flow from column")
