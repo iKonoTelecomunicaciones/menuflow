@@ -160,7 +160,7 @@ async def get_flow(request: web.Request) -> web.Response:
 
         # Get the current tag for this flow
         current_tag = await DBTag.get_current_tag(int(flow_id))
-        modules = await DBModule.all_by_tag_id(current_tag.id)
+        modules = await DBModule.get_tag_modules(current_tag.id)
 
         if not flow_format and modules or flow.flow == {}:
             log.debug(f"({uuid}) -> New flow format detected, parsing modules to flow format")
