@@ -668,6 +668,8 @@ class Util:
 
         """
 
+        # If the value is a string in double quotes, return the value as a string,
+        # since this indicates that the data type must be respected.
         enclosers = value[0] + value[-1] if value else ""
         if enclosers == '""' or enclosers == "''":
             return value[1:-1]

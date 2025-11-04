@@ -388,20 +388,20 @@ class TestBase:
         and if it correctly replaces the placeholders with the corresponding values.
         """
         scope_vars = {
-            "edad": 30,
+            "age": 30,
             "roles": ["admin", "user"],
             "roles_str": "[\"admin\", \"user\"]", # fmt: skip
-            "activo": True,
-            "nombre": "\\n \ud83d\ude42\u00d1\u00f1John Doe",
-            "direccion": {
-                "calle": "\t123 Main St",
-                "Hola": '🙂 Mundo\n"Cruelñ"\\',
-                "ciudad": "Anytown",
-                "codigo_postal": "12345",
+            "active": True,
+            "name": "\\n \ud83d\ude42\u00d1\u00f1John Doe",
+            "address": {
+                "street": "\t123 Main St",
+                "data": '🙂 Hello\n"letter ñ"\\',
+                "city": "Anytown",
+                "zip_code": "12345",
             },
         }
 
-        data = """{\n  \"nombre\": \"{{ route.nombre }}\",\n  \"edad\": {{ route.edad }},\n  \"activo\": {{ route.activo }},\n\n  \"roles\": [\n    {% for rol in route.roles %}\n\"{{ rol }}\"{% if not loop.last %},{% endif %}\n    {% endfor %}\n  ],\n\n  \"direccion\": {\n    \"calle\": \"{{ route.direccion.calle }}\",\n    \"Hola\": \"🙂 Mundo\\n\\\"Cruelñ\\\"\\\\\",\n    \"ciudad\": \"{{ route.direccion.ciudad }}\",\n    \"codigo_postal\": \"{{ route.direccion.codigo_postal }}\"\n  },\n  \"flow_name\" : {{ flow.nombre | quote}}\n}"""
+        data = """{\n  \"name\": \"{{ route.name }}\",\n  \"age\": {{ route.age }},\n  \"active\": {{ route.active }},\n\n  \"roles\": [\n    {% for rol in route.roles %}\n\"{{ rol }}\"{% if not loop.last %},{% endif %}\n    {% endfor %}\n  ],\n\n  \"address\": {\n    \"street\": \"{{ route.address.street }}\",\n    \"data\": \"🙂 Hello\\n\\\"letter ñ\\\"\\\\\",\n    \"city\": \"{{ route.address.city }}\",\n    \"zip_code\": \"{{ route.address.zip_code }}\"\n  },\n  \"flow_name\" : {{ flow.name | quote}}\n}"""
 
         # Set the scope variables
         await base.room.set_variables(scope_vars)
@@ -417,9 +417,9 @@ class TestBase:
 
         # Verify that the test data is saved correctly
         assert test_data == data_rendered
-        assert "\n 🙂ÑñJohn Doe" == test_data.get("nombre")
-        assert scope_vars.get("edad") == test_data.get("edad")
-        assert scope_vars.get("activo") == test_data.get("activo")
+        assert "\n 🙂ÑñJohn Doe" == test_data.get("name")
+        assert scope_vars.get("age") == test_data.get("age")
+        assert scope_vars.get("active") == test_data.get("active")
         assert scope_vars.get("roles") == test_data.get("roles")
-        assert scope_vars.get("direccion") == test_data.get("direccion")
-        # assert scope_vars.get("roles_str") == test_data.get("roles_str")
+        assert scope_vars.get("address") == test_data.get("address")
+        assert '🙂 Hello\n"letter ñ"\\' == test_data.get("address").get("data")
