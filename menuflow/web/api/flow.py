@@ -61,7 +61,7 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
             return resp.not_found(f"Current tag not found for flow {flow_id}", uuid)
 
         if incoming_flow:
-            modules = await DBModule.all_by_tag_id(current_tag.id)
+            modules = await DBModule.get_tag_modules(current_tag.id)
 
             if modules:
                 for module_obj in modules:
@@ -307,7 +307,7 @@ async def publish_flow(request: web.Request) -> web.Response:
     try:
         data = await request.json()
     except JSONDecodeError:
-        return resp.body_not_found("Invalid JSON in request body", uuid)
+        return resp.not_found("Invalid JSON in request body", uuid)
 
     name = data.get("name")
     author = data.get("author")
