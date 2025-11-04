@@ -341,6 +341,15 @@ async def publish_flow(request: web.Request) -> web.Response:
     await DBTag.deactivate_tags(flow_id)
     await DBTag.activate_tag(tag_id)
 
+    config: Config = get_config()
+    if config["menuflow.load_flow_from"] == "database":
+        modules = await DBModule.get_tag_modules(int(tag_id))
+        flowVars = await DBTag.get_by_id(tag_id)
+        nodes = [node for module in modules for node in module.get("nodes", [])]
+        await Util.update_flow_db_clients(
+            flow_id, {"flow_variables": flowVars.flow_vars, "nodes": nodes}, config
+        )
+
     return resp.ok(
         {
             "detail": {
