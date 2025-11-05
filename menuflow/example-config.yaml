@@ -61,6 +61,10 @@ menuflow:
     webhook_queue:
         time_to_live: 120 # seconds, time to live for webhook events in the queue
 
+    # Time to live for media cache
+    media_cache:
+        time_to_live: 15 # days, time to live for media cache objects default is 15 days
+
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0
