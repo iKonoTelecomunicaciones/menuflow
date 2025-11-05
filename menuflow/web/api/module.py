@@ -219,13 +219,6 @@ async def update_module(request: web.Request) -> web.Response:
 
             await module.update()
 
-            config: Config = get_config()
-            if config["menuflow.load_flow_from"] == "database":
-                modules = await DBModule.all(int(flow_id))
-                nodes = [node for module in modules for node in module.get("nodes", [])]
-                await Util.update_flow_db_clients(
-                    flow_id, {"flow_variables": flow.flow_vars, "nodes": nodes}, config
-                )
         except Exception as e:
             return resp.server_error(str(e), uuid)
 
