@@ -101,3 +101,71 @@ class Flow(SerializableAttrs):
                 flow_vars, nodes = cls.load_from_yaml(flow_mxid)
 
         return cls(flow_variables=flow_vars, nodes=nodes)
+
+    async def update_flow(
+        flow_db: FlowDB,
+        incoming_flow: dict | None,
+        flow_vars: dict,
+        nodes: dict,
+        positions: dict,
+        current_tag: TagDB,
+        config: Config,
+        create_backup: bool = True,
+    ) -> None:
+        """
+        Update existing flow with its modules and tags.
+
+        Args:
+            flow_db: Flow database instance to update
+            incoming_flow: New flow structure (None if only updating vars)
+            flow_vars: Flow variables to update
+            nodes: Parsed nodes from incoming_flow
+            positions: Module positions
+            current_tag: Current tag for this flow
+            config: Application config
+            create_backup: Whether to create a backup before updating
+        """
+        if incoming_flow:
+            modules = await DBModule.get_tag_modules(current_tag.id)
+
+            # Update or delete existing modules
+            if modules:
+                for module_obj in modules:
+                    name = module_obj.name
+                    if name not in nodes:
+                        await module_obj.delete()
+                    else:
+                        new_nodes = nodes.get(name, {}).get("nodes", [])
+                        if module_obj.nodes != new_nodes:
+                            module_obj.nodes = new_nodes
+                        nodes.pop(name, None)
+
+                        new_position = positions.pop(name, {})
+                        if module_obj.position != new_position:
+                            module_obj.position = new_position
+
+                        await module_obj.update()
+
+            # Create new modules
+            for name, node in nodes.items():
+                module_obj = DBModule(
+                    flow_id=flow_db.id,
+                    name=name,
+                    nodes=node.get("nodes", []),
+                    position=positions.get(name, {}),
+                    tag_id=current_tag.id,
+                )
+                await module_obj.insert()
+
+            # Create backup if requested and flow changed
+            if create_backup and flow_db.flow != incoming_flow:
+                await flow_db.backup_flow(config)
+
+            flow_db.flow = incoming_flow
+
+        # Update flow and tag
+        flow_db.flow_vars = flow_vars
+        current_tag.flow_vars = flow_vars
+
+        await flow_db.update()
+        await current_tag.update()

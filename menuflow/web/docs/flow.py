@@ -5,6 +5,7 @@ log: Logger = getLogger("menuflow.docs.flow")
 create_or_update_flow_doc = """
     ---
     summary: Creates a new flow or update it if exists.
+    deprecated: true
     tags:
         - Flow
 
