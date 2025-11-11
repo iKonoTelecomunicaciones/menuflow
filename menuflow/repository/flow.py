@@ -109,8 +109,6 @@ class Flow(SerializableAttrs):
         nodes: dict,
         positions: dict,
         current_tag: TagDB,
-        config: Config,
-        create_backup: bool = True,
     ) -> None:
         """
         Update existing flow with its modules and tags.
@@ -156,10 +154,6 @@ class Flow(SerializableAttrs):
                     tag_id=current_tag.id,
                 )
                 await module_obj.insert()
-
-            # Create backup if requested and flow changed
-            if create_backup and flow_db.flow != incoming_flow:
-                await flow_db.backup_flow(config)
 
             flow_db.flow = incoming_flow
 

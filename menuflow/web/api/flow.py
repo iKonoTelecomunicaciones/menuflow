@@ -68,9 +68,11 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
             nodes,
             positions,
             current_tag,
-            config,
-            create_backup=True,
         )
+
+        # Create backup if requested and flow changed
+        if flow.flow and incoming_flow:
+            await flow.backup_flow(config)
 
         if config["menuflow.load_flow_from"] == "database":
             modules = await DBModule.all(int(flow_id))
@@ -369,9 +371,7 @@ async def import_flow(request: web.Request) -> web.Response:
     if not current_tag:
         return resp.not_found(f"Current tag not found for flow {flow_id}", uuid)
 
-    await Flow.update_flow(
-        flow, incoming_flow, variables, nodes, positions, current_tag, config, create_backup=False
-    )
+    await Flow.update_flow(flow, incoming_flow, variables, nodes, positions, current_tag)
 
     return resp.ok(
         {"detail": {"message": "Flow imported successfully", "data": {"flow_id": flow_id}}}, uuid
