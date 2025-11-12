@@ -95,7 +95,8 @@ class FormInput(Input):
         """
 
         if self.room.route.state == RouteState.INPUT:
-            if not evt or not self.variable or evt.content.msgtype != "m.form_response":
+            _variable = self.variable
+            if not evt or not _variable or evt.content.msgtype != "m.form_response":
                 self.log.warning(
                     "A problem occurred getting user response, message type is not m.form_response"
                 )
@@ -105,7 +106,7 @@ class FormInput(Input):
                     await self.timeout_active_chats(inactivity)
                 return
 
-            await self.room.set_variable(self.variable, evt.content.get("form_data"))
+            await self.room.set_variable(_variable, evt.content.get("form_data"))
             o_connection = await self.__update_menu("submitted")
 
             await send_node_event(

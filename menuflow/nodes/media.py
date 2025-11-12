@@ -54,13 +54,14 @@ class Media(Message):
 
     @property
     def info(self) -> MediaInfo:
-        if MessageType.AUDIO == self.message_type:
+        _msg_type = self.message_type
+        if MessageType.AUDIO == _msg_type:
             media_info = AudioInfo(**self.render_data(self.content.get("info", {})))
-        elif MessageType.VIDEO == self.message_type:
+        elif MessageType.VIDEO == _msg_type:
             media_info = VideoInfo(**self.render_data(self.content.get("info", {})))
-        elif MessageType.IMAGE == self.message_type:
+        elif MessageType.IMAGE == _msg_type:
             media_info = ImageInfo(**self.render_data(self.content.get("info", {})))
-        elif MessageType.FILE == self.message_type:
+        elif MessageType.FILE == _msg_type:
             media_info = FileInfo(**self.render_data(self.content.get("info", {})))
         else:
             self.log.warning(
@@ -149,11 +150,12 @@ class Media(Message):
         else:
             request_params_ctx = {}
 
-        resp = await self.session.get(self.url, trace_request_ctx=request_params_ctx)
+        _url = self.url
+        resp = await self.session.get(_url, trace_request_ctx=request_params_ctx)
         content_type = resp.headers.get("Content-Type", "").lower()
 
         self.log.debug(
-            f"node: {self.id} type: media url: {self.url} status: {resp.status} content_type: {content_type}"
+            f"node: {self.id} type: media url: {_url} status: {resp.status} content_type: {content_type}"
         )
 
         if content_type.startswith(
@@ -204,11 +206,13 @@ class Media(Message):
             ext = media_type.split("/")[-1]
             media_name = f"Media.{ext}"
 
+        _text = self.text
+
         return MediaMessageEventContent(
             msgtype=self.message_type,
-            body=self.text,
+            body=_text,
             format=Format.HTML,
-            formatted_body=markdown(text=self.text, extensions=["nl2br"]),
+            formatted_body=markdown(text=_text, extensions=["nl2br"]),
             filename=media_name,
             url=mxc,
             info=media_info,
@@ -220,11 +224,13 @@ class Media(Message):
 
         o_connection = await self.get_o_connection()
         try:
-            media_message = self.media_cache[self.url]
+            _url = self.url
+            media_message = self.media_cache[_url]
 
             ext = media_message.body.split(".")[-1] if "." in media_message.body else ""
-            if media_message.body != f"{self.text}.{ext}":
-                media_message.body = f"{self.text}.{ext}"
+            _text = self.text
+            if media_message.body != f"{_text}.{ext}":
+                media_message.body = f"{_text}.{ext}"
         except KeyError:
             media_message = await self.load_media()
             if media_message is None:
@@ -233,7 +239,7 @@ class Media(Message):
                     state=RouteState.END if not o_connection else None,
                 )
                 return
-            self.media_cache[self.url] = media_message
+            self.media_cache[_url] = media_message
 
         await self.send_message(room_id=self.room.room_id, content=media_message)
 

@@ -76,7 +76,5 @@ class CheckHoliday(Switch):
         """
 
         return self.util.is_holiday(
-            date=date,
-            country_code=self.country,
-            subdivision_code=self.subregion,
+            date=date, country_code=self.country, subdivision_code=self.subregion
         )

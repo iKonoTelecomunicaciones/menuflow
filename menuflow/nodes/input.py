@@ -123,17 +123,16 @@ class Input(Switch, Message):
                 self.log.warning("A problem occurred getting message event.")
                 return
 
-            if self.input_type == MessageType.TEXT:
+            _input_type = self.input_type
+
+            if _input_type == MessageType.TEXT:
                 self.room.set_node_var(content=evt.content.body)
 
                 o_connection = await self.input_text(
                     text=evt.content.body, middlewares_sorted=middlewares_sorted
                 )
-            elif self.input_type == MessageType.IMAGE:
-                if (
-                    self.input_type == evt.content.msgtype
-                    and Middlewares.IRM in middlewares_sorted
-                ):
+            elif _input_type == MessageType.IMAGE:
+                if _input_type == evt.content.msgtype and Middlewares.IRM in middlewares_sorted:
                     await middlewares_sorted[Middlewares.IRM].run(
                         image_mxc=evt.content.url,
                         content_type=evt.content.info.mimetype,
@@ -142,7 +141,7 @@ class Input(Switch, Message):
                     o_connection = await Switch.run(self, generate_event=False)
                 else:
                     o_connection = await self.input_media(content=evt.content)
-            elif self.input_type == MessageType.AUDIO:
+            elif _input_type == MessageType.AUDIO:
                 if (
                     Middlewares.ASR in middlewares_sorted
                     and evt.content.msgtype == MessageType.AUDIO
@@ -159,12 +158,12 @@ class Input(Switch, Message):
                     o_connection = await Switch.run(self=self, generate_event=False)
                 else:
                     o_connection = await self.input_media(content=evt.content)
-            elif self.input_type in [
+            elif _input_type in [
                 MessageType.FILE,
                 MessageType.VIDEO,
             ]:
                 o_connection = await self.input_media(content=evt.content)
-            elif self.input_type == MessageType.LOCATION:
+            elif _input_type == MessageType.LOCATION:
                 o_connection = await self.input_location(content=evt.content)
 
             await send_node_event(
