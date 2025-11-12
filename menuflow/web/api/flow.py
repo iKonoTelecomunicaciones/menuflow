@@ -217,7 +217,8 @@ async def get_flow_nodes(request: web.Request) -> web.Response:
         return resp.not_found(f"Flow with identifier {flow_identifier} not found", uuid)
 
     flow_id = flow.id
-    modules = await DBModule.all(int(flow_id))
+    current_tag = await DBTag.get_current_tag(int(flow_id))
+    modules = await DBModule.get_tag_modules(int(current_tag.id))
     list_nodes = []
 
     if not flow_format and modules:
