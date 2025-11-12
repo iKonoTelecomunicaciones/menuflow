@@ -75,8 +75,8 @@ class GPTAssistant(Switch):
         return self.render_data(self.content.get("group_messages_timeout", 0))
 
     def setup_assistant(self):
-        if self.assistant_id:
-            self.assistant = self.client.beta.assistants.retrieve(self.assistant_id)
+        if _assistant_id := self.assistant_id:
+            self.assistant = self.client.beta.assistants.retrieve(_assistant_id)
         else:
             self.assistant = self.client.beta.assistants.create(
                 name=self.name,
@@ -167,6 +167,8 @@ class GPTAssistant(Switch):
 
         """
 
+        _inactivity = self.inactivity_options
+        _variable = self.variable
         if self.room.route.state == RouteState.INPUT:
             if not messages:
                 self.log.warning("A problem occurred getting message event.")
@@ -178,9 +180,9 @@ class GPTAssistant(Switch):
             if json_str := self.json_in_text(response):
                 response = json.loads(json_str)
 
-            await self.room.set_variable(self.variable, value=response)
+            await self.room.set_variable(_variable, value=response)
 
-            if self.inactivity_options:
+            if _inactivity:
                 await Util.cancel_task(task_name=self.room.room_id)
 
             output = await Switch.run(self, update_state=False, generate_event=False)
@@ -193,24 +195,22 @@ class GPTAssistant(Switch):
             # and the room state is set to input.
             self.log.debug(f"Room {self.room.room_id} enters gpt_assistant node {self.id}")
 
-            if not await self.room.get_variable(self.variable):
-                if self.initial_info:
-                    await self.add_message([self.initial_info])
+            if not await self.room.get_variable(_variable):
+                if _initial_info := self.initial_info:
+                    await self.add_message([_initial_info])
 
                 assistant_resp = await self.run_assistant()
                 response = int(assistant_resp) if assistant_resp.isdigit() else assistant_resp
                 if json_str := self.json_in_text(response):
                     response = json.loads(json_str)
-                await self.room.set_variable(self.variable, value=response)
+                await self.room.set_variable(_variable, value=response)
 
-            message = await self.room.get_variable(self.variable)
+            message = await self.room.get_variable(_variable)
             await self.room.matrix_client.send_text(room_id=self.room.room_id, text=message)
             await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
 
-            if (inactivity := self.inactivity_options) and not Util.get_tasks_by_name(
-                task_name=self.room.room_id
-            ):
-                await self.timeout_active_chats(inactivity)
+            if _inactivity and not Util.get_tasks_by_name(task_name=self.room.room_id):
+                await self.timeout_active_chats(_inactivity)
 
     async def timeout_active_chats(self, inactivity: dict):
         """It sends messages in time intervals to communicate customer

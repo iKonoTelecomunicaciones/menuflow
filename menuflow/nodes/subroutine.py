@@ -30,10 +30,10 @@ class Subroutine(Base):
         lifo_stack: LifoQueue = self.room.route._stack
         stack: Dict = json.loads(self.room.route.stack)
         last_node = None
+        _go_sub = self.go_sub
 
         try:
-            go_sub = self.go_sub
-            if not go_sub:
+            if not _go_sub:
                 self.log.warning(
                     f"The go_sub value in {self.id} not found. Please check the configuration"
                 )
@@ -61,8 +61,8 @@ class Subroutine(Base):
 
         # Update the menu
         if not lifo_stack.empty() and last_node != self.id:
-            self.log.debug(f"Go to subroutine: '{self.go_sub}'")
-            await self.room.update_menu(node_id=self.go_sub)
+            self.log.debug(f"Go to subroutine: '{_go_sub}'")
+            await self.room.update_menu(node_id=_go_sub)
 
         # If the stack is empty, o finished subroutine go to the next node
         o_connection = self.render_data(self.content.get("o_connection", ""))

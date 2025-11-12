@@ -69,15 +69,16 @@ class Message(Base):
         if self.id == RouteState.START.value and self.room.route.state != RouteState.START:
             await self.room.route.clean_up(update_state=False, preserve_constants=True)
 
-        if not self.text:
+        _text = self.text
+        if not _text:
             self.log.warning(f"The message {self.id} hasn't been send because the text is empty")
         else:
             # Add nl2br extension to markdown to convert new lines to <br> tags
             msg_content = TextMessageEventContent(
                 msgtype=self.message_type,
-                body=self.text,
+                body=_text,
                 format=Format.HTML,
-                formatted_body=markdown(text=self.text, extensions=["nl2br"]),
+                formatted_body=markdown(text=_text, extensions=["nl2br"]),
             )
 
             try:

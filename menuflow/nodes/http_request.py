@@ -122,13 +122,14 @@ class HTTPRequest(Switch):
         else:
             request_params_ctx = {}
 
+        _url = self.url
         try:
             exception, status = None, 500
             timeout_config = self.config["menuflow.timeouts.http_request"]
             timeout = ClientTimeout(total=timeout_config)
             response = await self.session.request(
                 self.method,
-                self.url,
+                _url,
                 **request_body,
                 trace_request_ctx=request_params_ctx,
                 timeout=timeout,
@@ -136,7 +137,7 @@ class HTTPRequest(Switch):
         except asyncio.TimeoutError:
             exception, status = "TimeoutError", 408
             self.log.warning(
-                f"Request timeout after {timeout_config}s [method: {self.method}] [url: {self.url}]"
+                f"Request timeout after {timeout_config}s [method: {self.method}] [url: {_url}]"
             )
         except Exception as e:
             exception, status = e, 500
@@ -148,7 +149,7 @@ class HTTPRequest(Switch):
             return status, exception, o_connection
 
         self.log.debug(
-            f"node: {self.id} method: {self.method} url: {self.url} status: {response.status}"
+            f"node: {self.id} method: {self.method} url: {_url} status: {response.status}"
         )
 
         if response.status >= 400:
@@ -180,8 +181,9 @@ class HTTPRequest(Switch):
         except ContentTypeError:
             response_data = await response.text()
 
-        if isinstance(response_data, (dict, list, str)) and self.http_variables:
-            for variable in self.http_variables:
+        _http_variables = self.http_variables
+        if isinstance(response_data, (dict, list, str)) and _http_variables:
+            for variable in _http_variables:
                 if isinstance(response_data, str):
                     try:
                         variables[variable] = self.render_data(response_data)
@@ -193,21 +195,19 @@ class HTTPRequest(Switch):
                     if not self.default_variables.get("flow").get("jq_syntax"):
                         try:
                             data_match = []
-                            expr = parse(self.http_variables[variable])
+                            expr = parse(_http_variables[variable])
                             data_match: list = [match.value for match in expr.find(response_data)]
                         except Exception as error:
                             self.log.error(
-                                f"""Error parsing '{self.http_variables[variable]}' with jsonpath
+                                f"""Error parsing '{_http_variables[variable]}' with jsonpath
                                 on variable '{variable}'. Set to default value ({default_value}).
                                 Error message: {error}"""
                             )
                     else:
-                        jq_result: dict = Util.jq_compile(
-                            self.http_variables[variable], response_data
-                        )
+                        jq_result: dict = Util.jq_compile(_http_variables[variable], response_data)
                         if jq_result.get("status") != 200:
                             self.log.error(
-                                f"""Error parsing '{self.http_variables[variable]}' with jq
+                                f"""Error parsing '{_http_variables[variable]}' with jq
                                 on variable '{variable}'. Set to default value ({default_value}).
                                 Error message: {jq_result.get("error")}, Status: {jq_result.get("status")}"""
                             )
