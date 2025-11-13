@@ -10,6 +10,7 @@ from ..events.event_generator import send_node_event
 from ..repository import Message as MessageModel
 from ..room import Room
 from ..utils import Nodes
+from ..utils.flags import RenderFlags
 from .base import Base
 
 
@@ -42,7 +43,7 @@ class Message(Base):
 
     @property
     def text(self) -> str:
-        return self.render_data(data=self.content.get("text", ""))
+        return self.render_data(data=self.content.get("text", ""), flags=RenderFlags.REMOVE_QUOTES)
 
     @property
     async def o_connection(self) -> str:

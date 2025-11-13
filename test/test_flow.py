@@ -36,6 +36,7 @@ class TestFlow:
                 "bool_str": "true",
                 "none_str": "None",
                 "none": None,
+                "multiple_lines": "line 1\nline 2\nline 3",
             },
         }
 

@@ -11,6 +11,7 @@ from ..events.event_generator import send_node_event
 from ..repository import HTTPRequest as HTTPRequestModel
 from ..room import Room
 from ..utils import Nodes, Util
+from ..utils.flags import RenderFlags
 from .switch import Switch
 
 if TYPE_CHECKING:
@@ -68,7 +69,7 @@ class HTTPRequest(Switch):
         body = self.content.get("json", "")
         if isinstance(body, dict):
             body = json.dumps(body)
-        return self.render_data(body)
+        return self.render_data(body, flags=RenderFlags.CUSTOM_ESCAPE | RenderFlags.LITERAL_EVAL)
 
     @property
     def context_params(self) -> dict[str, str]:
