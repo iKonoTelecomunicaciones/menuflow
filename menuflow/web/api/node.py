@@ -6,6 +6,7 @@ from aiohttp import web
 
 from ...db.flow import Flow as DBFlow
 from ...db.module import Module as DBModule
+from ...db.tag import Tag as DBTag
 from ...utils import convert_to_bool
 from ..base import routes
 from ..docs.node import get_node_doc, get_node_list_doc
@@ -57,7 +58,8 @@ async def get_node_list(request: web.Request) -> web.Response:
         if not await DBFlow.check_exists(flow_id):
             return resp.not_found(f"Flow with ID {flow_id} not found in the database", uuid)
 
-        modules = await DBModule.all(flow_id)
+        current_tag = await DBTag.get_current_tag(int(flow_id))
+        modules = await DBModule.get_tag_modules(int(current_tag.id))
 
         node_list = []
         for module in modules:
