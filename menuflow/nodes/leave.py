@@ -17,6 +17,6 @@ class Leave(Base):
         return self.render_data(data=self.content.get("reason", ""))
 
     async def run(self):
-        self.log.debug(f"Room {self.room.room_id} enters leave node {self.id}")
+        self.log.debug(f"[{self.room.room_id}] Entering leave node {self.id}")
         await self.room.matrix_client.leave_room(self.room.room_id, self.reason)
         await self.room.update_menu(node_id=None, state=RouteState.END)
