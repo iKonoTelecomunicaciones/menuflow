@@ -159,13 +159,15 @@ async def import_module(request: web.Request) -> web.Response:
     try:
         original_name = data.get("name")
         log.debug(f"({uuid}) -> Importing module '{original_name}' into flow_id '{flow_id}'")
-        
-        module_id, final_name, node_id_mapping, processed_nodes = await ModuleRepository.create_module(
-            flow_id=flow_id,
-            name=original_name,
-            nodes=data.get("nodes", []),
-            position=data.get("position", {}),
-            allow_duplicates=True,
+
+        module_id, final_name, node_id_mapping, processed_nodes = (
+            await ModuleRepository.create_module(
+                flow_id=flow_id,
+                name=original_name,
+                nodes=data.get("nodes", []),
+                position=data.get("position", {}),
+                allow_duplicates=True,
+            )
         )
     except Exception as e:
         return resp.server_error(str(e), uuid)

@@ -107,7 +107,7 @@ class Module(SerializableAttrs):
         current_tag = await cls.get_current_tag(flow_id)
         if not module_id:
             q = "SELECT EXISTS(SELECT 1 FROM module WHERE name=$1 AND tag_id=$2)"
-            return await cls.db.fetchval(q, name, current_tag["id"])    
+            return await cls.db.fetchval(q, name, current_tag["id"])
         else:
             q = "SELECT EXISTS(SELECT 1 FROM module WHERE name=$1 AND tag_id=$2 AND id!=$3)"
             return await cls.db.fetchval(q, name, current_tag["id"], module_id)

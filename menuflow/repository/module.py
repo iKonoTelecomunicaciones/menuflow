@@ -69,7 +69,9 @@ class ModuleRepository:
                     )
 
                 counter = 1
-                while await DBModule.get_node_by_id(flow_id, f"{original_node_id}_{counter}", False):
+                while await DBModule.get_node_by_id(
+                    flow_id, f"{original_node_id}_{counter}", False
+                ):
                     counter += 1
                 new_node_id = f"{original_node_id}_{counter}"
 
@@ -77,13 +79,13 @@ class ModuleRepository:
             if new_node_id != original_node_id:
                 # Extract the suffix from the new_node_id
                 suffix = new_node_id.replace(original_node_id, "")
-                
+
                 new_node["id"] = new_node_id
-                
+
                 # Also update the name field with the same suffix
                 if original_node_name:
                     new_node["name"] = f"{original_node_name}{suffix}"
-                
+
                 node_id_mapping[original_node_id] = new_node_id
                 log.debug(
                     f"Renamed node '{original_node_id}' to '{new_node_id}' "
@@ -99,7 +101,9 @@ class ModuleRepository:
         return processed_nodes, node_id_mapping
 
     @staticmethod
-    def _update_node_references(nodes: List[Dict[str, Any]], node_id_mapping: Dict[str, str]) -> None:
+    def _update_node_references(
+        nodes: List[Dict[str, Any]], node_id_mapping: Dict[str, str]
+    ) -> None:
         """
         Update internal node references to point to renamed nodes.
 
