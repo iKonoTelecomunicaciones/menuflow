@@ -159,11 +159,13 @@ class Base:
             # If the stack is not empty, get the last node from the stack
             if not self.room.route._stack.empty() and self.type != "subroutine":
                 self.log.debug(
-                    f"Getting o_connection from route stack: {self.room.route._stack.queue}"
+                    f"[{self.room.room_id}] Getting o_connection from route stack: {self.room.route._stack.queue}"
                 )
                 o_connection = self.room.route._stack.get(timeout=3)
 
         if o_connection:
-            self.log.info(f"Go to o_connection node in [{self.id}]: '{o_connection}'")
+            self.log.info(
+                f"[{self.room.room_id}] Go to o_connection node in [{self.id}]: '{o_connection}'"
+            )
 
         return o_connection
