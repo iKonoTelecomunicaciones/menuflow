@@ -117,6 +117,84 @@ create_module_doc = f"""
             $ref: '#/components/responses/InternalServerError'
   """
 
+import_module_doc = f"""
+    ---
+    summary: Import a module with automatic duplicate handling.
+    description: |
+        Import a module:
+        - If the module name exists, appends _1, _2, etc. until unique
+        - If node IDs exist in the flow, appends _1, _2, etc. until unique
+        - Node names are also renamed with the same suffix as their IDs
+        - Updates internal node references (o_connection) to point to renamed nodes
+    tags:
+        - Module
+
+    parameters:
+        - name: flow_id
+          in: path
+          required: true
+          description: The ID of the flow to import the module into.
+          schema:
+            type: integer
+
+    requestBody:
+        required: true
+        content:
+            application/json:
+                schema:
+                    type: object
+                    properties:
+                        name:
+                            type: string
+                            description: The name of the module (will be auto-renamed if duplicate).
+                        nodes:
+                            type: array
+                            items:
+                                type: object
+                        position:
+                            type: object
+                    required:
+                        - name
+                example:
+                    {Util.parse_template_indent(template_body_create, 20)}
+    responses:
+        '201':
+            description: Module imported successfully
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            detail:
+                                type: object
+                                properties:
+                                    message:
+                                        type: string
+                                    data:
+                                        type: object
+                                        properties:
+                                            module_id:
+                                                type: integer
+                                            original_name:
+                                                type: string
+                                            imported_name:
+                                                type: string
+                                            renamed_nodes:
+                                                type: object
+                                                description: Mapping of original node IDs to new node IDs
+                                            nodes:
+                                                type: array
+                                                description: The processed list of nodes with renamed IDs and names
+                                                items:
+                                                    type: object
+        '400':
+            $ref: '#/components/responses/CreateModuleBadRequest'
+        '404':
+            $ref: '#/components/responses/CreateModuleNotFound'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
+  """
+
 update_module_doc = f"""
     ---
     summary: Update an existing module.
