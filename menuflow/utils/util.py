@@ -54,7 +54,7 @@ class Util:
         "\r": "@@@CR@@@",
         "\t": "@@@TAB@@@",
         "\\": "@@@BSL@@@",
-    } # fmt: skip
+    }  # fmt: skip
 
     def __init__(self, config: Config):
         self.config = config
