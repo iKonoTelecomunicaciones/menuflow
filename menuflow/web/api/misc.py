@@ -14,6 +14,7 @@ from ...db.route import Route as DBRoute
 from ...flow_utils import FlowUtils
 from ...jinja.env import jinja_env
 from ...utils.errors import GettingDataError
+from ...utils.flags import RenderFlags
 from ...utils.util import Util as Utils
 from ..base import get_config, get_flow_utils, routes
 from ..responses import resp
@@ -179,14 +180,14 @@ async def render_data(request: web.Request) -> web.Response:
                             type: string
                             description: The ID of the room that will be used in the template to obtain its variables.
                             example: "!room:example.com"
-                        old_render:
-                            type: boolean
-                            description: If true, the old render data will be added to the response
-                            example: true
                         string_format:
                             type: boolean
                             description: If true, the new render data will be returned as a string
                             example: true
+                        flags:
+                            type: string
+                            description: The flags to be used in the rendering, in `yaml` or `json` format
+                            example: "{'REMOVE_QUOTES': true, 'LITERAL_EVAL': true, 'CONVERT_TO_TYPE': true, 'CUSTOM_ESCAPE': false}"
                     required:
                         - template
     responses:
@@ -210,8 +211,29 @@ async def render_data(request: web.Request) -> web.Response:
     template = data.get("template")
     variables = data.get("variables")
     room_id = data.get("room_id")
-    old_render = Utils.convert_to_type(data.get("old_render", False))
-    string_format = Utils.convert_to_type(data.get("string_format", False))
+    string_format = data.get("string_format", False)
+    flags = data.get(
+        "flags",
+        {
+            "REMOVE_QUOTES": True,
+            "LITERAL_EVAL": True,
+            "CONVERT_TO_TYPE": True,
+            "CUSTOM_ESCAPE": False,
+        },
+    )
+
+    try:
+        flags = yaml.safe_load(flags)
+    except Exception as e:
+        pass
+    finally:
+        if not isinstance(flags, dict):
+            return resp.bad_request("The format of the flags is not valid", trace_id)
+
+    _flags = RenderFlags.RETURN_ERRORS
+    for flag, enabled in flags.items():
+        if enabled is True:
+            _flags |= getattr(RenderFlags, flag)
 
     log.info(f"({trace_id}) -> Checking jinja template with data: {data}")
 
@@ -256,7 +278,11 @@ async def render_data(request: web.Request) -> web.Response:
                 return resp.bad_request("The format of the variables is not valid", trace_id)
 
     try:
-        new_render_data = Utils.render_data(template, dict_variables, return_errors=True)
+        if RenderFlags.CUSTOM_ESCAPE in _flags:
+            dict_variables, changed = Utils.custom_escape(dict_variables, escape=False)
+            _flags = _flags | RenderFlags.CUSTOM_UNESCAPE if changed else _flags
+
+        new_render_data = Utils.recursive_render(template, dict_variables, flags=_flags)
     except Exception as e:
         return resp.server_error(str(e), trace_id)
 
@@ -264,16 +290,6 @@ async def render_data(request: web.Request) -> web.Response:
         "rendered": new_render_data,
         **({"string_format": str(new_render_data)} if string_format else {}),
     }
-
-    if old_render:
-        try:
-            old_render_data = Utils.old_render_data(template, dict_variables)
-        except Exception as e:
-            old_render_data = str(e)
-
-        response.update(
-            {"old_render_data": old_render_data, "equal": new_render_data == old_render_data}
-        )
 
     return resp.ok(response, trace_id)
 

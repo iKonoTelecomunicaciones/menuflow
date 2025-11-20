@@ -1,6 +1,8 @@
 import nest_asyncio
 import pytest
 
+from menuflow.utils.flags import RenderFlags
+
 nest_asyncio.apply()
 
 from menuflow.nodes import Base, convert_to_bool
@@ -42,80 +44,125 @@ def scope_variables() -> dict:
 
 class TestBase:
     @pytest.mark.asyncio
-    async def test_render_data(self, base: Base):
-        """It takes a string, list, or dictionary and replaces any string that matches a key in
-        the `base.data` dictionary with the value of that key
-        """
+    async def test_render_data_string(self, base: Base):
+        """It takes a string with jinja variables and renders it"""
+
+        scope_vars = scope_variables()
+        await base.room.set_variables(scope_vars)
+        await base.room.set_variables({"msg": "Hello\nWorld"})
+
+        assert "Hello\nWorld" == base.render_data("{{ route.msg }}")
+
+        # Simple strings
+        assert "🙂" == base.render_data("\U0001f642")
+        assert "<Hello, World>" == base.render_data("<Hello, World>")
+        assert "“Hello World”" == base.render_data("“Hello World”") # fmt: skip
+        assert "Hello \"World" == base.render_data("Hello \"World") # fmt: skip
+        assert "Hello \\\"World" == base.render_data("Hello \\\"World") # fmt: skip
+        assert "Hello \rWorld" == base.render_data("Hello \rWorld")
+        assert "Hello \nWorld" == base.render_data("Hello \nWorld")
+
+        # Jinja variables
+        assert "https://catfact.ninja/fact" == base.render_data("{{ flow.cat_fatc_url }}")
+        assert "0030" == base.render_data("{{ route.code }}")
+        assert "1000.00" == base.render_data("{{ route.balance }}")
+        assert "10 " == base.render_data("{{ flow.counter }} ")
+        assert "010" == base.render_data("0{{ flow.counter }}")
+        assert " 10" == base.render_data(" {{ flow.counter }}")
+        assert base.render_data("{{ flow.bool }}") is True
+        assert base.render_data("{{ flow.bool_str }}") is True
+        assert "https://catfact.ninja/fact/87684525412/61481488798" == base.render_data(
+            "{{ flow.cat_fatc_url }}/{{ flow.number }}/{{ flow.str_number }}"
+        )
+        assert "line 1\nline 2\nline 3" == base.render_data("{{ flow.multiple_lines }}")
+
+    @pytest.mark.asyncio
+    async def test_render_data_dict(self, base: Base):
+        """It takes a dictionary and renders it"""
 
         scope_vars = scope_variables()
         await base.room.set_variables(scope_vars)
 
-        assert "https://catfact.ninja/fact" == base.render_data("{{ flow.cat_fatc_url }}")
-        assert ["https://catfact.ninja/fact", "", "Foo"] == base.render_data(
-            ["{{ flow.cat_fatc_url }}", "{{ foo }}", "Foo"]
-        )
-        assert {
-            "foo": "https://catfact.ninja/fact",
-            "bar": "",
-        } == base.render_data(
-            {
-                "foo": "{{ flow.cat_fatc_url }}",
-                "bar": "{{ foo }}",
-            }
-        )
-
-        assert {"key": "value"} == base.render_data("{'key': 'value'}")
-
-        assert "0030" == base.render_data("{{ route.code }}")
-        assert None == base.render_data("{{ route.empty }}")
-        assert None == base.render_data("{{ route.empty_str }}")
-        assert 1.8 == base.render_data("{{ route.height }}")
-        assert "1000.00" == base.render_data("{{ route.balance }}")
-        assert False == base.render_data("{{ route.bool }}")
-        assert False == base.render_data("{{ route.bool_str }}")
-        assert ["Luffy", "1", 2, 0.77, True] == base.render_data("{{ route.list }}")
-        assert 0.02 == base.render_data("{{ route.milliseconds }}")
-
-        assert "61481488798" == base.render_data("'{{ flow.str_number }}'")
-        assert {"number": "{{ flow.number }"} == base.render_data({"number": "{{ flow.number }"})
-        assert 10 == base.render_data("{{ flow.counter }}")
-        assert "10" == base.render_data("'{{ flow.counter }}'")
-        assert "10" == base.render_data("{{ flow.counter | string | to_json}}")
-        assert "010" == base.render_data("0{{ flow.counter }}")
-        assert " 10" == base.render_data(" {{ flow.counter }}")
-        assert True == base.render_data("{{ '1' | bool }}")
-        assert "10 " == base.render_data("{{ flow.counter }} ")
-        assert "https://catfact.ninja/fact/87684525412/61481488798" == base.render_data(
-            "{{ flow.cat_fatc_url }}/{{ flow.number }}/{{ flow.str_number }}"
-        )
-        assert {"key": "value"} == base.render_data("{{ flow.dictionary }}")
-        assert True == base.render_data("{{ flow.bool }}")
-        assert True == base.render_data("{{ flow.bool | bool }}")
-
-        assert True == base.render_data("{{ flow.bool_str }}")
-        assert "True" == base.render_data('"{{ flow.bool }}"')
-
-        assert "true" == base.render_data('"{{ flow.bool_str }}"')
-        assert None == base.render_data("{{ flow.none_str }}")
-        assert None == base.render_data("{{ flow.none }}")
-
-        assert None == base.render_data("None")
-        assert None == base.render_data("none")
-        assert True == base.render_data("True")
-        assert True == base.render_data("true")
-        assert False == base.render_data("False")
-        assert False == base.render_data("false")
-        assert 1 == base.render_data("1")
-        assert 1.0 == base.render_data("1.0")
-
-        assert ["admin", "user"] == base.render_data("[\"admin\", \"user\"]") # fmt: skip
+        # Simple dictionaries
         assert {"key": "value"} == base.render_data("{\n  \"key\": \"value\"\n}") # fmt: skip
         assert {"key": "value ñ"} == base.render_data("{\n  \"key\": \"value ñ\"\n}") # fmt: skip
         assert {"key": "🙂"} == base.render_data("{\n  \"key\": \"🙂\"\n}") # fmt: skip
         assert {"emoji": "🙂"} == base.render_data("{\n  \"emoji\": \"\U0001f642\"\n}") # fmt: skip
-        assert "🙂" == base.render_data("\U0001f642")
+        assert {"key": "value\nData"} == base.render_data("{\n  \"key\": \"value\\nData\"\n}") # fmt: skip
+        assert {"key": "value"} == base.render_data("{'key': 'value'}")
+
+        # Jinja variables
+        assert {"key": "value"} == base.render_data("{{ flow.dictionary }}")
+        assert {"number": "{{ flow.number }"} == base.render_data({"number": "{{ flow.number }"})
+        assert {"foo": "https://catfact.ninja/fact", "bar": ""} == base.render_data(
+            {"foo": "{{ flow.cat_fatc_url }}", "bar": "{{ foo }}"}
+        )
+
+    @pytest.mark.asyncio
+    async def test_render_data_list(self, base: Base):
+        scope_vars = scope_variables()
+        await base.room.set_variables(scope_vars)
+
+        # Simple lists
+        assert ["admin", "user"] == base.render_data("[\"admin\", \"user\"]") # fmt: skip
         assert [True, False] == base.render_data("[True, False]")
-        assert [True, False] == base.render_data(["true", "false"])
+
+        # Jinja variables
+        assert ["Luffy", "1", 2, 0.77, True] == base.render_data("{{ route.list }}")
+        assert ["https://catfact.ninja/fact", "", "Foo"] == base.render_data(
+            ["{{ flow.cat_fatc_url }}", "{{ foo }}", "Foo"]
+        )
+
+    @pytest.mark.asyncio
+    async def test_render_data_bool_none(self, base: Base):
+        scope_vars = scope_variables()
+        await base.room.set_variables(scope_vars)
+
+        # Simple strings
+        assert base.render_data("None") is None
+        assert base.render_data("none") is None
+
+        assert base.render_data("True") is True
+        assert base.render_data("true") is True
+        assert base.render_data("False") is False
+        assert base.render_data("false") is False
+
+        # Jinja variables
+        assert base.render_data("{{ route.bool }}") is False
+        assert base.render_data("{{ route.bool_str }}") is False
+        assert base.render_data("{{ '1' | bool }}") is True
+        assert base.render_data("{{ flow.bool }}") is True
+        assert base.render_data("{{ flow.bool | bool }}") is True
+        assert base.render_data("{{ flow.bool_str }}") is True
+
+        assert base.render_data("{{ route.empty }}") is None
+        assert base.render_data("{{ route.empty_str }}") is None
+        assert base.render_data("{{ flow.none_str }}") is None
+        assert base.render_data("{{ flow.none }}") is None
+
+    @pytest.mark.asyncio
+    async def test_render_data_numeric(self, base: Base):
+        scope_vars = scope_variables()
+        await base.room.set_variables(scope_vars)
+
+        # Simple strings
+        assert 1 == base.render_data("1")
+        assert 1.0 == base.render_data("1.0")
+
+        # Jinja variables
+        assert 1.8 == base.render_data("{{ route.height }}")
+        assert 0.02 == base.render_data("{{ route.milliseconds }}")
+        assert 10 == base.render_data("{{ flow.counter }}")
+        assert 61481488798 == base.render_data("{{ flow.str_number }}")
+
+        assert "61481488798" == base.render_data("'{{ flow.str_number }}'")
+
+    @pytest.mark.asyncio
+    async def test_render_data_stringify(self, base: Base):
+        assert {"key": "line 1\nline 2\nline 3"} == base.render_data(
+            "{\n  \"key\": \"{{ flow.multiple_lines }}\"}",
+            flags=RenderFlags.CUSTOM_ESCAPE | RenderFlags.LITERAL_EVAL
+        ) # fmt: skip
 
     def test_render_complex_data(self, base: Base):
         """
@@ -173,13 +220,30 @@ class TestBase:
                 "bool_str": "true",
                 "none_str": "None",
                 "none": None,
+                "multiple_lines": "line 1\nline 2\nline 3",
             },
         } == base.render_data(
-            {
-                "Cat_name": "{{ flow.cat_name }}",
-                "Foo": ["bar", "foo"],
-                "flow_variables": "{{ flow }}",
-            }
+            """
+{
+    "Cat_name": "{{ flow.cat_name }}",
+    "Foo": ["bar", "foo"],
+    "flow_variables": {{ flow }},
+}""",
+            flags=RenderFlags.CUSTOM_ESCAPE | RenderFlags.LITERAL_EVAL,
+        )
+
+        assert {
+            "Cat_name": "Luffy",
+            "Foo": ["bar", "foo"],
+            "multiple_lines": "line 1\nline 2\nline 3",
+        } == base.render_data(
+            """
+{
+    "Cat_name": "{{ flow.cat_name }}",
+    "Foo": ["bar", "foo"],
+    "multiple_lines": "{{ flow.multiple_lines }}"
+}""",
+            flags=RenderFlags.CUSTOM_ESCAPE | RenderFlags.LITERAL_EVAL,
         )
 
     @pytest.mark.asyncio
@@ -195,7 +259,6 @@ class TestBase:
             "Cat_name": "{{ flow.cat_name }}",
             "Foo": ["bar", "foo"],
             "number": "{{ route.number }}",
-            "string_number": "'{{ route.string_number }}'",
             "accounts": [
                 {
                     "account_id": 1,
@@ -210,25 +273,12 @@ class TestBase:
             ],
         }
 
-        # Set the scope variables
-        await base.room.set_variables(scope_vars)
+        test_data = await self.config_variables(base, scope_vars, data)
 
-        # Render the data
-        data_rendered = base.render_data(data)
-
-        # Save the rendered data to the route variable
-        await base.room.set_variable("test_data", data_rendered)
-
-        # Get the test data in route variable
-        test_data = await base.room.get_variable("test_data")
-
-        # Verify that the test data is saved correctly
-        assert test_data == data_rendered
         assert test_data.get("accounts")[0].get("rooms")[0] == base.render_data(
             "{{ route.customer_room_id }}"
         )
-        assert scope_vars.get("route.string_number") == test_data.get("string_number")
-        assert scope_vars.get("route.number") == test_data.get("number")
+        assert f'{scope_vars.get("route.number")}' == test_data.get("number")
 
     @pytest.mark.asyncio
     async def test_crud_variables(self, base: Base):
@@ -382,7 +432,7 @@ class TestBase:
         assert await base.room.get_variable("users") == {}
 
     @pytest.mark.asyncio
-    async def test_body_str(self, base: Base):
+    async def test_render_data_body_str(self, base: Base):
         """
         It test if a route variable can save a body as a string
         and if it correctly replaces the placeholders with the corresponding values.
@@ -392,7 +442,7 @@ class TestBase:
             "roles": ["admin", "user"],
             "roles_str": "[\"admin\", \"user\"]", # fmt: skip
             "active": True,
-            "name": "\\n \ud83d\ude42\u00d1\u00f1John Doe",
+            "name": "\n \ud83d\ude42\u00d1\u00f1John Doe",
             "address": {
                 "street": "\t123 Main St",
                 "data": '🙂 Hello\n"letter ñ"\\',
@@ -401,25 +451,104 @@ class TestBase:
             },
         }
 
-        data = """{\n  \"name\": \"{{ route.name }}\",\n  \"age\": {{ route.age }},\n  \"active\": {{ route.active }},\n\n  \"roles\": [\n    {% for rol in route.roles %}\n\"{{ rol }}\"{% if not loop.last %},{% endif %}\n    {% endfor %}\n  ],\n\n  \"address\": {\n    \"street\": \"{{ route.address.street }}\",\n    \"data\": \"🙂 Hello\\n\\\"letter ñ\\\"\\\\\",\n    \"city\": \"{{ route.address.city }}\",\n    \"zip_code\": \"{{ route.address.zip_code }}\"\n  },\n  \"flow_name\" : {{ flow.name | quote}}\n}"""
+        data = """{\n  \"name\": \"{{ route.name }}\",\n  \"age\": {{ route.age }},\n  \"active\": {{ route.active }},\n\n  \"roles\": [\n    {% for rol in route.roles %}\n\"{{ rol }}\"{% if not loop.last %},{% endif %}\n    {% endfor %}\n  ],\n\n  \"address\": {\n    \"street\": \"{{ route.address.street }}\",\n    \"data\": \"🙂 Hello\\n\\\"letter ñ\\\"\\\\\",\n    \"city\": \"{{ route.address.city }}\",\n    \"zip_code\": \"{{ route.address.zip_code }}\"\n  },\n  \"flow_name\" : \"{{ flow.name }}\"\n}"""
 
-        # Set the scope variables
-        await base.room.set_variables(scope_vars)
+        test_data = await self.config_variables(
+            base, scope_vars, data, flags=RenderFlags.CUSTOM_ESCAPE | RenderFlags.LITERAL_EVAL
+        )
 
-        # Render the data
-        data_rendered = base.render_data(data)
-
-        # Save the rendered data to the route variable
-        await base.room.set_variable("test_data", data_rendered)
-
-        # Get the test data in route variable
-        test_data = await base.room.get_variable("test_data")
-
-        # Verify that the test data is saved correctly
-        assert test_data == data_rendered
         assert "\n 🙂ÑñJohn Doe" == test_data.get("name")
         assert scope_vars.get("age") == test_data.get("age")
         assert scope_vars.get("active") == test_data.get("active")
         assert scope_vars.get("roles") == test_data.get("roles")
         assert scope_vars.get("address") == test_data.get("address")
         assert '🙂 Hello\n"letter ñ"\\' == test_data.get("address").get("data")
+        assert ["admin", "user"] == test_data.get("roles")
+        assert "\t123 Main St" == test_data.get("address").get("street")
+        assert "Anytown" == test_data.get("address").get("city")
+        assert "12345" == test_data.get("address").get("zip_code")
+        assert "" == test_data.get("flow_name")
+
+    @pytest.mark.asyncio
+    async def test_render_data_opt_in(self, base: Base):
+        """
+        It test if a route variable can save a opt_in as a string
+        and if it correctly replaces the placeholders with the corresponding values.
+        """
+        scope_vars = {
+            "route.customer_mxid": "@mxwa_573009091234:darknet",
+            "route.account_type_id": 1,
+            "route.account_type_id_str": "1",
+        }
+
+        opt_in_body = """{
+  "accounts": [
+    {
+      "label": "Created by menuflow",
+      "identifier": "{{ route.customer_mxid | user_bridge_account_id }}",
+      "account_type_id": {{ route.account_type_id }},
+      "account_type_id_str": "{{ route.account_type_id_str }}",
+      "account_type_id_int": "{{ route.account_type_id }}"
+
+    }
+  ]
+}"""
+
+        test_data = await self.config_variables(
+            base,
+            scope_vars,
+            opt_in_body,
+            flags=RenderFlags.CUSTOM_ESCAPE | RenderFlags.LITERAL_EVAL,
+        )
+
+        # Verify that the test data is saved correctly
+        assert "Created by menuflow" == test_data.get("accounts")[0].get("label")
+        assert "573009091234" == test_data.get("accounts")[0].get("identifier")
+        assert 1 == test_data.get("accounts")[0].get("account_type_id")
+        assert "1" == test_data.get("accounts")[0].get("account_type_id_str")
+        assert "1" == test_data.get("accounts")[0].get("account_type_id_int")
+
+    @pytest.mark.asyncio
+    async def config_variables(
+        self,
+        base: Base,
+        scope_vars: dict,
+        data: dict,
+        flags: RenderFlags = RenderFlags.REMOVE_QUOTES
+        | RenderFlags.LITERAL_EVAL
+        | RenderFlags.CONVERT_TO_TYPE,
+    ):
+        # Set the scope variables
+        await base.room.set_variables(scope_vars)
+
+        # Render the data
+        data_rendered = base.render_data(data, flags=flags)
+
+        # Save the rendered data to the route variable
+        await base.room.set_variable("test_data", data_rendered)
+
+        # Get the test data in route variable
+        return await base.room.get_variable("test_data")
+
+    @pytest.mark.asyncio
+    async def test_render_data_message_text(self, base: Base):
+        scope_vars = {
+            "route.name": "John",
+            "route.lastname": "Doe",
+            "route.input_test": "10: Option 10\n11: Option 11",
+        }
+
+        message_text = """
+🚀 Hello {{ route.name }}, {{ route.lastname }}: 🚀
+
+**1**: Hello 🏢
+**2**: exit option
+{{ route.input_test }}
+"""
+
+        test_data = await self.config_variables(base, scope_vars, message_text)
+
+        assert (
+            "\n🚀 Hello John, Doe: 🚀\n\n**1**: Hello 🏢\n**2**: exit option\n10: Option 10\n11: Option 11"
+            == f"{test_data}"
+        )

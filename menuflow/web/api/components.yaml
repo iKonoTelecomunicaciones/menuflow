@@ -515,15 +515,9 @@ components:
           type: string
         string_format:
           type: string
-        old_render:
-          type: string
-        equal:
-          type: boolean
       example:
         rendered: "Hello world!"
         string_format: "Hello world!"
-        old_render: "Hello world!"
-        equal: true
 
     InvalidVariablesFormat:
       allOf:
@@ -668,6 +662,10 @@ components:
               value:
                 detail:
                   message: Template is required
+            InvalidFlagsFormat:
+              value:
+                detail:
+                  message: The format of the flags is not valid
     RoomIDNotFound:
       description: Room ID not found.
       content:
