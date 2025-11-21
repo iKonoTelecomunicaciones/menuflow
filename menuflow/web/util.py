@@ -180,7 +180,8 @@ class Util:
             await Util.wait_until_no_tasks(
                 prefix="inactivity_restored_", metadata={"bot_mxid": client.id}
             )
-            await client.matrix_handler.create_inactivity_tasks()
+            if config["menuflow.inactivity_options.recreate_on_save_flow"]:
+                await client.matrix_handler.create_inactivity_tasks()
 
     @staticmethod
     async def wait_until_no_tasks(prefix: str, check_interval=0.3, metadata: dict = None) -> None:
@@ -189,10 +190,10 @@ class Util:
         count = 0
         while True:
             tasks = [
-                t
-                for t in asyncio.all_tasks()
-                if t.get_name().startswith(prefix)
-                and all(getattr(t, "metadata", {}).get(k) == v for k, v in metadata.items())
+                task
+                for task in asyncio.all_tasks()
+                if task.get_name().startswith(prefix)
+                and all(getattr(task, "metadata", {}).get(k) == v for k, v in metadata.items())
             ]
 
             if not tasks:
