@@ -64,13 +64,16 @@ class Message(Base):
         generate_event : bool
             If true, the event will be generated.
         """
-        self.log.debug(f"Room {self.room.room_id} enters message node {self.id}")
+        _room_id = self.room.room_id
+        self.log.debug(f"[{_room_id}] Entering message node {self.id}")
 
         if self.id == RouteState.START.value and self.room.route.state != RouteState.START:
             await self.room.route.clean_up(update_state=False, preserve_constants=True)
 
         if not self.text:
-            self.log.warning(f"The message {self.id} hasn't been send because the text is empty")
+            self.log.warning(
+                f"[{_room_id}] The message {self.id} hasn't been send because the text is empty"
+            )
         else:
             # Add nl2br extension to markdown to convert new lines to <br> tags
             msg_content = TextMessageEventContent(
@@ -83,7 +86,7 @@ class Message(Base):
             try:
                 await self.send_message(room_id=self.room.room_id, content=msg_content)
             except MForbidden as e:
-                self.log.error(f"Error sending message to {self.room.room_id}. Error: {e}")
+                self.log.error(f"[{_room_id}] Error sending message. Error: {e}")
                 await self._update_node(None)
                 return
 
