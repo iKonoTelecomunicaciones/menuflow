@@ -159,34 +159,7 @@ import_module_doc = f"""
                     {Util.parse_template_indent(template_body_create, 20)}
     responses:
         '201':
-            description: Module imported successfully
-            content:
-                application/json:
-                    schema:
-                        type: object
-                        properties:
-                            detail:
-                                type: object
-                                properties:
-                                    message:
-                                        type: string
-                                    data:
-                                        type: object
-                                        properties:
-                                            module_id:
-                                                type: integer
-                                            original_name:
-                                                type: string
-                                            imported_name:
-                                                type: string
-                                            renamed_nodes:
-                                                type: object
-                                                description: Mapping of original node IDs to new node IDs
-                                            nodes:
-                                                type: array
-                                                description: The processed list of nodes with renamed IDs and names
-                                                items:
-                                                    type: object
+            $ref: '#/components/responses/ImportModuleSuccess'
         '400':
             $ref: '#/components/responses/CreateModuleBadRequest'
         '404':

@@ -8,7 +8,6 @@ from aiohttp import web
 from ...config import Config
 from ...db.flow import Flow as DBFlow
 from ...db.module import Module as DBModule
-from ...repository.module import ModuleRepository
 from ..base import get_config, routes
 from ..docs.module import (
     create_module_doc,
@@ -107,7 +106,7 @@ async def create_module(request: web.Request) -> web.Response:
 
     try:
         log.debug(f"({uuid}) -> Creating new module '{data.get('name')}' in flow_id '{flow_id}'")
-        module_id, final_name, _, _ = await ModuleRepository.create_module(
+        module_id, final_name, _, _ = await Util.create_module(
             flow_id=flow_id,
             name=data.get("name"),
             nodes=data.get("nodes", []),
@@ -160,14 +159,12 @@ async def import_module(request: web.Request) -> web.Response:
         original_name = data.get("name")
         log.debug(f"({uuid}) -> Importing module '{original_name}' into flow_id '{flow_id}'")
 
-        module_id, final_name, node_id_mapping, processed_nodes = (
-            await ModuleRepository.create_module(
-                flow_id=flow_id,
-                name=original_name,
-                nodes=data.get("nodes", []),
-                position=data.get("position", {}),
-                allow_duplicates=True,
-            )
+        module_id, final_name, node_id_mapping, processed_nodes = await Util.create_module(
+            flow_id=flow_id,
+            name=original_name,
+            nodes=data.get("nodes", []),
+            position=data.get("position", {}),
+            allow_duplicates=True,
         )
     except Exception as e:
         return resp.server_error(str(e), uuid)

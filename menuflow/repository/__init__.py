@@ -1,7 +1,6 @@
 from .flow import Flow
 from .flow_utils import FlowUtils
 from .middlewares import ASRMiddleware, HTTPMiddleware, IRMMiddleware, LLMMiddleware, TTMMiddleware
-from .module import ModuleRepository
 from .nodes import (
     Case,
     CheckHoliday,

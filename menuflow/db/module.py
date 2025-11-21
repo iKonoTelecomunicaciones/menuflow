@@ -103,6 +103,17 @@ class Module(SerializableAttrs):
         return [cls._from_row(row) for row in rows] if rows else []
 
     @classmethod
+    async def get_all_module_names(cls, flow_id: int) -> set[str]:
+        current_tag = await cls.get_current_tag(flow_id)
+        if not current_tag:
+            return set()
+
+        q = "SELECT name FROM module WHERE tag_id = $1"
+        rows = await cls.db.fetch(q, current_tag["id"])
+
+        return {row["name"] for row in rows} if rows else set()
+
+    @classmethod
     async def check_exists_by_name(cls, name: str, flow_id: int, module_id: int = None) -> bool:
         current_tag = await cls.get_current_tag(flow_id)
         if not module_id:
@@ -130,6 +141,22 @@ class Module(SerializableAttrs):
     async def delete(self) -> None:
         q = "DELETE FROM module WHERE id=$1"
         await self.db.execute(q, self.id)
+
+    @classmethod
+    async def get_all_node_ids(cls, flow_id: int) -> set[str]:
+        current_tag = await cls.get_current_tag(flow_id)
+        if not current_tag:
+            return set()
+
+        q = """
+            SELECT node->>'id' AS node_id
+            FROM module m
+            CROSS JOIN LATERAL jsonb_array_elements(m.nodes) AS node
+            WHERE m.tag_id = $1
+        """
+        rows = await cls.db.fetch(q, current_tag["id"])
+
+        return {row["node_id"] for row in rows} if rows else set()
 
     @classmethod
     async def get_node_by_id(
