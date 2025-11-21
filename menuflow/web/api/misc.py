@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import traceback
+from asyncio import all_tasks
 from logging import Logger, getLogger
 
 import yaml
@@ -311,3 +313,55 @@ async def countries(request: web.Request) -> web.Response:
         return resp.server_error(f"Error getting countries: {e}")
 
     return resp.ok(countries)
+
+
+@routes.get("/v1/mis/get_task", allow_head=False)
+async def get_task(request: web.Request) -> web.Response:
+    """
+    ---
+    summary: Get tasks
+    description: Get tasks running in the server. If a name is provided, tasks containing that name will be returned.
+    tags:
+        - Mis
+    parameters:
+        - in: query
+          name: name
+          description: The name of the task to get
+          schema:
+            type: string
+          required: false
+    responses:
+        '404':
+            $ref: '#/components/responses/GetTaskNotFound'
+        '200':
+            $ref: '#/components/responses/GetTaskSuccess'
+    """
+    trace_id = UtilWeb.generate_uuid()
+    log.info(f"({trace_id}) -> '{request.method}' '{request.path}' Getting tasks")
+
+    name = request.query.get("name")
+    if name:
+        tasks = all_tasks()
+        tasks = [task for task in tasks if name in task.get_name()]
+        if not tasks:
+            return resp.not_found(f"No tasks found with name '{name}'", trace_id)
+    else:
+        tasks = asyncio.all_tasks()
+
+    task_list = []
+    for task in tasks:
+        coro = task.get_coro()
+        if coro:
+            task_list.append(
+                {
+                    "id": id(task),
+                    "name": task.get_name(),
+                    "state": task._state,
+                    "created_at": getattr(task, "created_at", None),
+                    "coro": getattr(coro, "__qualname__", str(coro)),
+                    "repr": repr(task),
+                    "metadata": getattr(task, "metadata", {}),
+                }
+            )
+    response = {"tasks": task_list}
+    return resp.success(data=response, uuid=trace_id)

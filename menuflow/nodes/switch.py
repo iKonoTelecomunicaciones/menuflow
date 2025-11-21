@@ -80,14 +80,18 @@ class Switch(Base):
         result = None
 
         try:
-            self.log.info(f"Get validation of input [{self.id}] for room [{self.room.room_id}]")
+            self.log.info(f"[{self.room.room_id}] Get validation of input [{self.id}]")
             result = self.validation
         except Exception as e:
-            self.log.warning(f"An exception has occurred in the pipeline [{self.id} ]:: {e}")
+            self.log.warning(
+                f"[{self.room.room_id}] An exception has occurred in the pipeline [{self.id} ]:: {e}"
+            )
             result = "except"
 
         if result is None:
-            self.log.debug(f"Validation value not found, validating case by case in [{self.id}]")
+            self.log.debug(
+                f"[{self.room.room_id}] Validation value not found, validating case by case in [{self.id}]"
+            )
             return await self.validate_cases()
 
         return await self.get_case_by_id(result)
@@ -105,7 +109,9 @@ class Switch(Base):
         o_connection = await self._run()
 
         if not o_connection:
-            self.log.warning(f"o_connection is None in the switch node [{self.id}]")
+            self.log.warning(
+                f"[{self.room.room_id}] o_connection is None in the switch node [{self.id}]"
+            )
             await self.room.update_menu(node_id=self.id, update_node_vars=False)
             return
 
@@ -141,12 +147,14 @@ class Switch(Base):
             case_o_connection = self.render_data(case_result.get("o_connection"))
 
             self.log.debug(
-                f"The case [{case_o_connection}] has been obtained in the input node [{self.id}]"
+                f"[{self.room.room_id}] The case [{case_o_connection}] has been obtained in the input node [{self.id}]"
             )
 
         except KeyError:
             default_case, case_o_connection = await self.manage_case_exceptions()
-            self.log.debug(f"Case [{id}] not found; the [{default_case} case] will be sought")
+            self.log.debug(
+                f"[{self.room.room_id}] Case [{id}] not found; the [{default_case} case] will be sought"
+            )
 
         if case_o_connection is None or case_o_connection in ["finish", ""]:
             case_o_connection = await self.get_o_connection()
@@ -163,11 +171,12 @@ class Switch(Base):
 
         """
         case_o_connection = None
+        _room_id = self.room.room_id
 
         for case in self.cases:
             if not case.get("case") and case.get("id"):
                 self.log.warning(
-                    f"You should use the 'validation' field to use case by ID in [{self.id}]"
+                    f"[{_room_id}] You should use the 'validation' field to use case by ID in [{self.id}]"
                 )
                 continue
 
@@ -177,7 +186,7 @@ class Switch(Base):
 
             if case_validation and not isinstance(case_validation, bool):
                 self.log.warning(
-                    f"Case validation [{case_validation}] in [{self.id}] should be boolean"
+                    f"[{_room_id}] Case validation [{case_validation}] in [{self.id}] should be boolean"
                 )
                 continue
 
@@ -187,13 +196,13 @@ class Switch(Base):
             # Get the o_connection of the case
             case_o_connection = self.render_data(case.get("o_connection"))
             self.log.debug(
-                f"The case [{case_o_connection}] has been obtained in the input node [{self.id}]"
+                f"[{_room_id}] The case [{case_o_connection}] has been obtained in the input node [{self.id}]"
             )
 
         if not case_o_connection:
             default_case, case_o_connection = await self.manage_case_exceptions()
             self.log.debug(
-                f"Case validations in [{self.id}] do not match with [{case_o_connection}]; "
+                f"[{_room_id}] Case validations in [{self.id}] do not match with [{case_o_connection}]; "
                 f"the [{default_case}] case will be sought"
             )
 
@@ -261,7 +270,7 @@ class Switch(Base):
 
         if config_attempts:
             self.log.critical(
-                f"Validation Attempts {room_validation_attempts} "
+                f"[{self.room.room_id}] Validation Attempts {room_validation_attempts} "
                 f"of {config_attempts} for room {self.room.room_id}"
             )
 

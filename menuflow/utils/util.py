@@ -1,11 +1,11 @@
 import ast
 import asyncio
-import datetime
 import html
 import json
 import traceback
 from asyncio import Task, all_tasks
 from copy import deepcopy
+from datetime import datetime, timezone
 from logging import getLogger
 from re import match, sub
 
@@ -739,6 +739,9 @@ class Util:
         -------
             The created task.
         """
+
+        log.warning(f"CREATING TASK: {name} with metadata: {metadata}")
         task = asyncio.create_task(coro, name=name)
         task.metadata = metadata or {}
+        task.created_at = datetime.now(timezone.utc).timestamp()
         return task
