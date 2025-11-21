@@ -8,7 +8,7 @@ from ..events.event_generator import send_node_event
 from ..repository import InteractiveInput as InteractiveInputModel
 from ..repository import InteractiveMessage
 from ..room import Room
-from ..utils import Nodes
+from ..utils import Nodes, Util
 from .input import Input
 
 
@@ -101,5 +101,7 @@ class InteractiveInput(Input):
                 conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
             )
 
-            if inactivity := self.inactivity_options:
+            if (inactivity := self.inactivity_options) and not Util.get_tasks_by_name(
+                task_name=self.room.room_id
+            ):
                 await self.timeout_active_chats(inactivity)
