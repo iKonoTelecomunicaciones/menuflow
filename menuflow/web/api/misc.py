@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import traceback
+from asyncio import all_tasks
 from logging import Logger, getLogger
 
 import yaml
@@ -17,6 +19,14 @@ from ...utils.errors import GettingDataError
 from ...utils.flags import RenderFlags
 from ...utils.util import Util as Utils
 from ..base import get_config, get_flow_utils, routes
+from ..docs.misc import (
+    check_jinja_template_doc,
+    get_countries_doc,
+    get_email_servers_doc,
+    get_middlewares_doc,
+    get_task_doc,
+    render_data_doc,
+)
 from ..responses import resp
 from ..util import Util as UtilWeb
 
@@ -24,79 +34,34 @@ log: Logger = getLogger("menuflow.api.misc")
 
 
 @routes.get("/v1/mis/email_servers", allow_head=False)
+@UtilWeb.docstring(get_email_servers_doc)
 async def get_id_email_servers(request: web.Request) -> web.Response:
-    """
-    ---
-    summary: Get email servers registered in flow utils.
-    tags:
-        - Mis
+    trace_id = UtilWeb.generate_uuid()
+    log.info(f"({trace_id}) -> '{request.method}' '{request.path}' Getting email servers")
 
-    responses:
-        '200':
-            $ref: '#/components/responses/GetEmailServersSuccess'
-    """
-
-    name_email_servers = list(FlowUtils.email_servers_by_id.keys())
-    return resp.ok({"email_servers": name_email_servers})
+    data = {"email_servers": list(FlowUtils.email_servers_by_id.keys())}
+    return resp.success(data=data, uuid=trace_id)
 
 
 @routes.get("/v1/mis/middlewares", allow_head=False)
+@UtilWeb.docstring(get_middlewares_doc)
 async def get_id_middlewares(request: web.Request) -> web.Response:
-    """
-    ---
-    summary: Get email servers registered in flow utils.
-    tags:
-        - Mis
-
-    responses:
-        '200':
-            $ref: '#/components/responses/GetMiddlewaresSuccess'
-    """
+    trace_id = UtilWeb.generate_uuid()
+    log.info(f"({trace_id}) -> '{request.method}' '{request.path}' Getting middlewares")
 
     flow_utils = get_flow_utils()
     middlewares = [
         {"id": middleware.id, "type": middleware.type}
         for middleware in flow_utils.data.middlewares
     ]
-    return resp.ok({"middlewares": middlewares})
+    return resp.success(data={"middlewares": middlewares}, uuid=trace_id)
 
 
 @routes.post("/v1/mis/check_template")
+@UtilWeb.docstring(check_jinja_template_doc)
 async def check_jinja_template(request: web.Request) -> web.Response:
-    """
-    ---
-    summary: Check jinja syntax
-    description: Check if the provided jinja template is valid
-    tags:
-        - Mis
-    requestBody:
-        required: true
-        content:
-            application/x-www-form-urlencoded:
-                schema:
-                    type: object
-                    properties:
-                        template:
-                            type: string
-                            description: The jinja template to be checked
-                            example: "Hello {{ name }}"
-                        variables:
-                            type: string
-                            description: >
-                                The variables to be used in the template, in `yaml` or `json` format
-                            example: "{'name': 'world'}"
-                    required:
-                        - template
-    responses:
-        '200':
-            $ref: '#/components/responses/CheckTemplateSuccess'
-        '400':
-            $ref: '#/components/responses/CheckTemplateBadRequest'
-        '422':
-            $ref: '#/components/responses/CheckTemplateUnprocessable'
-    """
-
     trace_id = UtilWeb.generate_uuid()
+    log.info(f"({trace_id}) -> '{request.method}' '{request.path}' Checking jinja template")
     dict_variables = {}
 
     try:
@@ -147,61 +112,14 @@ async def check_jinja_template(request: web.Request) -> web.Response:
         log.exception(e)
         return resp.bad_request(str(e), trace_id)
 
-    return resp.ok({"detail": {"message": "Data rendered", "data": rendered_data}}, trace_id)
+    return resp.success(message="Data rendered", data=rendered_data, uuid=trace_id)
 
 
 @routes.post("/v1/mis/render_data")
+@UtilWeb.docstring(render_data_doc)
 async def render_data(request: web.Request) -> web.Response:
-    """
-    ---
-    summary: Check if the result of the rendered template is the same in the actual render data
-        and the old one
-    description: Check if the provided jinja template is equal to the actual rendered data and
-        the old one
-    tags:
-        - Mis
-    requestBody:
-        required: true
-        content:
-            application/x-www-form-urlencoded:
-                schema:
-                    type: object
-                    properties:
-                        template:
-                            type: string
-                            description: The jinja template to be checked
-                            example: "Hello {{ name }}"
-                        variables:
-                            type: string
-                            description: >
-                                The variables to be used in the template, in `yaml` or `json` format
-                            example: "{'name': 'world'}"
-                        room_id:
-                            type: string
-                            description: The ID of the room that will be used in the template to obtain its variables.
-                            example: "!room:example.com"
-                        string_format:
-                            type: boolean
-                            description: If true, the new render data will be returned as a string
-                            example: true
-                        flags:
-                            type: string
-                            description: The flags to be used in the rendering, in `yaml` or `json` format
-                            example: "{'REMOVE_QUOTES': true, 'LITERAL_EVAL': true, 'CONVERT_TO_TYPE': true, 'CUSTOM_ESCAPE': false}"
-                    required:
-                        - template
-    responses:
-        '200':
-            $ref: '#/components/responses/RenderDataSuccess'
-        '400':
-            $ref: '#/components/responses/CheckTemplateBadRequest'
-        '404':
-            $ref: '#/components/responses/RoomIDNotFound'
-        '422':
-            $ref: '#/components/responses/CheckTemplateUnprocessable'
-    """
-
     trace_id = UtilWeb.generate_uuid()
+    log.info(f"({trace_id}) -> '{request.method}' '{request.path}' Rendering data")
 
     try:
         data = await request.post()
@@ -291,33 +209,15 @@ async def render_data(request: web.Request) -> web.Response:
         **({"string_format": str(new_render_data)} if string_format else {}),
     }
 
-    return resp.ok(response, trace_id)
+    return resp.success(data=response, uuid=trace_id)
 
 
 @routes.get("/v1/mis/countries", allow_head=False)
+@UtilWeb.docstring(get_countries_doc)
 async def countries(request: web.Request) -> web.Response:
-    """
-    ---
-    summary: Return a list with a dictionary of countries with their respective code, languages
-        and categories
-    description: Return a list with a dictionary of countries
-    tags:
-        - Mis
+    trace_id = UtilWeb.generate_uuid()
+    log.info(f"({trace_id}) -> '{request.method}' '{request.path}' Getting countries")
 
-    parameters:
-        - in: query
-          name: language
-          description: The language to get the countries in
-          required: false
-          schema:
-            type: string
-
-    responses:
-        '200':
-            $ref: '#/components/responses/GetCountriesSuccess'
-        '500':
-            $ref: '#/components/responses/GetCountriesError'
-    """
     config: Config = get_config()
     language = request.query.get("language", "es")
 
@@ -326,4 +226,38 @@ async def countries(request: web.Request) -> web.Response:
     except GettingDataError as e:
         return resp.server_error(f"Error getting countries: {e}")
 
-    return resp.ok(countries)
+    return resp.success(data=countries, uuid=trace_id)
+
+
+@routes.get("/v1/mis/get_task", allow_head=False)
+@UtilWeb.docstring(get_task_doc)
+async def get_task(request: web.Request) -> web.Response:
+    trace_id = UtilWeb.generate_uuid()
+    log.info(f"({trace_id}) -> '{request.method}' '{request.path}' Getting tasks")
+
+    name = request.query.get("name")
+    if name:
+        tasks = all_tasks()
+        tasks = [task for task in tasks if name in task.get_name()]
+        if not tasks:
+            return resp.not_found(f"No tasks found with name '{name}'", trace_id)
+    else:
+        tasks = asyncio.all_tasks()
+
+    task_list = []
+    for task in tasks:
+        coro = task.get_coro()
+        if coro:
+            task_list.append(
+                {
+                    "id": id(task),
+                    "name": task.get_name(),
+                    "state": task._state,
+                    "created_at": getattr(task, "created_at", None),
+                    "coro": getattr(coro, "__qualname__", str(coro)),
+                    "repr": repr(task),
+                    "metadata": getattr(task, "metadata", {}),
+                }
+            )
+    response = {"tasks": task_list}
+    return resp.success(data=response, uuid=trace_id)

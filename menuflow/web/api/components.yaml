@@ -572,6 +572,30 @@ components:
           type: string
         client:
           type: string
+    GetTaskOk:
+      type: object
+      properties:
+        tasks:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              state:
+                type: string
+              created_at:
+                type: number
+              coro:
+                type: string
+              repr:
+                type: string
+              metadata:
+                type: object
+                additionalProperties: true
 
     # Error schemas
     ErrorReadingData:
@@ -1455,4 +1479,28 @@ components:
               value:
                 detail:
                   message: room_id '1' not found
+    GetTaskNotFound:
+      description: Get task not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: No tasks found with name 'name'
+    GetTaskSuccess:
+      description: Get task success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GetTaskOk"
+          example:
+            tasks:
+              - id: 1
+                name: task_1
+                state: PENDING
+                created_at: 1716393600.000000
+                coro: task_1
+                repr: <Task pending name='task_1' coro=<_TaskWakeupWakeupPollingTaskWakeupWakeup() running at 0x7f5b58000000>>
+                metadata: {}
   # End of responses
