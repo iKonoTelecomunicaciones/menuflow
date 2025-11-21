@@ -105,8 +105,6 @@ class Module(SerializableAttrs):
     @classmethod
     async def get_all_module_names(cls, flow_id: int) -> set[str]:
         current_tag = await cls.get_current_tag(flow_id)
-        if not current_tag:
-            return set()
 
         q = "SELECT name FROM module WHERE tag_id = $1"
         rows = await cls.db.fetch(q, current_tag["id"])
@@ -145,8 +143,6 @@ class Module(SerializableAttrs):
     @classmethod
     async def get_all_node_ids(cls, flow_id: int) -> set[str]:
         current_tag = await cls.get_current_tag(flow_id)
-        if not current_tag:
-            return set()
 
         q = """
             SELECT node->>'id' AS node_id
