@@ -299,7 +299,7 @@ class Webhook(Input):
         filter_db = self.render_data(filter)
 
         if not webhook_filter:
-            self.log.debug(f"Room {self.room.room_id} does not have a route filter")
+            self.log.debug(f"[{self.room.room_id}] Webhook does not have a route filter")
             return False
 
         if not webhook_filter == filter_db:

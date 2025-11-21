@@ -10,7 +10,8 @@
             "bool": true,
             "bool_str": "true",
             "none_str": "None",
-            "none": null
+            "none": null,
+            "multiple_lines": "line 1\nline 2\nline 3"
         },
         "nodes": [
             {

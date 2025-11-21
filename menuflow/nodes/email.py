@@ -47,7 +47,7 @@ class Email(Message):
             self.email_client = EmailClient.get_by_server_id(self.server_id)
 
         _text, _subject, _recipients = self.text, self.subject, self.recipients
-        self.log.debug(f"Sending email {_subject or _text} to {_recipients}")
+        self.log.debug(f"[{self.room.room_id}] Sending email {_subject or _text} to {_recipients}")
 
         email = EmailMessage(
             subject=_subject,

@@ -65,7 +65,7 @@ class Media(Message):
             media_info = FileInfo(**self.render_data(self.content.get("info", {})))
         else:
             self.log.warning(
-                f"It has not been possible to identify the message type of the node {self.id}"
+                f"[{self.room.room_id}] It has not been possible to identify the message type of the node {self.id}"
             )
             return
 
@@ -155,7 +155,7 @@ class Media(Message):
         content_type = resp.headers.get("Content-Type", "").lower()
 
         self.log.debug(
-            f"node: {self.id} type: media url: {_url} status: {resp.status} content_type: {content_type}"
+            f"[{self.room.room_id}] node: {self.id} type: media url: {self.url} status: {resp.status} content_type: {content_type}"
         )
 
         if content_type.startswith(
@@ -169,7 +169,7 @@ class Media(Message):
             try:
                 data = base64.b64decode(base64_data)
             except Exception as e:
-                self.log.exception(f"error {e}")
+                self.log.exception(f"[{self.room.room_id}] error {e}")
                 return
         else:
             data = await resp.read()
@@ -220,7 +220,7 @@ class Media(Message):
 
     async def run(self):
         """It sends a message to the room with the media attached"""
-        self.log.debug(f"Room {self.room.room_id} enters media node {self.id}")
+        self.log.debug(f"[{self.room.room_id}] Entering media node {self.id}")
 
         o_connection = await self.get_o_connection()
         try:

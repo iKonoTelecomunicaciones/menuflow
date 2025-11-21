@@ -16,6 +16,7 @@ from ...db.route import Route as DBRoute
 from ...flow_utils import FlowUtils
 from ...jinja.env import jinja_env
 from ...utils.errors import GettingDataError
+from ...utils.flags import RenderFlags
 from ...utils.util import Util as Utils
 from ..base import get_config, get_flow_utils, routes
 from ..docs.misc import (
@@ -128,8 +129,29 @@ async def render_data(request: web.Request) -> web.Response:
     template = data.get("template")
     variables = data.get("variables")
     room_id = data.get("room_id")
-    old_render = Utils.convert_to_type(data.get("old_render", False))
-    string_format = Utils.convert_to_type(data.get("string_format", False))
+    string_format = data.get("string_format", False)
+    flags = data.get(
+        "flags",
+        {
+            "REMOVE_QUOTES": True,
+            "LITERAL_EVAL": True,
+            "CONVERT_TO_TYPE": True,
+            "CUSTOM_ESCAPE": False,
+        },
+    )
+
+    try:
+        flags = yaml.safe_load(flags)
+    except Exception as e:
+        pass
+    finally:
+        if not isinstance(flags, dict):
+            return resp.bad_request("The format of the flags is not valid", trace_id)
+
+    _flags = RenderFlags.RETURN_ERRORS
+    for flag, enabled in flags.items():
+        if enabled is True:
+            _flags |= getattr(RenderFlags, flag)
 
     log.info(f"({trace_id}) -> Checking jinja template with data: {data}")
 
@@ -174,7 +196,11 @@ async def render_data(request: web.Request) -> web.Response:
                 return resp.bad_request("The format of the variables is not valid", trace_id)
 
     try:
-        new_render_data = Utils.render_data(template, dict_variables, return_errors=True)
+        if RenderFlags.CUSTOM_ESCAPE in _flags:
+            dict_variables, changed = Utils.custom_escape(dict_variables, escape=False)
+            _flags = _flags | RenderFlags.CUSTOM_UNESCAPE if changed else _flags
+
+        new_render_data = Utils.recursive_render(template, dict_variables, flags=_flags)
     except Exception as e:
         return resp.server_error(str(e), trace_id)
 
