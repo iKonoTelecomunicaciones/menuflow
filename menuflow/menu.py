@@ -109,7 +109,8 @@ class MenuClient(DBClient):
         )
         self.matrix_handler: MatrixHandler = self._make_client()
         asyncio.create_task(self.matrix_handler.load_all_room_constants())
-        await self.matrix_handler.create_inactivity_tasks()
+        if self.menuflow.config["menuflow.inactivity_options.recreate_on_startup"]:
+            await self.matrix_handler.create_inactivity_tasks()
         # if self.enable_crypto:
         #     self._prepare_crypto()
         # else:
