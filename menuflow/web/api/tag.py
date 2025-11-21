@@ -9,13 +9,15 @@ from ...config import Config
 from ...db.flow import Flow as DBFlow
 from ...db.tag import Tag as DBTag
 from ..base import routes
+from ..docs.tag import delete_tag_doc, get_tags_by_flow_doc
 from ..responses import resp
 from ..util import Util
 
 log: Logger = getLogger("menuflow.web.api.tag")
 
 
-@routes.get("/v1/{flow_id}/tag")
+@routes.get("/v1/{flow_id}/tag", allow_head=False)
+@Util.docstring(get_tags_by_flow_doc)
 async def get_tags_by_flow(request: web.Request) -> web.Response:
     uuid = Util.generate_uuid()
     log.info(f"({uuid}) -> '{request.method}' '{request.path}' Getting tags")
@@ -63,6 +65,7 @@ async def get_tags_by_flow(request: web.Request) -> web.Response:
 
 
 @routes.delete("/v1/tag/{tag_id}")
+@Util.docstring(delete_tag_doc)
 async def delete_tag(request: web.Request) -> web.Response:
     uuid = Util.generate_uuid()
     log.info(f"({uuid}) -> '{request.method}' '{request.path}' Deleting tag")
