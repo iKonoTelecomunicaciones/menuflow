@@ -209,16 +209,6 @@ async def render_data(request: web.Request) -> web.Response:
         **({"string_format": str(new_render_data)} if string_format else {}),
     }
 
-    if old_render:
-        try:
-            old_render_data = Utils.old_render_data(template, dict_variables)
-        except Exception as e:
-            old_render_data = str(e)
-
-        response.update(
-            {"old_render_data": old_render_data, "equal": new_render_data == old_render_data}
-        )
-
     return resp.success(data=response, uuid=trace_id)
 
 
