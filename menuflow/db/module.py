@@ -103,13 +103,23 @@ class Module(SerializableAttrs):
         return [cls._from_row(row) for row in rows] if rows else []
 
     @classmethod
+    async def get_all_module_names(cls, flow_id: int) -> set[str]:
+        current_tag = await cls.get_current_tag(flow_id)
+
+        q = "SELECT name FROM module WHERE tag_id = $1"
+        rows = await cls.db.fetch(q, current_tag["id"])
+
+        return {row["name"] for row in rows} if rows else set()
+
+    @classmethod
     async def check_exists_by_name(cls, name: str, flow_id: int, module_id: int = None) -> bool:
+        current_tag = await cls.get_current_tag(flow_id)
         if not module_id:
-            q = "SELECT EXISTS(SELECT 1 FROM module WHERE name=$1 AND flow_id=$2)"
-            return await cls.db.fetchval(q, name, flow_id)
+            q = "SELECT EXISTS(SELECT 1 FROM module WHERE name=$1 AND tag_id=$2)"
+            return await cls.db.fetchval(q, name, current_tag["id"])
         else:
-            q = "SELECT EXISTS(SELECT 1 FROM module WHERE name=$1 AND flow_id=$2 AND id!=$3)"
-            return await cls.db.fetchval(q, name, flow_id, module_id)
+            q = "SELECT EXISTS(SELECT 1 FROM module WHERE name=$1 AND tag_id=$2 AND id!=$3)"
+            return await cls.db.fetchval(q, name, current_tag["id"], module_id)
 
     async def insert(self) -> int:
         current_tag = await self.get_current_tag(self.flow_id)
@@ -131,16 +141,31 @@ class Module(SerializableAttrs):
         await self.db.execute(q, self.id)
 
     @classmethod
+    async def get_all_node_ids(cls, flow_id: int) -> set[str]:
+        current_tag = await cls.get_current_tag(flow_id)
+
+        q = """
+            SELECT node->>'id' AS node_id
+            FROM module m
+            CROSS JOIN LATERAL jsonb_array_elements(m.nodes) AS node
+            WHERE m.tag_id = $1
+        """
+        rows = await cls.db.fetch(q, current_tag["id"])
+
+        return {row["node_id"] for row in rows} if rows else set()
+
+    @classmethod
     async def get_node_by_id(
         cls, flow_id: int, node_id: str, add_module_name: bool = True
     ) -> dict | None:
+        current_tag = await cls.get_current_tag(flow_id)
         q = "SELECT m.name AS module_name, node " if add_module_name else "SELECT node "
         q += """
             FROM module m
             CROSS JOIN LATERAL jsonb_array_elements(m.nodes) AS node
-            WHERE m.flow_id = $1 AND node->>'id' = $2
+            WHERE m.tag_id = $1 AND node->>'id' = $2
         """
-        row = await cls.db.fetchrow(q, flow_id, node_id)
+        row = await cls.db.fetchrow(q, current_tag["id"], node_id)
 
         return cls._to_dict(row, ["node"]) if row else None
 
