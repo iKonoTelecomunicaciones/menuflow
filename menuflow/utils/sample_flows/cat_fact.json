@@ -2,7 +2,15 @@
     "menu": {
         "flow_variables": {
             "cat_fatc_url": "https://catfact.ninja/fact",
-            "cat_name": "Luffy"
+            "cat_name": "Luffy",
+            "str_number": "61481488798",
+            "number": 87684525412,
+            "counter": 10,
+            "dictionary": {"key": "value"},
+            "bool": true,
+            "bool_str": "true",
+            "none_str": "None",
+            "none": null
         },
         "nodes": [
             {

@@ -66,15 +66,8 @@ class HTTPRequest(Switch):
     @property
     def json(self) -> dict:
         body = self.content.get("json", "")
-
-        if isinstance(body, str):
-            try:
-                body = json.loads(body)
-
-                if isinstance(body, str):
-                    body = json.loads(body)
-            except json.JSONDecodeError:
-                pass
+        if isinstance(body, dict):
+            body = json.dumps(body)
 
         return self.render_data(body)
 
