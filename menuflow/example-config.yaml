@@ -61,6 +61,15 @@ menuflow:
     webhook_queue:
         time_to_live: 120 # seconds, time to live for webhook events in the queue
 
+# Meta Flow Configuration
+meta:
+    # Private key for decrypting Meta Flow requests (PEM format)
+    # Generate using: openssl genpkey -algorithm RSA -out private_key.pem -pkcs8 -aes256
+    private_key: # Your private key content here (multiline)
+
+    # Passphrase for the private key (if encrypted)
+    private_key_passphrase: "your_passphrase_here"
+
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0

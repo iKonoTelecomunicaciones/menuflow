@@ -28,6 +28,8 @@ class Config(BaseFileConfig):
         copy("menuflow.webhook_queue.time_to_live")
         copy_dict("menuflow.regex")
         copy("menuflow.mautrix_state_key")
+        copy("meta.private_key")
+        copy("meta.private_key_passphrase")
         copy("server.hostname")
         copy("server.port")
         copy("server.public_url")
