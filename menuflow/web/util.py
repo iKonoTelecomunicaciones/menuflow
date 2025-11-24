@@ -142,7 +142,9 @@ class Util:
         Args:
             nodes (list[dict]): The list of nodes to keys_to_keep.
         """
-        filtered_nodes = [{key: node[key] for key in keys_to_keep if key in node} for node in nodes]
+        filtered_nodes = [
+            {key: node[key] for key in keys_to_keep if key in node} for node in nodes
+        ]
         return [node for node in filtered_nodes if node]
 
     @staticmethod
