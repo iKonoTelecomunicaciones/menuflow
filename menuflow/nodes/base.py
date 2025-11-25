@@ -15,6 +15,7 @@ from menuflow.utils.util import Util
 
 from ..config import Config
 from ..room import Room
+from ..utils.flags import RenderFlags
 
 
 def convert_to_bool(item) -> dict | list | str:
@@ -124,24 +125,39 @@ class Base:
 
         await self.room.matrix_client.send_message(room_id=room_id, content=content)
 
-    def render_data(self, data: dict | list | str) -> dict | list | str:
+    def render_data(
+        self,
+        data: dict | list | str,
+        flags: RenderFlags = RenderFlags.CONVERT_TO_TYPE
+        | RenderFlags.LITERAL_EVAL
+        | RenderFlags.REMOVE_QUOTES,
+    ) -> dict | list | str:
         """It renders the data using the default variables and the room variables.
 
         Parameters
         ----------
         data : Any
             The data to be rendered.
+        flags : RenderFlags
+            The flags to be used in the rendering.
 
         Returns
         -------
             The rendered data, which can be a dictionary, list, or string.
 
         """
-        return Util.render_data(
-            data=data,
-            default_variables=self.default_variables,
-            all_variables=self.room.all_variables,
-        )
+
+        if not (isinstance(data, (str, dict, list)) and data):
+            return data
+
+        variables = self.default_variables | self.room.all_variables
+
+        if RenderFlags.CUSTOM_ESCAPE in flags:
+            variables, changed = Util.custom_escape(variables, escape=True)
+            if changed:
+                flags |= RenderFlags.CUSTOM_UNESCAPE
+
+        return Util.recursive_render(data=data, variables=variables, flags=flags)
 
     async def get_o_connection(self) -> str:
         """It returns the ID of the next node to be executed.
@@ -159,11 +175,13 @@ class Base:
             # If the stack is not empty, get the last node from the stack
             if not self.room.route._stack.empty() and self.type != "subroutine":
                 self.log.debug(
-                    f"Getting o_connection from route stack: {self.room.route._stack.queue}"
+                    f"[{self.room.room_id}] Getting o_connection from route stack: {self.room.route._stack.queue}"
                 )
                 o_connection = self.room.route._stack.get(timeout=3)
 
         if o_connection:
-            self.log.info(f"Go to o_connection node in [{self.id}]: '{o_connection}'")
+            self.log.info(
+                f"[{self.room.room_id}] Go to o_connection node in [{self.id}]: '{o_connection}'"
+            )
 
         return o_connection

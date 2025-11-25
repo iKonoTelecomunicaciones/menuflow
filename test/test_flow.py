@@ -25,7 +25,19 @@ class TestFlow:
 
     def test_flow_variables(self, sample_flow_1: Flow):
         assert sample_flow_1.flow_variables == {
-            "flow": {"cat_fatc_url": "https://catfact.ninja/fact", "cat_name": "Luffy"},
+            "flow": {
+                "cat_fatc_url": "https://catfact.ninja/fact",
+                "cat_name": "Luffy",
+                "str_number": "61481488798",
+                "number": 87684525412,
+                "counter": 10,
+                "dictionary": {"key": "value"},
+                "bool": True,
+                "bool_str": "true",
+                "none_str": "None",
+                "none": None,
+                "multiple_lines": "line 1\nline 2\nline 3",
+            },
         }
 
     def test_dont_repeat_nodes(self, sample_flow_1: Flow, sample_flow_2: Flow):

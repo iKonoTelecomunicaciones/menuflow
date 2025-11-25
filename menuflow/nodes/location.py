@@ -31,10 +31,11 @@ class Location(Message):
         return self.render_data(self.content.get("latitude", ""))
 
     async def run(self):
+        _longitude, _latitude = self.longitude, self.latitude
         location_message = LocationMessageEventContent(
             msgtype=MessageType.LOCATION,
-            body=f"User Location geo:{self.longitude},{self.latitude} at {datetime.now(timezone.utc).replace(tzinfo=None)}",
-            geo_uri=f"geo:{self.longitude},{self.latitude}",
+            body=f"User Location geo:{_longitude},{_latitude} at {datetime.now(timezone.utc).replace(tzinfo=None)}",
+            geo_uri=f"geo:{_longitude},{_latitude}",
         )
         await self.send_message(room_id=self.room.room_id, content=location_message)
 

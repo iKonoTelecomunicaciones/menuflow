@@ -68,7 +68,7 @@ class Room(DBRoom):
                 room_id=self.room_id, event_type=bridge_event
             )
         except MNotFound as e:
-            self.log.error(f"Event {bridge_event} not found from room {self.room_id}: {e}")
+            self.log.error(f"[{self.room_id}] Event {bridge_event} not found: {e}")
 
         if not bridge_state_event:
             state_key = self.config["menuflow.mautrix_state_key"]
@@ -81,7 +81,7 @@ class Room(DBRoom):
                 )
             except MNotFound as e:
                 self.log.error(
-                    f"Event {bridge_event} with state_key {state_key} not found from room {self.room_id}: {e}"
+                    f"[{self.room_id}] Event {bridge_event} with state_key {state_key} not found: {e}"
                 )
                 return
 
@@ -271,12 +271,12 @@ class Room(DBRoom):
         """
         scope, key = Util.get_scope_and_key(variable_id)
 
-        self.log.debug(
-            f"Getting variable [{variable_id}] from room [{self.room_id}] in scope {scope.value}"
-        )
+        self.log.info(f"Getting variable ({scope.value}.{key})")
 
         try:
-            return glom(self.all_variables, self._jq2glom.to_glom_path(f"{scope.value}.{key}"))
+            _value = glom(self.all_variables, self._jq2glom.to_glom_path(f"{scope.value}.{key}"))
+            self.log.debug(f"Variable ({scope.value}.{key}) found. Value: {_value}")
+            return _value
         except PathAccessError as e:
             # TODO: Compatibility with old variables format
             old_value = self.all_variables.get(scope.value, {}).get(key, None)
@@ -287,7 +287,7 @@ class Room(DBRoom):
                 return old_value
             return None
         except Exception as e:
-            self.log.error(f"Error getting variable while using glom: {e}")
+            self.log.error(f"Error getting variable ({scope.value}.{key}) while using glom: {e}")
             return
 
     async def set_variable(self, variable_id: str, value: Any) -> None:
@@ -310,10 +310,7 @@ class Room(DBRoom):
 
         scope, key = Util.get_scope_and_key(variable_id)
 
-        self.log.debug(
-            f"Saving variable [{variable_id}] to room [{self.room_id}] in scope {scope.value} "
-            f":: content [{value}]"
-        )
+        self.log.debug(f"Saving variable ([{scope.value}].{key}). Content: {repr(value)}")
 
         try:
             entry = Scope(room=self, route=self.route).resolve(scope)
@@ -327,7 +324,9 @@ class Room(DBRoom):
         try:
             assign(new_variables, self._jq2glom.to_glom_path(key), new_value, missing=dict)
         except Exception as e:
-            self.log.error(f"Error assigning variable {key} to {new_variables}: {e}")
+            self.log.error(
+                f"Error assigning variable ({scope.value}.{key}) to {new_variables}: {e}"
+            )
             return
 
         entry.set_vars(new_variables)
@@ -374,27 +373,23 @@ class Room(DBRoom):
 
         variables = entry.get_vars()
         if not variables:
-            self.log.debug(f"Variables to room {self.room_id} in scope {scope.value} are empty")
+            self.log.debug(f"Variables in scope {scope.value} are empty")
             return
 
-        self.log.debug(
-            f"Removing variable [{key}] to room [{self.room_id}] in scope {scope.value}"
-        )
+        self.log.debug(f"Removing variable ({scope.value}.{key})")
 
         try:
             glom(variables, Delete(self._jq2glom.to_glom_path(key)))
         except PathAccessError as e:
             # TODO: Remove with old variables format
             if not variables.get(key):
-                self.log.warning(
-                    f"Variable [{variable_id}] does not exists in the room {self.room_id}"
-                )
+                self.log.warning(f"Variable ({scope.value}.{key}) does not exists")
                 return
 
-            self.log.info(f"Deleted variable [{key}] from room {self.room_id} old format")
+            self.log.info(f"Deleted variable ({scope.value}.{key}) old format")
             variables.pop(key, None)
         except Exception as e:
-            self.log.error(f"Error deleting variable {key} to {variables}: {e}")
+            self.log.error(f"Error deleting variable ({scope.value}.{key}): {e}")
             return
 
         entry.set_vars(variables)
@@ -429,8 +424,9 @@ class Room(DBRoom):
             The state of the menu.
         """
         self.log.debug(
-            f"The [room: {self.room_id}] with route [{self.bot_mxid}] will update his [node: "
-            f"{self.route.node_id}] to [{node_id}] and his [state: {self.route.state}] to [{state}]"
+            f"({self.bot_mxid}) will be updated. "
+            f"Node: ([{self.route.node_id}] => [{node_id}]) "
+            f"State: ([{self.route.state}] => [{state}])"
         )
         if update_node_vars and self.route.node_id != node_id:
             self.route._node_vars = {}

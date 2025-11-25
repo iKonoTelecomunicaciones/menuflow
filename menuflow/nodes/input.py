@@ -97,7 +97,7 @@ class Input(Switch, Message):
                         int(text) if text.isdigit() else text,
                     )
             except ValueError as e:
-                self.log.warning(e)
+                self.log.warning(f"[{self.room.room_id}] Error setting variable: {e}")
 
         # If the node has an output connection, then update the menu to the output connection.
         # Otherwise, run the node and update the menu to the output connection.
@@ -120,20 +120,19 @@ class Input(Switch, Message):
 
         if self.room.route.state == RouteState.INPUT:
             if not evt:
-                self.log.warning("A problem occurred getting message event.")
+                self.log.warning(f"[{self.room.room_id}] A problem occurred getting message event")
                 return
 
-            if self.input_type == MessageType.TEXT:
+            _input_type = self.input_type
+
+            if _input_type == MessageType.TEXT:
                 self.room.set_node_var(content=evt.content.body)
 
                 o_connection = await self.input_text(
                     text=evt.content.body, middlewares_sorted=middlewares_sorted
                 )
-            elif self.input_type == MessageType.IMAGE:
-                if (
-                    self.input_type == evt.content.msgtype
-                    and Middlewares.IRM in middlewares_sorted
-                ):
+            elif _input_type == MessageType.IMAGE:
+                if _input_type == evt.content.msgtype and Middlewares.IRM in middlewares_sorted:
                     await middlewares_sorted[Middlewares.IRM].run(
                         image_mxc=evt.content.url,
                         content_type=evt.content.info.mimetype,
@@ -142,7 +141,7 @@ class Input(Switch, Message):
                     o_connection = await Switch.run(self, generate_event=False)
                 else:
                     o_connection = await self.input_media(content=evt.content)
-            elif self.input_type == MessageType.AUDIO:
+            elif _input_type == MessageType.AUDIO:
                 if (
                     Middlewares.ASR in middlewares_sorted
                     and evt.content.msgtype == MessageType.AUDIO
@@ -159,12 +158,12 @@ class Input(Switch, Message):
                     o_connection = await Switch.run(self=self, generate_event=False)
                 else:
                     o_connection = await self.input_media(content=evt.content)
-            elif self.input_type in [
+            elif _input_type in [
                 MessageType.FILE,
                 MessageType.VIDEO,
             ]:
                 o_connection = await self.input_media(content=evt.content)
-            elif self.input_type == MessageType.LOCATION:
+            elif _input_type == MessageType.LOCATION:
                 o_connection = await self.input_location(content=evt.content)
 
             await send_node_event(
@@ -183,7 +182,7 @@ class Input(Switch, Message):
             # and the node is an input node.
             # In this case, the message is shown and the menu is updated to the node's id
             # and the room state is set to input.
-            self.log.debug(f"Room {self.room.room_id} enters input node {self.id}")
+            self.log.debug(f"[{self.room.room_id}] Entering input node {self.id}")
             await Message.run(self, update_state=False, generate_event=False)
 
             self.room.set_node_var(content="")
@@ -232,7 +231,7 @@ class Input(Switch, Message):
                 inactivity_handler.start(), name=self.room.room_id, metadata=metadata
             )
 
-            self.log.debug(f"INACTIVITY TRIES COMPLETED -> {self.room.room_id}")
+            self.log.debug(f"[{self.room.room_id}] INACTIVITY TRIES COMPLETED")
             o_connection = await self.get_case_by_id("timeout")
             await self.room.update_menu(node_id=o_connection, state=None)
 
@@ -250,8 +249,8 @@ class Input(Switch, Message):
             return
 
         except asyncio.CancelledError:
-            self.log.error(f"Inactivity handler cancelled for room: {self.room.room_id}")
+            self.log.error(f"[{self.room.room_id}] Inactivity handler cancelled")
         except Exception as e:
-            self.log.error(f"Inactivity handler error for room: {self.room.room_id}: {e}")
+            self.log.error(f"[{self.room.room_id}] Inactivity handler error: {e}")
         finally:
             await Util.cancel_task(task_name=f"inactivity_restored_{self.room.room_id}")

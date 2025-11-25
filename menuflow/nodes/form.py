@@ -95,9 +95,10 @@ class FormInput(Input):
         """
 
         if self.room.route.state == RouteState.INPUT:
-            if not evt or not self.variable or evt.content.msgtype != "m.form_response":
+            _variable = self.variable
+            if not evt or not _variable or evt.content.msgtype != "m.form_response":
                 self.log.warning(
-                    "A problem occurred getting user response, message type is not m.form_response"
+                    f"[{self.room.room_id}] A problem occurred getting user response, message type is not m.form_response"
                 )
                 o_connection = await self.check_fail_attempts()
                 inactivity = self.inactivity_options
@@ -105,7 +106,7 @@ class FormInput(Input):
                     await self.timeout_active_chats(inactivity)
                 return
 
-            await self.room.set_variable(self.variable, evt.content.get("form_data"))
+            await self.room.set_variable(_variable, evt.content.get("form_data"))
             o_connection = await self.__update_menu("submitted")
 
             await send_node_event(
@@ -124,7 +125,7 @@ class FormInput(Input):
             # and the node is an input node.
             # In this case, the message is shown and the menu is updated to the node's id
             # and the room state is set to input.
-            self.log.debug(f"Room {self.room.room_id} enters input node {self.id}")
+            self.log.debug(f"[{self.room.room_id}] Entering form input node {self.id}")
             await self.room.matrix_client.send_message_event(
                 room_id=self.room.room_id,
                 event_type="m.room.message",

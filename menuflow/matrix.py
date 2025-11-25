@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from copy import deepcopy
-from datetime import datetime
+import logging
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Dict, Optional
 
 from mautrix.client import Client as MatrixClient
@@ -43,7 +43,7 @@ class MatrixHandler(MatrixClient):
         self.util = Util(self.config)
         self.flow = flow
         self.LOCKED_ROOMS = set()
-        self.LAST_JOIN_EVENT: Dict[RoomID, int] = {}
+        self.LAST_JOIN_EVENT: Dict[RoomID, StrippedStateEvent] = {}
         self.LAST_RECEIVED_MESSAGE: Dict[RoomID, datetime] = {}
         Base.init_cls(
             config=self.config,
@@ -52,35 +52,49 @@ class MatrixHandler(MatrixClient):
 
     def handle_sync(self, data: Dict) -> list[asyncio.Task]:
         # This is a way to remove duplicate events from the sync
-        aux_data = deepcopy(data)
-        for room_id, room_data in aux_data.get("rooms", {}).get("join", {}).items():
-            for i in range(len(room_data.get("timeline", {}).get("events", [])) - 1, -1, -1):
-                evt = room_data.get("timeline", {}).get("events", [])[i]
-                if (
-                    self.LAST_JOIN_EVENT.get(room_id)
-                    and evt.get("origin_server_ts") <= self.LAST_JOIN_EVENT[room_id]
-                ):
-                    del data["rooms"]["join"][room_id]["timeline"]["events"][i]
-                    continue
+        try:
+            rooms = data.get("rooms", {}).get("join", {})
+            for room_id, room_data in rooms.items():
+                last_join_evt = self.LAST_JOIN_EVENT.get(room_id, {})
+                events = room_data.get("timeline", {}).get("events", [])
+                for evt in events:
+                    if (
+                        evt.get("type", "") == "m.room.member"
+                        and evt.get("state_key", "") == self.mxid
+                        and evt.get("content", {}).get("membership") == "join"
+                        and evt.get("origin_server_ts") > last_join_evt.get("origin_server_ts", 0)
+                    ):
+                        last_join_evt = self.LAST_JOIN_EVENT[room_id] = evt
 
-                if (
-                    evt.get("type", "") == "m.room.member"
-                    and evt.get("state_key", "") == self.mxid
-                ):
-                    if evt.get("content", {}).get("membership") == "join":
-                        self.LAST_JOIN_EVENT[room_id] = evt.get("origin_server_ts")
+                # Only the events that occur after the last join event are kept in the event list.
+                if _last_join_ts := last_join_evt.get("origin_server_ts", 0):
+                    filtered_events = [
+                        evt for evt in events if evt.get("origin_server_ts") >= _last_join_ts
+                    ]
+                    room_data["timeline"]["events"] = filtered_events
+        except Exception as e:
+            self.log.critical(f"Error handling sync: {e}")
 
         return super().handle_sync(data)
 
-    def unlock_room(self, room_id: RoomID):
-        self.log.debug(f"UNLOCKING ROOM... {room_id}")
+    def unlock_room(self, room_id: RoomID, evt: StrippedStateEvent = None):
+        self.log.debug(
+            f"[{room_id}] Unlocking room for event ({evt.event_id if evt else 'unknown'})"
+        )
         self.LOCKED_ROOMS.discard(room_id)
 
-    def lock_room(self, room_id: RoomID):
-        self.log.debug(f"LOCKING ROOM... {room_id}")
+    def lock_room(self, room_id: RoomID, evt: StrippedStateEvent = None):
+        self.log.debug(
+            f"[{room_id}] Locking room for event ({evt.event_id if evt else 'unknown'})"
+        )
         self.LOCKED_ROOMS.add(room_id)
 
     async def handle_member(self, evt: StrippedStateEvent) -> None:
+        self.log.info(
+            f"[{evt.room_id}] New membership ({evt.content.get('membership')}) "
+            f"event ({evt.event_id}) received. Timestamp: {getattr(evt, 'timestamp', 0)}"
+        )
+
         unsigned = evt.unsigned or StateUnsigned()
         prev_content = unsigned.prev_content or MemberStateEventContent()
         prev_membership = prev_content.membership if prev_content else None
@@ -91,24 +105,39 @@ class MatrixHandler(MatrixClient):
             await self.handle_join(evt)
         elif evt.content.membership == Membership.LEAVE:
             if evt.state_key == self.mxid:
-                room: Room = await Room.get_by_room_id(room_id=evt.room_id, bot_mxid=self.mxid)
-                room.route._node_vars = {}
-                await room.route.update()
-                self.unlock_room(room_id=evt.room_id)
-
+                await self.handle_leave(evt)
             if prev_membership == Membership.INVITE:
                 await self.handle_reject_invite(evt)
 
+    async def handle_leave(self, evt: StrippedStateEvent):
+        last_join_evt = self.LAST_JOIN_EVENT.get(evt.room_id, {})
+        if getattr(evt, "timestamp", 0) < last_join_evt.get("origin_server_ts", 0):
+            self.log.warning(
+                f"[{evt.room_id}] Ignoring {evt.content.get('membership')} event ({evt.event_id}) "
+                f"is older than last join event ({last_join_evt.get('event_id')})"
+            )
+        else:
+            self.log.info(
+                f"[{evt.room_id}] Handling leave event ({evt.event_id}) for bot ({evt.state_key})"
+            )
+            room: Room = await Room.get_by_room_id(room_id=evt.room_id, bot_mxid=self.mxid)
+            await Util.cancel_task(task_name=room.room_id)
+            room.route._node_vars = {}
+            await room.route.update()
+            self.unlock_room(room_id=evt.room_id, evt=evt)
+
     async def handle_invite(self, evt: StrippedStateEvent):
+        self.log.info(f"[{evt.room_id}] Handling invite event ({evt.event_id})")
         if self.util.ignore_user(mxid=evt.sender, origin="invite") or evt.sender == self.mxid:
-            self.log.debug(f"This incoming invite event from {evt.room_id} will be ignored")
+            self.log.debug(f"[{evt.room_id}] This incoming invite event will be ignored")
             await self.leave_room(evt.room_id)
             return
 
-        self.unlock_room(room_id=evt.room_id)
+        self.unlock_room(room_id=evt.room_id, evt=evt)
         await self.join_room(evt.room_id)
 
     async def handle_reject_invite(self, evt: StrippedStateEvent):
+        self.log.info(f"[{evt.room_id}] Handling reject invite event {evt.event_id}")
         if evt.room_id in Room.pending_invites:
             if not Room.pending_invites[evt.room_id].done():
                 Room.pending_invites[evt.room_id].set_result(False)
@@ -166,21 +195,40 @@ class MatrixHandler(MatrixClient):
             await room.set_variable(variable_id="puppet_mxid", value=puppet_mxid)
 
     async def handle_join(self, evt: StrippedStateEvent):
-        if evt.room_id in Room.pending_invites:
-            if not Room.pending_invites[evt.room_id].done():
-                Room.pending_invites[evt.room_id].set_result(True)
+        if evt.room_id in Room.pending_invites and not Room.pending_invites[evt.room_id].done():
+            Room.pending_invites[evt.room_id].set_result(True)
 
-        # Ignore all events that are not from the bot
         if not evt.state_key == self.mxid:
+            self.log.debug(
+                f"[{evt.room_id}] Ignoring join event ({evt.event_id}). Not from the bot"
+            )
+            return
+
+        last_join_evt = self.LAST_JOIN_EVENT.get(evt.room_id, {})
+        membership_evt = evt.content.get("membership")
+        if getattr(evt, "timestamp", 0) < last_join_evt.get("origin_server_ts", 0):
+            self.log.warning(
+                f"[{evt.room_id}] Ignoring {membership_evt} event ({evt.event_id}) "
+                f"is older than last join event ({last_join_evt.get('event_id')})"
+            )
             return
 
         if evt.room_id in self.LOCKED_ROOMS:
-            self.log.warning(f"Ignoring menu request in {evt.room_id} Menu locked")
+            if evt.event_id == last_join_evt.get("event_id"):
+                self.log.warning(
+                    f"[{evt.room_id}] Ignoring {membership_evt} event ({evt.event_id}). "
+                    f"Already processed."
+                )
+            else:
+                self.log.debug(
+                    f"[{evt.room_id}] Ignoring {membership_evt} event ({evt.event_id}). "
+                    f"Menu locked."
+                )
             return
 
-        self.lock_room(evt.room_id)
+        self.lock_room(room_id=evt.room_id, evt=evt)
+        self.log.info(f"[{evt.room_id}] Join event ({evt.event_id}) from {evt.state_key} accepted")
 
-        self.log.info(f"{evt.state_key} ACCEPTED -- EVENT JOIN ... {evt.room_id}")
         room: Room = await Room.get_by_room_id(room_id=evt.room_id, bot_mxid=self.mxid)
         room.config = self.config
         room.matrix_client = self
@@ -191,12 +239,15 @@ class MatrixHandler(MatrixClient):
             del GPTAssistant.assistant_cache[(room.room_id, room.route.id)]
 
         await self.load_room_constants(evt.room_id)
-        await self.algorithm(room=room)
+        await self.algorithm(room=room, evt=evt, process_evt=False)
 
     async def handle_message(self, message: MessageEvent) -> None:
-        self.log.debug(
-            f"Incoming message [user: {message.sender}] [message: {message.content.body}] [room_id: {message.room_id}]"
-        )
+        base = f"[{message.room_id}] Incoming message ({message.event_id}) from {message.sender}"
+
+        if self.log.getEffectiveLevel() <= logging.DEBUG:
+            self.log.debug(f"{base}. Content: {repr(message.content.body)}")
+        else:
+            self.log.info(base)
 
         # Message edits are ignored
         if (
@@ -212,8 +263,8 @@ class MatrixHandler(MatrixClient):
             or message.sender == self.mxid
             or message.content.msgtype == MessageType.NOTICE
         ):
-            self.log.debug(
-                f"This incoming message from {message.room_id} will be ignored :: {message.content.body}"
+            self.log.warning(
+                f"[{message.room_id}] The incoming message ({message.event_id}) from {message.sender} will be ignored by the bot"
             )
             return
 
@@ -228,7 +279,7 @@ class MatrixHandler(MatrixClient):
             and not self.flow.get_node_by_id(node_id=room.route.node_id).get("type")
             == "gpt_assistant"
         ):
-            self.log.warning(f"Message in {message.room_id} ignored due to rate limit")
+            self.log.warning(f"[{message.room_id}] Message ignored due to rate limit")
             return
 
         self.LAST_RECEIVED_MESSAGE[message.room_id] = current_message_time
@@ -239,13 +290,13 @@ class MatrixHandler(MatrixClient):
             return
 
         if room.room_id in Room.pending_invites:
-            self.log.warning(f"Ignoring message in {room.room_id} pending invite")
+            self.log.warning(f"[{room.room_id}] Ignoring message in pending invite")
             return
 
         node = self.flow.node(room=room)
 
         if node and room.route._node_vars.get("inactivity"):
-            self.log.info(f"Inactivity config detected for room: {room.room_id}")
+            self.log.info(f"[{room.room_id}] Inactivity config detected")
             await Util.cancel_task(task_name=room.room_id)
             if not isinstance(node, Webhook):
                 room.set_node_var(inactivity={})
@@ -291,7 +342,9 @@ class MatrixHandler(MatrixClient):
                 f"Created task for group message [room: {room.room_id}] [node: {node.id}] in {node.group_messages_timeout} seconds"
             )
 
-    async def algorithm(self, room: Room, evt: Optional[MessageEvent] = None) -> None:
+    async def algorithm(
+        self, room: Room, evt: Optional[MessageEvent] = None, process_evt: bool = True
+    ) -> None:
         """The algorithm function is the main function that runs the flow.
         It takes a room and an event as parameters
 
@@ -306,11 +359,20 @@ class MatrixHandler(MatrixClient):
         node = self.flow.node(room=room)
 
         if node is None:
-            self.log.debug(f"Room {room.room_id} does not have a node [{node}]")
+            self.log.debug(f"[{room.room_id}] Does not have a valid node. Updating to start")
             await room.update_menu(node_id="start")
             return
 
-        self.log.debug(f"The [room: {room.room_id}] [node: {node.id}] [state: {room.route.state}]")
+        self.log.debug(
+            f"[{room.room_id}] Executing node: [{node.id}]. "
+            f"State: ({room.route.state}). "
+            f"Triggered by: ({evt.event_id if getattr(evt, 'event_id', None) else 'unknown'}). "
+            f"Sender: ({evt.sender if getattr(evt, 'sender', None) else 'unknown'}). "
+            f"Timestamp: ({evt.timestamp if getattr(evt, 'timestamp', None) else 'unknown'}). "
+            f"Type evt: ({type(evt)}). "
+        )
+        if not process_evt:
+            evt = None
 
         if type(node) in (Input, InteractiveInput, FormInput, GPTAssistant, Webhook):
             if isinstance(node, GPTAssistant) and room.route.state == RouteState.INPUT:
@@ -369,10 +431,12 @@ class MatrixHandler(MatrixClient):
                     continue
 
                 if inactivity := node.inactivity_options:
+                    self.log.warning(f"[{room.room_id}] Creating inactivity task ({task_name})")
                     task = asyncio.create_task(
                         node.timeout_active_chats(inactivity), name=task_name
                     )
                     task.metadata = {"bot_mxid": self.mxid}
+                    task.created_at = datetime.now(timezone.utc).timestamp()
                     # This ensures that the algorithm runs after the inactivity_options task completes.
                     task.add_done_callback(
                         lambda _task, _room=room: asyncio.ensure_future(self.algorithm(room=_room))

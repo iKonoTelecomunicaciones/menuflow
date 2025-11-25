@@ -112,8 +112,6 @@ class Route:
         await self.db.execute(q, *self.values)
 
     async def clean_up(self, update_state: bool = True, preserve_constants: bool = False) -> None:
-        log.info(f"Cleaning up route {self.client}")
-
         constants = (
             ("customer_room_id", "bot_mxid", "customer_mxid", "puppet_mxid")
             if preserve_constants
@@ -124,6 +122,8 @@ class Route:
             self.state = RouteState.START
         self.node_id = "start"
         _vars = self._variables
+
+        log.info(f"[{_vars.get('customer_room_id')}] Cleaning up route for client '{self.client}'")
 
         self.variables = json.dumps(
             {"external": _vars.pop("external", {}), **{c: _vars.pop(c, "") for c in constants}}
