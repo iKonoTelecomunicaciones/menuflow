@@ -73,6 +73,35 @@ components:
                 module_id:
                   type: integer
 
+    ImportModuleOk:
+      type: object
+      properties:
+        detail:
+          type: object
+          properties:
+            message:
+              type: string
+            data:
+              type: object
+              properties:
+                module_id:
+                  type: integer
+                original_name:
+                  type: string
+                imported_name:
+                  type: string
+                renamed_nodes:
+                  type: object
+                  description: Mapping of original node IDs to new node IDs
+                  additionalProperties:
+                    type: string
+                nodes:
+                  type: array
+                  description: The processed list of nodes with renamed IDs and names
+                  items:
+                    type: object
+                    additionalProperties: true
+
     BodyNotJson:
       type: object
       properties:
@@ -1226,6 +1255,35 @@ components:
               message: Module created successfully.
               data:
                 module_id: 1
+
+    ImportModuleSuccess:
+      description: Import module success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ImportModuleOk"
+          example:
+            detail:
+              message: "Module imported successfully"
+              data:
+                module_id: 5
+                original_name: "example"
+                imported_name: "example_1"
+            renamed_nodes:
+              message_hello: message_hello_1
+              message_goodbye: message_goodbye_1
+            nodes:
+              - id: "message_hello_1"
+                name: "message_hello_1"
+                type: "message"
+                text: "Hello, world!"
+                o_connection: "message_goodbye_1"
+              - id: "message_goodbye_1"
+                name: "message_goodbye_1"
+                type: "message"
+                text: "Goodbye!"
+
+
     CreateModuleNotFound:
       description: Post module not found.
       content:
