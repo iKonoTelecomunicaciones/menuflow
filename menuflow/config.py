@@ -26,6 +26,7 @@ class Config(BaseFileConfig):
         copy("menuflow.message_rate_limit")
         copy("menuflow.backup_limit")
         copy("menuflow.webhook_queue.time_to_live")
+        copy("menuflow.max_recursion_depth")
         copy_dict("menuflow.regex")
         copy("menuflow.mautrix_state_key")
         copy("server.hostname")
