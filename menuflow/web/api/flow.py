@@ -17,6 +17,8 @@ from ..docs.flow import (
     get_flow_backups_doc,
     get_flow_doc,
     get_flow_nodes_doc,
+    import_flow_doc,
+    publish_flow_doc,
 )
 from ..responses import resp
 from ..util import Util
@@ -264,6 +266,7 @@ async def get_backup(request: web.Request) -> web.Response:
 
 
 @routes.post("/v1/flow/{flow_id}/publish")
+@Util.docstring(publish_flow_doc)
 async def publish_flow(request: web.Request) -> web.Response:
     uuid = Util.generate_uuid()
     log.info(f"({uuid}) -> '{request.method}' '{request.path}' Publishing flow")
@@ -335,6 +338,7 @@ async def publish_flow(request: web.Request) -> web.Response:
 
 # Import flow
 @routes.put("/v1/flow/import")
+@Util.docstring(import_flow_doc)
 async def import_flow(request: web.Request) -> web.Response:
     uuid = Util.generate_uuid()
     log.info(f"({uuid}) -> '{request.method}' '{request.path}' Importing flow")

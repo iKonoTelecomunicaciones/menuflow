@@ -600,6 +600,87 @@ components:
       example:
         detail:
           message: "Error getting countries: 'error_message'"
+
+    # Tag schemas
+    GetTagOk:
+      type: object
+      properties:
+        id:
+          type: integer
+        flow_id:
+          type: integer
+        name:
+          type: string
+        create_date:
+          type: string
+          format: date-time
+        author:
+          type: string
+        active:
+          type: boolean
+        flow_vars:
+          type: object
+          additionalProperties: true
+      example:
+        id: 1
+        flow_id: 123
+        name: "production"
+        create_date: "2025-11-21 10:00:00"
+        author: "@user:example.com"
+        active: true
+        flow_vars:
+          variable1: "value1"
+          variable2: "value2"
+
+    GetAllTagsOk:
+      type: object
+      properties:
+        tags:
+          type: array
+          items:
+            type: object
+      example:
+        tags:
+          - id: 1
+            flow_id: 123
+            name: "production"
+            create_date: "2025-11-21 10:00:00"
+            author: "@user:example.com"
+            active: true
+            flow_vars:
+              variable1: "value1"
+          - id: 2
+            flow_id: 123
+            name: "staging"
+            create_date: "2025-11-21 09:00:00"
+            author: "@user:example.com"
+            active: false
+            flow_vars:
+              variable1: "value2"
+
+    DeleteTagOk:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponseDetailMessage"
+      example:
+        detail:
+          message: "Tag with ID 1 deleted successfully"
+
+    # Flow publish/import schemas
+    PublishFlowOk:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponseDetailMessage"
+      example:
+        detail:
+          message: "Flow published successfully with tag 'v1.0.0'"
+
+    ImportFlowOk:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponseDetailMessageData"
+      example:
+        detail:
+          message: "Flow imported successfully"
+          data:
+            flow_id: 1
     # End of error schemas
 
   # End of schemas
@@ -1457,4 +1538,205 @@ components:
               value:
                 detail:
                   message: room_id '1' not found
+
+    # Tag responses
+    GetTagsSuccess:
+      description: Get tags success.
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: "#/components/schemas/GetTagOk"
+              - $ref: "#/components/schemas/GetAllTagsOk"
+          examples:
+            SingleTag:
+              value:
+                id: 1
+                flow_id: 123
+                name: "production"
+                create_date: "2025-11-21 10:00:00"
+                author: "@user:example.com"
+                active: true
+                flow_vars:
+                  variable1: "value1"
+                  variable2: "value2"
+            MultipleTags:
+              value:
+                tags:
+                  - id: 1
+                    flow_id: 123
+                    name: "production"
+                    create_date: "2025-11-21 10:00:00"
+                    author: "@user:example.com"
+                    active: true
+                    flow_vars:
+                      variable1: "value1"
+                  - id: 2
+                    flow_id: 123
+                    name: "staging"
+                    create_date: "2025-11-21 09:00:00"
+                    author: "@user:example.com"
+                    active: false
+                    flow_vars:
+                      variable1: "value2"
+
+    GetTagsBadRequest:
+      description: Get tags bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "flow_id must be a valid integer"
+
+    GetTagsNotFound:
+      description: Get tags not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            TagNotFound:
+              value:
+                detail:
+                  message: "Tag with ID 1 not found"
+            TagByNameNotFound:
+              value:
+                detail:
+                  message: "Tag with name 'production' not found for flow_id 123"
+            NoTagsFound:
+              value:
+                detail:
+                  message: "No tags found for flow_id 123"
+
+    DeleteTagSuccess:
+      description: Delete tag success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/DeleteTagOk"
+
+    DeleteTagBadRequest:
+      description: Delete tag bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "tag_id must be a valid integer"
+
+    DeleteTagNotFound:
+      description: Delete tag not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "Tag with ID 1 not found"
+
+    DeleteTagConflict:
+      description: Delete tag conflict - Tag is active.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "Tag with ID 1 is active and cannot be deleted"
+
+    # Flow publish/import responses
+    PublishFlowSuccess:
+      description: Publish flow success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/PublishFlowOk"
+
+    PublishFlowBadRequest:
+      description: Publish flow bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            InvalidFlowId:
+              value:
+                detail:
+                  message: "Flow ID must be an integer"
+            MissingParameters:
+              value:
+                detail:
+                  message: "Parameters 'name' and 'author' are required"
+
+    PublishFlowNotFound:
+      description: Publish flow not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            FlowNotFound:
+              value:
+                detail:
+                  message: "Flow with ID 1 not found"
+            CurrentTagNotFound:
+              value:
+                detail:
+                  message: "No current tag found for flow ID 1"
+
+    PublishFlowInternalError:
+      description: Publish flow internal error.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "Error copying modules: database error"
+
+    ImportFlowSuccess:
+      description: Import flow success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ImportFlowOk"
+
+    ImportFlowBadRequest:
+      description: Import flow bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            MissingFlowOrVars:
+              value:
+                detail:
+                  message: "Parameter flow or flow_vars is required"
+            MissingId:
+              value:
+                detail:
+                  message: "Parameter 'id' is required for import"
+            InvalidJSON:
+              value:
+                detail:
+                  message: "Body is not a valid JSON"
+
+    ImportFlowNotFound:
+      description: Import flow not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            FlowNotFound:
+              value:
+                detail:
+                  message: "Flow with ID 1 not found"
+            CurrentTagNotFound:
+              value:
+                detail:
+                  message: "Current tag not found for flow 1"
   # End of responses
