@@ -278,7 +278,7 @@ class TestBase:
         assert test_data.get("accounts")[0].get("rooms")[0] == base.render_data(
             "{{ route.customer_room_id }}"
         )
-        assert f'{scope_vars.get("route.number")}' == test_data.get("number")
+        assert scope_vars.get("route.number") == test_data.get("number")
 
     @pytest.mark.asyncio
     async def test_crud_variables(self, base: Base):
