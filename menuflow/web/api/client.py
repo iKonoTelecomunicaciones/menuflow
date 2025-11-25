@@ -12,6 +12,8 @@ from mautrix.types import UserID
 
 from ...config import Config
 from ...db.flow import Flow as DBFlow
+from ...db.room import Room as DBRoom
+from ...db.route import Route as DBRoute
 from ...menu import MenuClient
 from ...room import Room
 from ..base import get_config, routes
@@ -325,3 +327,81 @@ async def enable_disable_client(request: web.Request) -> web.Response:
 
     await client.update()
     return resp.ok({"detail": {"message": f"Client {action}d successfully"}})
+
+
+@routes.get("/v1/room/{room_id}/get_variables", allow_head=False)
+async def get_variables(request: web.Request) -> web.Response:
+    """
+    ---
+    summary: Get variables
+    description: Get variables
+    tags:
+        - Room
+
+    parameters:
+        - name: room_id
+          in: path
+          required: true
+          description: The room ID to set variables for
+          schema:
+            type: string
+          example: "!vOmHZZMQibXsynuNFm:example.com"
+
+        - name: bot_mxid
+          in: query
+          description: The Matrix user ID of the client
+          schema:
+            type: string
+          example: "@bot:example.com"
+
+        - name: scopes
+          in: query
+          required: false
+          description: The scopes of the variables to get. If not provided, all variables will be returned.
+          schema:
+            type: array
+            default: ["room", "route"]
+            items:
+              type: string
+
+    responses:
+        '200':
+            $ref: '#/components/responses/GetVariablesSuccess'
+        '404':
+            $ref: '#/components/responses/GetVariablesNotFound'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
+    """
+
+    room_id = request.match_info["room_id"]
+    bot_mxid = request.query.get("bot_mxid", None)
+    scopes = request.query.getall("scopes", ["room", "route"])
+    response = {}
+
+    try:
+        room = await DBRoom.get_by_room_id(room_id)
+        log.info(f"Room: {room}")
+        if not room:
+            return resp.not_found(f"room_id '{room_id}' not found")
+
+        if not bot_mxid:
+            bot_mxid = room._room_variables.get("current_bot_mxid")
+            if not bot_mxid:
+                return resp.not_found("current_bot_mxid not found in the room variables")
+
+        route = await DBRoute.get_by_room_and_client(room=room.id, client=bot_mxid, create=False)
+        if not route:
+            return resp.not_found(f"Client '{bot_mxid}' not found in room")
+
+        for scope in scopes:
+            if scope == "room":
+                response[scope] = room._room_variables
+            elif scope == "route":
+                response[scope] = route._variables
+            else:
+                log.warning(f"Invalid scope: {scope}, skipping")
+
+    except Exception as e:
+        return resp.server_error(str(e))
+
+    return resp.ok(response) if response else resp.not_found("Scopes not found")
