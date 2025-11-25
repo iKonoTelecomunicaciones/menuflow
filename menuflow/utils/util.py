@@ -300,10 +300,10 @@ class Util:
             _data = data
 
         if isinstance(_data, dict):
-            return {k: cls.recursive_render(v, variables) for k, v in _data.items()}
+            return {k: cls.recursive_render(v, variables, flags) for k, v in _data.items()}
 
         elif isinstance(_data, list):
-            return [cls.recursive_render(item, variables) for item in _data]
+            return [cls.recursive_render(item, variables, flags) for item in _data]
 
         elif isinstance(_data, str):
             return_errors = RenderFlags.RETURN_ERRORS in flags
