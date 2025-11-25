@@ -101,26 +101,6 @@ components:
                   items:
                     type: object
                     additionalProperties: true
-      example:
-        detail:
-          message: "Module imported successfully"
-          data:
-            module_id: 5
-            original_name: "example"
-            imported_name: "example_1"
-            renamed_nodes:
-              message_hello: message_hello_1
-              message_goodbye: message_goodbye_1
-            nodes:
-              - id: "message_hello_1"
-                name: "message_hello_1"
-                type: "message"
-                text: "Hello, world!"
-                o_connection: "message_goodbye_1"
-              - id: "message_goodbye_1"
-                name: "message_goodbye_1"
-                type: "message"
-                text: "Goodbye!"
 
     BodyNotJson:
       type: object
@@ -1282,6 +1262,27 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ImportModuleOk"
+          example:
+            detail:
+              message: "Module imported successfully"
+              data:
+                module_id: 5
+                original_name: "example"
+                imported_name: "example_1"
+            renamed_nodes:
+              message_hello: message_hello_1
+              message_goodbye: message_goodbye_1
+            nodes:
+              - id: "message_hello_1"
+                name: "message_hello_1"
+                type: "message"
+                text: "Hello, world!"
+                o_connection: "message_goodbye_1"
+              - id: "message_goodbye_1"
+                name: "message_goodbye_1"
+                type: "message"
+                text: "Goodbye!"
+
 
     CreateModuleNotFound:
       description: Post module not found.
