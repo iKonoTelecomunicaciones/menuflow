@@ -9,12 +9,16 @@ from ...config import Config
 from ...db.flow import Flow as DBFlow
 from ...db.flow_backup import FlowBackup
 from ...db.module import Module as DBModule
+from ...db.tag import Tag as DBTag
+from ...repository.flow import Flow
 from ..base import get_config, routes
 from ..docs.flow import (
     create_or_update_flow_doc,
     get_flow_backups_doc,
     get_flow_doc,
     get_flow_nodes_doc,
+    import_flow_doc,
+    publish_flow_doc,
 )
 from ..responses import resp
 from ..util import Util
@@ -55,43 +59,22 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
         if not flow:
             return resp.not_found(f"Flow with ID {flow_id} not found", uuid)
 
-        if incoming_flow:
-            modules = await DBModule.all(int(flow_id))
+        current_tag = await DBTag.get_current_tag(int(flow_id))
+        if not current_tag:
+            return resp.not_found(f"Current tag not found for flow {flow_id}", uuid)
 
-            if modules:
-                for module_obj in modules:
-                    name = module_obj.name
-                    if name not in nodes:
-                        await module_obj.delete()
-                    else:
-                        new_nodes = nodes.get(name, {}).get("nodes", [])
-                        if module_obj.nodes != new_nodes:
-                            module_obj.nodes = new_nodes
-                        nodes.pop(name, None)
+        await Flow.update_flow(
+            flow,
+            incoming_flow,
+            variables,
+            nodes,
+            positions,
+            current_tag,
+        )
 
-                        new_position = positions.pop(name, {})
-                        if module_obj.position != new_position:
-                            module_obj.position = new_position
-
-                        await module_obj.update()
-
-            for name, node in nodes.items():
-                module_obj = DBModule(
-                    flow_id=flow_id,
-                    name=name,
-                    nodes=node.get("nodes", []),
-                    position=positions.get(name, {}),
-                )
-                await module_obj.insert()
-
-            if flow.flow != incoming_flow:
-                await flow.backup_flow(config)
-
-            flow.flow = incoming_flow
-
-        flow.flow_vars = variables
-
-        await flow.update()
+        # Create backup if requested and flow changed
+        if flow.flow and incoming_flow:
+            await flow.backup_flow(config)
 
         if config["menuflow.load_flow_from"] == "database":
             modules = await DBModule.all(int(flow_id))
@@ -105,6 +88,12 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
         new_flow = DBFlow(flow=incoming_flow, flow_vars=variables)
         flow_id = await new_flow.insert()
 
+        # Create a current tag for the new flow
+        current_tag = DBTag(
+            flow_id=flow_id, name="current", flow_vars=variables, author="system", active=True
+        )
+        tag_id = await current_tag.insert()
+
         if incoming_flow:
             for name, node in nodes.items():
                 module_obj = DBModule(
@@ -112,6 +101,7 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
                     name=name,
                     nodes=node.get("nodes", []),
                     position=positions.get(name, {}),
+                    tag_id=tag_id,
                 )
                 await module_obj.insert()
 
@@ -143,7 +133,9 @@ async def get_flow(request: web.Request) -> web.Response:
                 return resp.not_found(f"Flow with mxid {client_mxid} not found", uuid)
             flow_id = flow.id
 
-        modules = await DBModule.all(int(flow_id))
+        # Get the current tag for this flow
+        current_tag = await DBTag.get_current_tag(int(flow_id))
+        modules = await DBModule.get_tag_modules(current_tag.id)
 
         if not flow_format and modules or flow.flow == {}:
             log.debug(f"({uuid}) -> New flow format detected, parsing modules to flow format")
@@ -152,12 +144,12 @@ async def get_flow(request: web.Request) -> web.Response:
                 "id": flow.id,
                 "flow": {
                     "menu": {
-                        "flow_variables": flow.flow_vars,
+                        "flow_variables": current_tag.flow_vars,
                         "nodes": nodes,
                     },
                     "modules": positions,
                 },
-                "flow_vars": flow.flow_vars,
+                "flow_vars": current_tag.flow_vars,
             }
         else:  # TODO: This is a temporary solution to return the flow when they are not yet in the module table
             log.warning(f"({uuid}) -> Old flow format detected, returning flow from column")
@@ -270,4 +262,121 @@ async def get_backup(request: web.Request) -> web.Response:
         data={"count": count, "backups": [backup.to_dict() for backup in backups]},
         uuid=uuid,
         log_msg=f"Returning {count} backups for flow {flow_id}",
+    )
+
+
+@routes.post("/v1/flow/{flow_id}/publish")
+@Util.docstring(publish_flow_doc)
+async def publish_flow(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Publishing flow")
+
+    try:
+        flow_id = int(request.match_info["flow_id"])
+    except ValueError:
+        return resp.bad_request("Flow ID must be an integer", uuid)
+
+    flow = await DBFlow.get_by_id(flow_id)
+    if not flow:
+        return resp.not_found(f"Flow with ID {flow_id} not found", uuid)
+
+    try:
+        data = await request.json()
+    except JSONDecodeError:
+        return resp.not_found("Invalid JSON in request body", uuid)
+
+    name = data.get("name")
+    author = data.get("author")
+
+    if not name or not author:
+        return resp.bad_request("Parameters 'name' and 'author' are required", uuid)
+
+    log.debug(f"({uuid}) -> creating new tag '{name}' for flow ID {flow_id}")
+
+    current_tag = await DBModule.get_current_tag(flow_id)
+    if not current_tag:
+        return resp.not_found(f"No current tag found for flow ID {flow_id}", uuid)
+
+    log.debug(f"({uuid}) -> Found current tag with ID for flow {flow_id}: {current_tag["id"]}")
+
+    new_tag = DBTag(
+        flow_id=flow_id,
+        name=name,
+        author=author,
+        flow_vars=current_tag["flow_vars"],
+        active=False,
+    )
+    tag_id = await new_tag.insert()
+
+    log.debug(f"({uuid}) -> New tag created for flow {flow_id} with ID {tag_id}")
+
+    result = await DBModule.copy_modules_from_tag(current_tag["id"], tag_id)
+    if not result.get("success"):
+        return resp.internal_error(f"Error copying modules: {result.get('error')}", uuid)
+
+    await DBTag.deactivate_tags(flow_id)
+    await DBTag.activate_tag(tag_id)
+
+    config: Config = get_config()
+    if config["menuflow.load_flow_from"] == "database":
+        modules = await DBModule.get_tag_modules(int(tag_id))
+        flow_vars = await DBTag.get_by_id(tag_id)
+        nodes = [node for module in modules for node in module.get("nodes", [])]
+        await Util.update_flow_db_clients(
+            flow_id, {"flow_variables": flow_vars.flow_vars, "nodes": nodes}, config
+        )
+
+    return resp.ok(
+        {
+            "detail": {
+                "message": f"Flow published successfully with tag '{name}'",
+            }
+        },
+        uuid,
+    )
+
+
+# Import flow
+@routes.put("/v1/flow/import")
+@Util.docstring(import_flow_doc)
+async def import_flow(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Importing flow")
+
+    config: Config = get_config()
+    try:
+        data: dict = await request.json()
+    except JSONDecodeError:
+        return resp.body_not_json(uuid)
+
+    flow_id = data.get("id")
+    incoming_flow = data.get("flow", {})
+    flow_vars = data.get("flow_vars")
+
+    if not incoming_flow and flow_vars is None:
+        return resp.bad_request("Parameter flow or flow_vars is required", uuid)
+
+    if not flow_id:
+        return resp.bad_request("Parameter 'id' is required for import", uuid)
+
+    variables = (
+        incoming_flow.get("menu", {}).get("flow_variables", {})
+        if incoming_flow
+        else flow_vars or {}
+    )
+
+    nodes, positions = Util.parse_flow_to_module_fmt(incoming_flow)
+
+    flow = await DBFlow.get_by_id(flow_id)
+    if not flow:
+        return resp.not_found(f"Flow with ID {flow_id} not found", uuid)
+
+    current_tag = await DBTag.get_current_tag(int(flow_id))
+    if not current_tag:
+        return resp.not_found(f"Current tag not found for flow {flow_id}", uuid)
+
+    await Flow.update_flow(flow, incoming_flow, variables, nodes, positions, current_tag)
+
+    return resp.ok(
+        {"detail": {"message": "Flow imported successfully", "data": {"flow_id": flow_id}}}, uuid
     )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import TYPE_CHECKING, ClassVar
 
 from asyncpg import Record
@@ -21,6 +22,7 @@ class Flow(SerializableAttrs):
     id: int = ib(default=None)
     flow: dict = ib(factory=dict)
     flow_vars: dict = ib(factory=dict)
+    create_date: datetime = ib(default=None)
 
     @property
     def get_values(self) -> tuple[str, str]:
@@ -36,11 +38,12 @@ class Flow(SerializableAttrs):
             id=row["id"],
             flow=json.loads(row["flow"]),
             flow_vars=json.loads(row["flow_vars"]) if row.get("flow_vars") else {},
+            create_date=row.get("create_date"),
         )
 
     @classmethod
     async def all(cls) -> list[dict]:
-        q = "SELECT id, flow, flow_vars FROM flow"
+        q = "SELECT id, flow, flow_vars, create_date FROM flow"
         rows = await cls.db.fetch(q)
         if not rows:
             return []
@@ -59,7 +62,12 @@ class Flow(SerializableAttrs):
 
     @classmethod
     async def get_by_mxid(cls, mxid: str) -> Flow | None:
-        q = "SELECT f.id, f.flow, f.flow_vars FROM flow as f JOIN client as c ON f.id = c.flow WHERE c.id = $1"
+        q = """
+            SELECT f.id, f.flow, f.flow_vars, f.create_date
+            FROM flow as f
+            JOIN client as c ON f.id = c.flow
+            WHERE c.id = $1
+        """
         row = await cls.db.fetchrow(q, mxid)
 
         if not row:
@@ -67,6 +75,23 @@ class Flow(SerializableAttrs):
 
         return cls._from_row(row)
 
+    @classmethod
+    async def get_current_tag(cls, mxid: str) -> int | None:
+        q = """
+            SELECT tag.id
+            FROM flow
+            JOIN client ON flow.id = client.flow
+            JOIN tag ON flow.id = tag.flow_id
+            WHERE client.id = $1 AND tag.name = 'current'
+        """
+        row = await cls.db.fetchrow(q, mxid)
+
+        if not row:
+            return
+
+        return row
+
+    # Create a new flow with current and return the new flow ID
     async def insert(self) -> int:
         q = "INSERT INTO flow (flow, flow_vars) VALUES ($1, $2) RETURNING id"
         return await self.db.fetchval(q, *self.get_values)
