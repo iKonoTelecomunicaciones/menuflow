@@ -16,6 +16,7 @@ class TestInputNode:
 
     def test_inactivity_options(self, input_text: Input):
         assert input_text.inactivity_options == {
+            "active": True,
             "chat_timeout": 20,
             "warning_message": "Please enter an option, or the menu will end.",
             "time_between_attempts": 10,
