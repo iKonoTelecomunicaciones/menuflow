@@ -137,7 +137,9 @@ class Webhook(Input):
                     ),
                 )
                 await self.send_message(self.room.room_id, msg_content)
-            if inactivity := self.inactivity_options:
+
+            inactivity = self.inactivity_options
+            if inactivity.get("active"):
                 await self.timeout_active_chats(inactivity)
 
         await self.send_node_event(o_connection=None, event_type=MenuflowNodeEvents.NodeInputData)
@@ -260,7 +262,9 @@ class Webhook(Input):
             )
 
             inactivity = self.inactivity_options
-            if inactivity and not Util.get_tasks_by_name(task_name=self.room.room_id):
+            if inactivity.get("active") and not Util.get_tasks_by_name(
+                task_name=self.room.room_id
+            ):
                 if not inactivity.get("chat_timeout") or inactivity.get("chat_timeout") <= 0:
                     self.log.debug(
                         f"Chat timeout is not set in node webhook for room: {self.room.room_id}"

@@ -68,7 +68,12 @@ class GPTAssistant(Switch):
 
     @property
     def inactivity_options(self) -> Dict[str, Any]:
-        return self.content.get("inactivity_options", {})
+        inactivity = self.content.get("inactivity_options", {})
+        if (
+            "active" not in inactivity and inactivity
+        ):  # TODO: Remove this once the inactivity options are updated
+            inactivity["active"] = True
+        return inactivity
 
     @property
     def group_messages_timeout(self) -> int:
@@ -182,7 +187,7 @@ class GPTAssistant(Switch):
 
             await self.room.set_variable(_variable, value=response)
 
-            if _inactivity:
+            if _inactivity.get("active"):
                 await Util.cancel_task(task_name=self.room.room_id)
 
             output = await Switch.run(self, update_state=False, generate_event=False)
@@ -209,7 +214,9 @@ class GPTAssistant(Switch):
             await self.room.matrix_client.send_text(room_id=self.room.room_id, text=message)
             await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
 
-            if _inactivity and not Util.get_tasks_by_name(task_name=self.room.room_id):
+            if _inactivity.get("active") and not Util.get_tasks_by_name(
+                task_name=self.room.room_id
+            ):
                 await self.timeout_active_chats(_inactivity)
 
     async def timeout_active_chats(self, inactivity: dict):
