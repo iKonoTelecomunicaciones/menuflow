@@ -391,12 +391,13 @@ class MatrixHandler(MatrixClient):
                 evt = None
 
             if type(node) in (Input, InteractiveInput, FormInput, GPTAssistant, Webhook):
-                if isinstance(node, GPTAssistant) and room.route.state == RouteState.INPUT:
-                    await self.group_message(room=room, message=evt, node=node)
-                    break
-
-                if room.room_id in self.message_group_by_room:
-                    del self.message_group_by_room[room.room_id]
+                # TODO: Change this to support GPTAssistant node
+                # if isinstance(node, GPTAssistant) and room.route.state == RouteState.INPUT:
+                #    await self.group_message(room=room, message=evt, node=node)
+                #    break
+                #
+                # if room.room_id in self.message_group_by_room:
+                #    del self.message_group_by_room[room.room_id]
 
                 try:
                     await node.run(evt)
