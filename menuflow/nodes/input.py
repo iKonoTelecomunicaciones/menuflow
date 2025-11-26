@@ -44,7 +44,12 @@ class Input(Switch, Message):
 
     @property
     def inactivity_options(self) -> Dict[str, Any]:
-        return self.content.get("inactivity_options", {})
+        inactivity = self.content.get("inactivity_options", {})
+        if (
+            "active" not in inactivity and inactivity
+        ):  # TODO: Remove this once the inactivity options are updated
+            inactivity["active"] = True
+        return inactivity
 
     async def _set_input_content(
         self, content: MediaMessageEventContent | LocationMessageEventContent
@@ -203,7 +208,8 @@ class Input(Switch, Message):
                 conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
             )
 
-            if (inactivity := self.inactivity_options) and not Util.get_tasks_by_name(
+            inactivity = self.inactivity_options
+            if inactivity.get("active") and not Util.get_tasks_by_name(
                 task_name=self.room.room_id
             ):
                 await self.timeout_active_chats(inactivity)

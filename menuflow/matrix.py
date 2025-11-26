@@ -430,7 +430,8 @@ class MatrixHandler(MatrixClient):
                     await room.update_menu(node_id=RouteState.START)
                     continue
 
-                if inactivity := node.inactivity_options:
+                inactivity = node.inactivity_options
+                if inactivity.get("active"):
                     self.log.warning(f"[{room.room_id}] Creating inactivity task ({task_name})")
                     task = asyncio.create_task(
                         node.timeout_active_chats(inactivity), name=task_name

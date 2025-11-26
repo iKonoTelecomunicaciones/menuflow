@@ -101,7 +101,8 @@ class InteractiveInput(Input):
                 conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
             )
 
-            if (inactivity := self.inactivity_options) and not Util.get_tasks_by_name(
+            inactivity = self.inactivity_options
+            if inactivity.get("active") and not Util.get_tasks_by_name(
                 task_name=self.room.room_id
             ):
                 await self.timeout_active_chats(inactivity)
