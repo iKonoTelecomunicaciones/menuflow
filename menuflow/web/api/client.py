@@ -148,11 +148,14 @@ async def set_variables(request: web.Request) -> web.Response:
                             type: object
                         bot_mxid:
                             type: string
+                        conversation_uuid:
+                            type: string
                 example:
                     variables:
                         var1: value
                         var2: value
                     bot_mxid: "@bot:example.com"
+                    conversation_uuid: "1234567890"
     responses:
         '201':
             $ref: '#/components/responses/VariablesSetSuccess'
@@ -165,9 +168,12 @@ async def set_variables(request: web.Request) -> web.Response:
     room_id = request.match_info["room_id"]
     variables = data.get("variables", {})
     bot_mxid = data.get("bot_mxid", None)
+    conversation_uuid = data.get("conversation_uuid", None)
     room: Room = await Room.get_by_room_id(room_id, bot_mxid)
 
     await room.set_variable(variable_id="external", value=variables)
+    if conversation_uuid:
+        await room.set_variable(variable_id="room.conversation_uuid", value=conversation_uuid)
 
     return resp.ok({"detail": {"message": "Variables set successfully"}})
 
