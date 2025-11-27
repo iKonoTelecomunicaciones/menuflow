@@ -104,7 +104,7 @@ async def create_client(request: web.Request) -> web.Response:
 
         main_module = DBModule(
             flow_id=new_flow_id,
-            name="main",
+            name="Main",
             nodes=[],
             position={},
             tag_id=tag_id,
