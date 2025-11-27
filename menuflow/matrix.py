@@ -3,9 +3,10 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING
 
 from mautrix.client import Client as MatrixClient
+from mautrix.errors.request import MLimitExceeded
 from mautrix.types import (
     Membership,
     MemberStateEventContent,
@@ -32,10 +33,10 @@ if TYPE_CHECKING:
 
 
 class MatrixHandler(MatrixClient):
-    message_group_by_room: Dict[RoomID, list[MessageEvent]] = {}
+    message_group_by_room: dict[RoomID, list[MessageEvent]] = {}
 
     def __init__(
-        self, config: Config, flow: Flow, flow_utils: Optional[FlowUtils] = None, *args, **kwargs
+        self, config: Config, flow: Flow, flow_utils: FlowUtils | None = None, *args, **kwargs
     ) -> None:
         super().__init__(*args, **kwargs)
         self.config = config
@@ -43,14 +44,14 @@ class MatrixHandler(MatrixClient):
         self.util = Util(self.config)
         self.flow = flow
         self.LOCKED_ROOMS = set()
-        self.LAST_JOIN_EVENT: Dict[RoomID, StrippedStateEvent] = {}
-        self.LAST_RECEIVED_MESSAGE: Dict[RoomID, datetime] = {}
+        self.LAST_JOIN_EVENT: dict[RoomID, StrippedStateEvent] = {}
+        self.LAST_RECEIVED_MESSAGE: dict[RoomID, datetime] = {}
         Base.init_cls(
             config=self.config,
             session=self.api.session,
         )
 
-    def handle_sync(self, data: Dict) -> list[asyncio.Task]:
+    def handle_sync(self, data: dict) -> list[asyncio.Task]:
         # This is a way to remove duplicate events from the sync
         try:
             rooms = data.get("rooms", {}).get("join", {})
@@ -343,7 +344,7 @@ class MatrixHandler(MatrixClient):
             )
 
     async def algorithm(
-        self, room: Room, evt: Optional[MessageEvent] = None, process_evt: bool = True
+        self, room: Room, evt: MessageEvent | None = None, process_evt: bool = True
     ) -> None:
         """The algorithm function is the main function that runs the flow.
         It takes a room and an event as parameters
@@ -352,51 +353,80 @@ class MatrixHandler(MatrixClient):
         ----------
         room : Room
             The room object.
-        evt : Optional[MessageEvent]
+        evt : MessageEvent | None
             The event that triggered the algorithm.
         """
+        max_recursion_depth = self.config["menuflow.max_recursion_depth"]
+        actual_recursion_depth = 0
 
-        node = self.flow.node(room=room)
+        while actual_recursion_depth < max_recursion_depth:
+            actual_recursion_depth += 1
 
-        if node is None:
-            self.log.debug(f"[{room.room_id}] Does not have a valid node. Updating to start")
-            await room.update_menu(node_id="start")
-            return
+            if actual_recursion_depth == max_recursion_depth:
+                self.log.error(
+                    f"Max recursion depth reached in room {room.room_id}. Stopping algorithm...\n"
+                    f"Current node: {room.route.node_id}\n"
+                    f"Please check your flow configuration for potential infinite loops. "
+                    f"Actual recursion depth: {actual_recursion_depth} is equal to max "
+                    f"recursion depth: {max_recursion_depth}."
+                )
+                break
 
-        self.log.debug(
-            f"[{room.room_id}] Executing node: [{node.id}]. "
-            f"State: ({room.route.state}). "
-            f"Triggered by: ({evt.event_id if getattr(evt, 'event_id', None) else 'unknown'}). "
-            f"Sender: ({evt.sender if getattr(evt, 'sender', None) else 'unknown'}). "
-            f"Timestamp: ({evt.timestamp if getattr(evt, 'timestamp', None) else 'unknown'}). "
-            f"Type evt: ({type(evt)}). "
-        )
-        if not process_evt:
-            evt = None
+            node = self.flow.node(room=room)
 
-        if type(node) in (Input, InteractiveInput, FormInput, GPTAssistant, Webhook):
-            if isinstance(node, GPTAssistant) and room.route.state == RouteState.INPUT:
-                await self.group_message(room=room, message=evt, node=node)
-                return
+            if node is None:
+                self.log.debug(f"[{room.room_id}] Does not have a valid node. Updating to start")
+                await room.update_menu(node_id="start")
+                break
 
-            if room.room_id in self.message_group_by_room:
-                del self.message_group_by_room[room.room_id]
+            self.log.debug(
+                f"[{room.room_id}] Executing node: [{node.id}]. "
+                f"State: ({room.route.state}). "
+                f"Triggered by: ({evt.event_id if getattr(evt, 'event_id', None) else 'unknown'}). "
+                f"Sender: ({evt.sender if getattr(evt, 'sender', None) else 'unknown'}). "
+                f"Timestamp: ({evt.timestamp if getattr(evt, 'timestamp', None) else 'unknown'}). "
+                f"Type evt: ({type(evt)}). "
+            )
+            if not process_evt:
+                evt = None
 
-            await node.run(evt)
+            if type(node) in (Input, InteractiveInput, FormInput, GPTAssistant, Webhook):
+                # TODO: Change this to support GPTAssistant node
+                # if isinstance(node, GPTAssistant) and room.route.state == RouteState.INPUT:
+                #    await self.group_message(room=room, message=evt, node=node)
+                #    break
+                #
+                # if room.room_id in self.message_group_by_room:
+                #    del self.message_group_by_room[room.room_id]
 
-            if room.route.state == RouteState.INPUT:
-                return
-        else:
-            await node.run()
-            if room.route.state == RouteState.INVITE:
-                return
+                try:
+                    await node.run(evt)
+                except MLimitExceeded as e:
+                    self.log.error(
+                        f"MLimitExceeded exception has occurred in the pipeline [{node.id}]: {e}\n"
+                        f"Room [{room.room_id}], please check your flow configuration "
+                        "to prevent this."
+                    )
 
-        if room.route.state == RouteState.END:
-            self.log.debug(f"The room {room.room_id} has terminated the flow")
-            await room.update_menu(node_id="start")
-            return
+                if room.route.state == RouteState.INPUT:
+                    break
+            else:
+                try:
+                    await node.run()
+                except MLimitExceeded as e:
+                    self.log.error(
+                        f"MLimitExceeded exception has occurred in the pipeline [{node.id}]: {e}\n"
+                        f"Room [{room.room_id}], please check your flow configuration "
+                        "to prevent this."
+                    )
 
-        await self.algorithm(room=room, evt=evt)
+                if room.route.state == RouteState.INVITE:
+                    break
+
+            if room.route.state == RouteState.END:
+                self.log.debug(f"The room {room.room_id} has terminated the flow")
+                await room.update_menu(node_id="start")
+                break
 
     async def create_inactivity_tasks(self) -> None:
         """This function creates tasks for rooms that are in the input state
