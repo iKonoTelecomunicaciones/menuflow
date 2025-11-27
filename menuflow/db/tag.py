@@ -68,14 +68,19 @@ class Tag(SerializableAttrs):
         return cls._from_row(row) if row else None
 
     @classmethod
-    async def get_flow_tags(cls, flow_id: int) -> list[Tag]:
-        q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 ORDER BY create_date DESC"
+    async def get_flow_tags(cls, flow_id: int, offset: int = 0, limit: int = 10) -> list[Tag]:
+        q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 ORDER BY create_date DESC limit $2 offset $3"
 
-        rows = await cls.db.fetch(q, flow_id)
+        rows = await cls.db.fetch(q, flow_id, limit, offset)
         if not rows:
             return []
 
         return [cls._from_row(row) for row in rows]
+
+    @classmethod
+    async def get_count_by_flow_id(cls, flow_id: int) -> int:
+        q = "SELECT count(*) FROM tag where flow_id=$1"
+        return await cls.db.fetchval(q, flow_id)
 
     @classmethod
     async def get_by_name(cls, flow_id: int, name: str) -> Tag | None:
