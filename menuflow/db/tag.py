@@ -69,7 +69,7 @@ class Tag(SerializableAttrs):
 
     @classmethod
     async def get_flow_tags(cls, flow_id: int, offset: int = 0, limit: int = 10) -> list[Tag]:
-        q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 ORDER BY create_date DESC limit $2 offset $3"
+        q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 ORDER BY create_date DESC LIMIT $2 OFFSET $3"
 
         rows = await cls.db.fetch(q, flow_id, limit, offset)
         if not rows:
@@ -79,7 +79,7 @@ class Tag(SerializableAttrs):
 
     @classmethod
     async def get_count_by_flow_id(cls, flow_id: int) -> int:
-        q = "SELECT count(*) FROM tag where flow_id=$1"
+        q = "SELECT COUNT(*) FROM tag WHERE flow_id=$1"
         return await cls.db.fetchval(q, flow_id)
 
     @classmethod

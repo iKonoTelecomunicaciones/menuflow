@@ -50,8 +50,11 @@ async def get_tags_by_flow(request: web.Request) -> web.Response:
 
         else:
             log.debug(f"({uuid}) -> Getting all tags for flow_id: {flow_id}")
-            offset = int(request.query.get("offset", 0))
-            limit = int(request.query.get("limit", 10))
+            try:
+                offset = int(request.query.get("offset", 0))
+                limit = int(request.query.get("limit", 10))
+            except ValueError:
+                return resp.bad_request("offset and limit must be valid integers", uuid)
 
             count = await DBTag.get_count_by_flow_id(flow_id)
             tags = await DBTag.get_flow_tags(flow_id, offset=offset, limit=limit)
