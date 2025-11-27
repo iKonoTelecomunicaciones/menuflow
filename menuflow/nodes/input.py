@@ -44,7 +44,12 @@ class Input(Switch, Message):
 
     @property
     def inactivity_options(self) -> Dict[str, Any]:
-        return self.content.get("inactivity_options", {})
+        inactivity = self.content.get("inactivity_options", {})
+        if (
+            "active" not in inactivity and inactivity
+        ):  # TODO: Remove this once the inactivity options are updated
+            inactivity["active"] = True
+        return inactivity
 
     async def _set_input_content(
         self, content: MediaMessageEventContent | LocationMessageEventContent
@@ -97,7 +102,7 @@ class Input(Switch, Message):
                         int(text) if text.isdigit() else text,
                     )
             except ValueError as e:
-                self.log.warning(e)
+                self.log.warning(f"[{self.room.room_id}] Error setting variable: {e}")
 
         # If the node has an output connection, then update the menu to the output connection.
         # Otherwise, run the node and update the menu to the output connection.
@@ -120,7 +125,7 @@ class Input(Switch, Message):
 
         if self.room.route.state == RouteState.INPUT:
             if not evt:
-                self.log.warning("A problem occurred getting message event.")
+                self.log.warning(f"[{self.room.room_id}] A problem occurred getting message event")
                 return
 
             _input_type = self.input_type
@@ -182,7 +187,7 @@ class Input(Switch, Message):
             # and the node is an input node.
             # In this case, the message is shown and the menu is updated to the node's id
             # and the room state is set to input.
-            self.log.debug(f"Room {self.room.room_id} enters input node {self.id}")
+            self.log.debug(f"[{self.room.room_id}] Entering input node {self.id}")
             await Message.run(self, update_state=False, generate_event=False)
 
             self.room.set_node_var(content="")
@@ -203,7 +208,8 @@ class Input(Switch, Message):
                 conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
             )
 
-            if (inactivity := self.inactivity_options) and not Util.get_tasks_by_name(
+            inactivity = self.inactivity_options
+            if inactivity.get("active") and not Util.get_tasks_by_name(
                 task_name=self.room.room_id
             ):
                 await self.timeout_active_chats(inactivity)
@@ -231,7 +237,7 @@ class Input(Switch, Message):
                 inactivity_handler.start(), name=self.room.room_id, metadata=metadata
             )
 
-            self.log.debug(f"INACTIVITY TRIES COMPLETED -> {self.room.room_id}")
+            self.log.debug(f"[{self.room.room_id}] INACTIVITY TRIES COMPLETED")
             o_connection = await self.get_case_by_id("timeout")
             await self.room.update_menu(node_id=o_connection, state=None)
 
@@ -249,8 +255,8 @@ class Input(Switch, Message):
             return
 
         except asyncio.CancelledError:
-            self.log.error(f"Inactivity handler cancelled for room: {self.room.room_id}")
+            self.log.error(f"[{self.room.room_id}] Inactivity handler cancelled")
         except Exception as e:
-            self.log.error(f"Inactivity handler error for room: {self.room.room_id}: {e}")
+            self.log.error(f"[{self.room.room_id}] Inactivity handler error: {e}")
         finally:
             await Util.cancel_task(task_name=f"inactivity_restored_{self.room.room_id}")

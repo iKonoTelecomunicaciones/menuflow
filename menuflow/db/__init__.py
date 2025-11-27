@@ -7,13 +7,14 @@ from .migrations import upgrade_table
 from .module import Module
 from .room import Room
 from .route import Route
+from .tag import Tag
 from .user import User
 from .webhook import Webhook
 from .webhook_queue import WebhookQueue
 
 
 def init(db: Database) -> None:
-    for table in (Room, User, Client, Route, Flow, FlowBackup, Webhook, Module, WebhookQueue):
+    for table in (Room, User, Client, Route, Flow, FlowBackup, Webhook, Module, WebhookQueue, Tag):
         table.db = db
 
 
@@ -28,4 +29,5 @@ __all__ = [
     "Webhook",
     "Module",
     "WebhookQueue",
+    "Tag",
 ]

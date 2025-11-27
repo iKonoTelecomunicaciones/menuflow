@@ -14,6 +14,7 @@ from ..docs.module import (
     delete_module_doc,
     get_module_doc,
     get_module_list_doc,
+    import_module_doc,
     update_module_doc,
 )
 from ..responses import resp
@@ -45,7 +46,7 @@ async def get_module(request: web.Request) -> web.Response:
 
     try:
         if module_id:
-            module = await DBModule.get_by_id(int(module_id), flow_id)
+            module = await DBModule.get_by_id(int(module_id))
 
             if not module:
                 return resp.not_found(f"Module with ID {module_id} not found", uuid)
@@ -103,43 +104,84 @@ async def create_module(request: web.Request) -> web.Response:
     except Exception as e:
         return resp.server_error(str(e), uuid)
 
-    name = data.get("name")
-    if await DBModule.check_exists_by_name(name, flow_id):
-        return resp.bad_request(
-            f"Module with name '{name}' already exists in flow_id {flow_id}",
-            uuid,
-        )
-
-    nodes_ids = set()
-    for node in data.get("nodes", []):
-        node_id = node.get("id")
-        msg = f"Node with ID '{node_id}'"
-
-        if node_id in nodes_ids:
-            return resp.conflict(f"{msg} is repeated", uuid, {"module_name": ""})
-
-        if _node := await DBModule.get_node_by_id(flow_id, node_id, True):
-            return resp.conflict(
-                f"{msg} already exists", uuid, {"module_name": _node.get("module_name")}
-            )
-
-        nodes_ids.add(node_id)
-
     try:
-        log.debug(f"({uuid}) -> Creating new module '{name}' in flow_id '{flow_id}'")
-        new_module = DBModule(
-            name=name,
+        log.debug(f"({uuid}) -> Creating new module '{data.get('name')}' in flow_id '{flow_id}'")
+        module_id, final_name, _, _ = await Util.create_module(
             flow_id=flow_id,
+            name=data.get("name"),
             nodes=data.get("nodes", []),
             position=data.get("position", {}),
+            allow_duplicates=False,
         )
-
-        module_id = await new_module.insert()
+    except ValueError as e:
+        # Check if it's a module name conflict or node conflict
+        error_msg = str(e)
+        if "already exists in module" in error_msg:
+            # Extract module name from error message if possible
+            return resp.conflict(error_msg, uuid, {"module_name": ""})
+        elif "is repeated" in error_msg:
+            return resp.conflict(error_msg, uuid, {"module_name": ""})
+        else:
+            return resp.bad_request(error_msg, uuid)
     except Exception as e:
         return resp.server_error(str(e), uuid)
 
     return resp.created(
         {"detail": {"message": "Module created successfully", "data": {"module_id": module_id}}},
+        uuid,
+    )
+
+
+@routes.post("/v1/{flow_id}/module/import")
+@Util.docstring(import_module_doc)
+async def import_module(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Importing module")
+
+    try:
+        flow_id = int(request.match_info["flow_id"])
+        data: dict = await request.json()
+
+        if not data.get("name"):
+            return resp.bad_request("Parameter 'name' is required", uuid)
+
+        if not await DBFlow.check_exists(flow_id):
+            return resp.not_found(f"Flow with ID {flow_id} not found in the database", uuid)
+
+    except JSONDecodeError:
+        return resp.body_not_json(uuid)
+    except (KeyError, ValueError):
+        return resp.bad_request("Invalid or missing flow ID", uuid)
+    except Exception as e:
+        return resp.server_error(str(e), uuid)
+
+    try:
+        original_name = data.get("name")
+        log.debug(f"({uuid}) -> Importing module '{original_name}' into flow_id '{flow_id}'")
+
+        module_id, final_name, node_id_mapping, processed_nodes = await Util.create_module(
+            flow_id=flow_id,
+            name=original_name,
+            nodes=data.get("nodes", []),
+            position=data.get("position", {}),
+            allow_duplicates=True,
+        )
+    except Exception as e:
+        return resp.server_error(str(e), uuid)
+
+    return resp.created(
+        {
+            "detail": {
+                "message": "Module imported successfully",
+                "data": {
+                    "module_id": module_id,
+                    "original_name": original_name,
+                    "imported_name": final_name,
+                    "renamed_nodes": node_id_mapping,
+                    "nodes": processed_nodes,
+                },
+            }
+        },
         uuid,
     )
 
@@ -169,7 +211,7 @@ async def update_module(request: web.Request) -> web.Response:
         if not flow:
             return resp.not_found(f"Flow with ID '{flow_id}' not found in the database", uuid)
 
-        module = await DBModule.get_by_id(module_id, flow_id)
+        module = await DBModule.get_by_id(module_id)
 
     except JSONDecodeError:
         return resp.body_not_json(uuid)
@@ -219,13 +261,6 @@ async def update_module(request: web.Request) -> web.Response:
 
             await module.update()
 
-            config: Config = get_config()
-            if config["menuflow.load_flow_from"] == "database":
-                modules = await DBModule.all(int(flow_id))
-                nodes = [node for module in modules for node in module.get("nodes", [])]
-                await Util.update_flow_db_clients(
-                    flow_id, {"flow_variables": flow.flow_vars, "nodes": nodes}, config
-                )
         except Exception as e:
             return resp.server_error(str(e), uuid)
 
@@ -248,7 +283,7 @@ async def delete_module(request: web.Request) -> web.Response:
         if not await DBFlow.check_exists(flow_id):
             return resp.not_found(f"Flow with ID '{flow_id}' not found in the database", uuid)
 
-        module = await DBModule.get_by_id(module_id, flow_id)
+        module = await DBModule.get_by_id(module_id)
         if not module:
             return resp.not_found(
                 f"Module with ID {module_id} not found in flow_id {flow_id}", uuid

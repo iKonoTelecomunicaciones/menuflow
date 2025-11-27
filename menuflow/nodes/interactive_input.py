@@ -8,7 +8,7 @@ from ..events.event_generator import send_node_event
 from ..repository import InteractiveInput as InteractiveInputModel
 from ..repository import InteractiveMessage
 from ..room import Room
-from ..utils import Nodes
+from ..utils import Nodes, Util
 from .input import Input
 
 
@@ -52,7 +52,9 @@ class InteractiveInput(Input):
 
         if self.room.route.state == RouteState.INPUT:
             if not evt or not self.variable:
-                self.log.warning("A problem occurred to trying save the variable")
+                self.log.warning(
+                    f"[{self.room.room_id}] A problem occurred to trying save the variable"
+                )
                 await self.room.update_menu(node_id=self.id)
                 return
 
@@ -75,7 +77,7 @@ class InteractiveInput(Input):
             # and the node is an input node.
             # In this case, the message is shown and the menu is updated to the node's id
             # and the room state is set to input.
-            self.log.debug(f"Room {self.room.room_id} enters input node {self.id}")
+            self.log.debug(f"[{self.room.room_id}] Entering interactive input node {self.id}")
             await self.room.matrix_client.send_message_event(
                 room_id=self.room.room_id,
                 event_type="m.room.message",
@@ -99,5 +101,8 @@ class InteractiveInput(Input):
                 conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
             )
 
-            if inactivity := self.inactivity_options:
+            inactivity = self.inactivity_options
+            if inactivity.get("active") and not Util.get_tasks_by_name(
+                task_name=self.room.room_id
+            ):
                 await self.timeout_active_chats(inactivity)

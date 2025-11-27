@@ -61,6 +61,14 @@ menuflow:
     webhook_queue:
         time_to_live: 120 # seconds, time to live for webhook events in the queue
 
+    # Maximum recursion depth for menu navigation, it prevents infinite loops
+    max_recursion_depth: 800
+
+    # Options to recreate inactivity tasks on startup and save flow
+    inactivity_options:
+        recreate_on_startup: false
+        recreate_on_save_flow: false
+
 # Meta Flow Configuration
 meta:
     # Private key for decrypting Meta Flow requests (PEM format)

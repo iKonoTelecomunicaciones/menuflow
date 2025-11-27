@@ -14,7 +14,7 @@ class Delay(Base):
 
     @property
     def time(self) -> int:
-        self.log.debug(f"Waiting {self.content.get('time', 0)} seconds...")
+        self.log.debug(f"[{self.room.room_id}] Waiting {self.content.get('time', 0)} seconds...")
         return self.render_data(data=self.content.get("time", 0))
 
     @property
@@ -23,7 +23,7 @@ class Delay(Base):
         return self.render_data(data=o_connection)
 
     async def run(self):
-        self.log.debug(f"Room {self.room.room_id} enters delay node {self.id}")
+        self.log.debug(f"[{self.room.room_id}] Entering delay node {self.id}")
         await sleep(self.time)
         o_connection = await self.o_connection
         await self.room.update_menu(node_id=o_connection, state=None)

@@ -5,6 +5,7 @@ log: Logger = getLogger("menuflow.docs.flow")
 create_or_update_flow_doc = """
     ---
     summary: Creates a new flow or update it if exists.
+    deprecated: true
     tags:
         - Flow
 
@@ -150,4 +151,110 @@ get_flow_backups_doc = """
         '404':
             $ref: '#/components/responses/GetFlowBackupsNotFound'
 
+    """
+
+publish_flow_doc = """
+    ---
+    summary: Publish a flow by creating a new tag.
+    description: Creates a new tag from the current tag, copies all modules, and activates the new tag.
+    tags:
+        - Flow
+
+    parameters:
+        - name: flow_id
+          in: path
+          required: true
+          description: The ID of the flow to publish.
+          schema:
+            type: integer
+          example: 1
+
+    requestBody:
+        required: true
+        content:
+            application/json:
+                schema:
+                    type: object
+                    properties:
+                        name:
+                            type: string
+                            description: The name of the new tag.
+                        author:
+                            type: string
+                            description: The author of the tag.
+                    required:
+                        - name
+                        - author
+                example:
+                    name: "v1.0.0"
+                    author: "@admin:example.com"
+
+    responses:
+        '200':
+            $ref: '#/components/responses/PublishFlowSuccess'
+        '400':
+            $ref: '#/components/responses/PublishFlowBadRequest'
+        '404':
+            $ref: '#/components/responses/PublishFlowNotFound'
+        '500':
+            $ref: '#/components/responses/PublishFlowInternalError'
+    """
+
+import_flow_doc = """
+    ---
+    summary: Import a flow.
+    description: Import a flow by updating an existing flow with new flow data. The flow ID must be provided.
+    tags:
+        - Flow
+
+    requestBody:
+        required: true
+        description: A JSON with 'id', 'flow' and 'flow_vars' keys. The 'id' is required for import.
+        content:
+            application/json:
+                schema:
+                    type: object
+                    properties:
+                        id:
+                            type: integer
+                            description: The flow ID to import (required).
+                        flow:
+                            type: object
+                            description: The flow content.
+                        flow_vars:
+                            type: object
+                            additionalProperties: true
+                            description: The flow variables.
+                    required:
+                        - id
+                example:
+                    id: 1
+                    flow:
+                        menu:
+                            flow_variables:
+                                var1: "value1"
+                                var2: "value2"
+                            nodes:
+                                - id: "message_1"
+                                  type: "message"
+                                  text: "Hello"
+                                  o_connection: "message_2"
+                        modules:
+                            main:
+                                x: 100
+                                y: 200
+                                scale: 1.0
+                    flow_vars:
+                        var1: "value1"
+                        var2: "value2"
+
+    responses:
+        '200':
+            $ref: '#/components/responses/ImportFlowSuccess'
+        '400':
+            $ref: '#/components/responses/ImportFlowBadRequest'
+        '404':
+            $ref: '#/components/responses/ImportFlowNotFound'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
     """

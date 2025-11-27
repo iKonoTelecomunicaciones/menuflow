@@ -8,7 +8,7 @@ from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
 from ..repository import Form, FormMessage, FormMessageContent
 from ..room import Room
-from ..utils import Nodes, NodeStatus
+from ..utils import Nodes, NodeStatus, Util
 from .input import Input
 
 
@@ -94,15 +94,17 @@ class FormInput(Input):
 
         """
 
+        inactivity = self.inactivity_options
+
         if self.room.route.state == RouteState.INPUT:
             _variable = self.variable
             if not evt or not _variable or evt.content.msgtype != "m.form_response":
                 self.log.warning(
-                    "A problem occurred getting user response, message type is not m.form_response"
+                    f"[{self.room.room_id}] A problem occurred getting user response, message type is not m.form_response"
                 )
                 o_connection = await self.check_fail_attempts()
-                inactivity = self.inactivity_options
-                if inactivity and not o_connection:
+
+                if inactivity.get("active") and not o_connection:
                     await self.timeout_active_chats(inactivity)
                 return
 
@@ -125,7 +127,7 @@ class FormInput(Input):
             # and the node is an input node.
             # In this case, the message is shown and the menu is updated to the node's id
             # and the room state is set to input.
-            self.log.debug(f"Room {self.room.room_id} enters input node {self.id}")
+            self.log.debug(f"[{self.room.room_id}] Entering form input node {self.id}")
             await self.room.matrix_client.send_message_event(
                 room_id=self.room.room_id,
                 event_type="m.room.message",
@@ -146,5 +148,7 @@ class FormInput(Input):
                 conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
             )
 
-            if inactivity := self.inactivity_options:
+            if inactivity.get("active") and not Util.get_tasks_by_name(
+                task_name=self.room.room_id
+            ):
                 await self.timeout_active_chats(inactivity)

@@ -30,7 +30,7 @@ class InactivityHandler:
         inactivity : dict
             The inactivity options.
         """
-        log.info(f"Inactivity loop starts in room: {self.room.room_id}")
+        log.info(f"[{self.room.room_id}] Inactivity loop starts")
         self.inactivity_db = self.room.route._node_vars.setdefault("inactivity", {})
         self.inactivity_db.setdefault("attempt", 0)
         self.inactivity_db.setdefault("start_ttl", 0)
@@ -72,9 +72,7 @@ class InactivityHandler:
                 await self.update_inactivity_db()
 
             start_sleep = self.inactivity_db["start_ttl"] - start_time
-            log.info(
-                f"Start chat timeout, sleeping {start_sleep} seconds for room {self.room.room_id}"
-            )
+            log.info(f"[{self.room.room_id}] Start chat timeout, sleeping {start_sleep} seconds")
 
             if start_sleep > 0:
                 await asyncio.sleep(start_sleep)
@@ -94,8 +92,8 @@ class InactivityHandler:
 
             attempt_sleep = self.inactivity_db["attempt_ttl"] - attempt_time
             log.info(
-                f"Inactivity Attempts {self.inactivity_db['attempt']} of "
-                f"{self.attempts} sleeping {attempt_sleep} seconds for room {self.room.room_id}"
+                f"[{self.room.room_id}] Inactivity Attempts {self.inactivity_db['attempt']} of "
+                f"{self.attempts} sleeping {attempt_sleep} seconds"
             )
 
             if attempt_sleep > 0:

@@ -1,11 +1,11 @@
 import ast
 import asyncio
-import datetime
 import html
 import json
 import traceback
 from asyncio import Task, all_tasks
 from copy import deepcopy
+from datetime import datetime, timezone
 from logging import getLogger
 from re import match, sub
 
@@ -19,6 +19,7 @@ from pycountry import countries, subdivisions
 
 from ..config import Config
 from ..jinja.env import jinja_env
+from ..utils.flags import RenderFlags
 from ..utils.types import Scopes
 
 log: TraceLogger = getLogger("menuflow.util")
@@ -48,6 +49,13 @@ class Util:
     _main_matrix_regex = "[\\w-]+:[\\w.-]"
     _jinja_open_delims = ["{{", "{%", "{#"]
     _jinja_close_delims = ["}}", "%}", "#}"]
+    _escape_tokens = {
+        "\n": "@@@NL@@@",
+        "\"": "@@@DQ@@@",
+        "\r": "@@@CR@@@",
+        "\t": "@@@TAB@@@",
+        "\\": "@@@BSL@@@",
+    }  # fmt: skip
 
     def __init__(self, config: Config):
         self.config = config
@@ -188,20 +196,14 @@ class Util:
             return json.loads(f.read())
 
     @classmethod
-    def jinja_render(
-        cls,
-        data: str | dict,
-        variables: dict = {},
-        return_errors: bool = False,
-    ) -> dict | list | str:
+    def jinja_render(cls, template: str, variables: dict = {}, return_errors: bool = False) -> str:
         """Takes a string, renders it with Jinja, and returns the result.
-        Handles HTML entities and Python literal representations,
         safely converting them to their actual characters.
 
         Parameters
         ----------
-        data : str | dict
-            The data to be evaluated.
+        template : str | dict
+            The template to be evaluated.
         variables : dict
             The variables to be used in the evaluation.
         return_errors : bool
@@ -212,15 +214,14 @@ class Util:
             A dictionary, list or string.
 
         """
-        temp_rendered = data
+        temp_rendered = template
         has_jinja_delims = any(
-            open in data and close in data
+            open in template and close in template
             for open, close in zip(cls._jinja_open_delims, cls._jinja_close_delims)
         )
-
         if has_jinja_delims:
             try:
-                template = jinja_env.from_string(data)
+                template = jinja_env.from_string(template)
                 temp_rendered = template.render(variables)
             except TemplateSyntaxError as e:
                 txt_error = f"func_name: {e.name}, \nline: {e.lineno}, \nerror: {e.message}"
@@ -244,55 +245,54 @@ class Util:
                     raise Exception(txt_error)
                 return None
             except Exception as e:
-                log.warning(
-                    f"Error rendering data: {e}",
-                )
+                log.warning(f"Error rendering template: {e}")
                 if return_errors:
                     log.exception(e)
                     raise e
                 return None
-
-        try:
-            evaluated_body = temp_rendered
-            evaluated_body = html.unescape(evaluated_body.replace("'", '"'))
-            literal_eval_body = ast.literal_eval(evaluated_body)
-        except Exception as e:
-            pass
-        else:
-            if isinstance(literal_eval_body, (dict, list)):
-                return literal_eval_body
-        return evaluated_body
+        return temp_rendered
 
     @classmethod
-    def render_data(
-        cls,
-        data: dict | list | str,
-        default_variables: dict = {},
-        all_variables: dict = {},
-        return_errors: bool = False,
+    def parse_literal(cls, data: str) -> dict | list | str:
+        """It parses the data using the ast.literal_eval method
+
+        Parameters
+        ----------
+        data : str
+            The data to be evaluated.
+
+        Returns
+        -------
+            A dictionary, list or string.
+        """
+        evaluated_data = None
+        try:
+            evaluated_data = ast.literal_eval(data)
+        except Exception as e:
+            pass
+
+        return evaluated_data if isinstance(evaluated_data, (dict, list)) else data
+
+    @classmethod
+    def recursive_render(
+        cls, data: dict | list | str, variables: dict = {}, flags: RenderFlags = RenderFlags.NONE
     ) -> dict | list | str:
         """It takes a dictionary or list, converts it to a string,
-        and then uses Jinja to render the string
+        and then uses Jinja to render the string.
 
         Parameters
         ----------
         data : dict | list
             The data to be rendered.
-        default_variables : dict
-            The default variables to be used in the rendering.
-        all_variables : dict
+        variables : dict
             The variables to be used in the rendering.
-        return_errors : bool
-            If True, it will return the errors instead of ignoring them.
+        flags : RenderFlags
+            The flags to be used in the rendering.
 
         Returns
         -------
             A dictionary, list or string.
-
         """
-
-        if not (isinstance(data, (str, dict, list)) and data):
-            return data
 
         if isinstance(data, (dict, list)):
             _data = deepcopy(data)
@@ -300,79 +300,37 @@ class Util:
             _data = data
 
         if isinstance(_data, dict):
-            for key, value in _data.items():
-                _data[key] = cls.render_data(value, default_variables, all_variables)
-            return _data
+            return {k: cls.recursive_render(v, variables, flags) for k, v in _data.items()}
 
         elif isinstance(_data, list):
-            return [cls.render_data(item, default_variables, all_variables) for item in _data]
+            return [cls.recursive_render(item, variables, flags) for item in _data]
 
         elif isinstance(_data, str):
-            dict_variables = default_variables | all_variables
-            rendered = cls.jinja_render(_data, dict_variables, return_errors)
+            return_errors = RenderFlags.RETURN_ERRORS in flags
+            rendered = cls.jinja_render(_data, variables, return_errors)
+
+            if RenderFlags.LITERAL_EVAL in flags:
+                rendered = cls.parse_literal(rendered)
+
+            if RenderFlags.CUSTOM_ESCAPE in flags and RenderFlags.CUSTOM_UNESCAPE in flags:
+                rendered, _ = cls.custom_escape(rendered, escape=False)
 
             if isinstance(rendered, (dict, list)):
                 return rendered
             else:
-                return cls.convert_to_type(rendered)
+                if RenderFlags.REMOVE_QUOTES in flags and len(rendered) >= 2:
+                    # Remove the quotes from the value if it is a string in double quotes like "'Hello'" or '"World"'
+                    # This is necessary to preserve a string
+                    enclosers = rendered[0] + rendered[-1]
+                    if enclosers == '""' or enclosers == "''":
+                        return rendered[1:-1]
+
+                if RenderFlags.CONVERT_TO_TYPE in flags:
+                    rendered = cls.convert_to_type(rendered)
+
+                return rendered
 
         return _data
-
-    # TODO: remove this function when all flows are migrated to the new render data
-    @classmethod
-    def old_render_data(
-        cls, data: dict | list | str, default_variables: dict = {}, all_variables: dict = {}
-    ) -> dict | list | str:
-        """It takes a dictionary or list, converts it to a string,
-        and then uses Jinja to render the string
-
-        Parameters
-        ----------
-        data : dict | List
-            The data to be rendered.
-        default_variables : dict
-            The default variables to be used in the rendering.
-        all_variables : dict
-            The variables to be used in the rendering.
-
-        Returns
-        -------
-            A dictionary or list.
-
-        """
-
-        try:
-            data = data if isinstance(data, str) else json.dumps(data)
-            data_template = jinja_env.from_string(data)
-        except Exception as e:
-            log.exception(e)
-            return
-
-        copy_variables = default_variables | all_variables
-        clear_variables = json.dumps(copy_variables).replace("\\n", "ik-line-break")
-        try:
-            # if save variables have a string with \n,
-            # it will be replaced by ik-line-break to avoid errors when dict is dumped
-            # and before return, it will be replaced by \n again to keep the original string
-            temp_rendered = data_template.render(**json.loads(clear_variables))
-            temp_rendered = temp_rendered.replace("ik-line-break", "\\n")
-
-            temp_sanitized = convert_to_bool(Util.convert_to_json(temp_rendered))
-            if isinstance(temp_sanitized, str):
-                temp_sanitized = json.loads(temp_rendered)
-
-            return temp_sanitized
-        except json.JSONDecodeError:
-            temp_rendered = data_template.render(**json.loads(clear_variables))
-            temp_rendered = temp_rendered.replace("ik-line-break", "\\n")
-            return convert_to_bool(temp_rendered)
-        except KeyError:
-            data = json.loads(data_template.render())
-            data = convert_to_bool(data)
-            return data
-        except Exception as e:
-            log.exception(e)
-            return
 
     def ignore_user(self, mxid: UserID, origin: str) -> bool:
         """It checks if the user ID matches any of the regex patterns in the config file
@@ -434,33 +392,6 @@ class Util:
         value = sub(r'"\[([^]]+)\]"', r"[\1]", value)
 
         return value
-
-    # Recursive function to convert values to JSON if possible
-    @classmethod
-    def convert_to_json(cls, value: str | list | dict) -> str | list | dict:
-        if isinstance(value, dict):
-            # If it's a dictionary, apply the recursive conversion on each key
-            return {k: cls.convert_to_json(v) for k, v in value.items()}
-        elif isinstance(value, list):
-            # If it's a list, apply the recursive conversion on each item
-            return [cls.convert_to_json(item) for item in value]
-        elif isinstance(value, str):
-            # First, fix any malformed format
-            value = cls.fix_malformed_json(value)
-            try:
-                # Try to convert the string to JSON
-                converted = json.loads(value)
-                # If the result is a dictionary or list, apply recursive conversion
-                if isinstance(converted, (dict, list)):
-                    return cls.convert_to_json(converted)
-                # If not, return the original string (numbers in strings are not modified)
-                return value
-            except (json.JSONDecodeError, TypeError):
-                # If the conversion to JSON fails, return the original value
-                return value
-        else:
-            # If it's not a string, list or dictionary, return the value as is
-            return value
 
     @classmethod
     def is_holiday(cls, date: datetime, country_code: str, subdivision_code: str) -> bool:
@@ -654,12 +585,6 @@ class Util:
             >>> convert_to_type("None")
             None
 
-            Quoted strings:
-            >>> convert_to_type("'Hello'")
-            'Hello'
-            >>> convert_to_type('"World"')
-            'World'
-
             Non-convertible strings remain unchanged:
             >>> convert_to_type("Hello123")
             'Hello123'
@@ -667,12 +592,6 @@ class Util:
             '12a'
 
         """
-
-        # If the value is a string in double quotes like "'Hello'" or '"World"',
-        # remove the outer quotes and return the value as a string.
-        enclosers = value[0] + value[-1] if value else ""
-        if enclosers == '""' or enclosers == "''":
-            return value[1:-1]
 
         permitted_types = {
             True: ("true", "True"),
@@ -691,7 +610,6 @@ class Util:
         for type, values in permitted_types.items():
             if value in values:
                 return type
-
         return value
 
     @staticmethod
@@ -799,6 +717,60 @@ class Util:
         -------
             The created task.
         """
+
+        log.warning(f"CREATING TASK: {name} with metadata: {metadata}")
         task = asyncio.create_task(coro, name=name)
         task.metadata = metadata or {}
+        task.created_at = datetime.now(timezone.utc).timestamp()
         return task
+
+    @classmethod
+    def custom_escape(
+        cls, variables: str | dict | list, escape: bool = True
+    ) -> tuple[str | dict | list, bool]:
+        """It escapes the characters in the variables if they contains any of the escape characters
+        like "\n", "\r", "\t", "\"", "\\". They will be transformed to the escape tokens.
+        This avoids issues with the JSON serialization performed by the Tiptap editor.
+
+        Parameters
+        ----------
+        variables : str | dict | list
+            The variables to escape.
+        escape : bool
+            If True, the characters will be escaped.
+            If False, the characters will be unescaped.
+
+        Returns
+        -------
+            The escaped | unescaped variables.
+            A boolean value indicating if the variables were changed.
+        """
+        changed = False
+        if not (isinstance(variables, (str, dict, list)) and variables):
+            return variables, changed
+
+        if isinstance(variables, dict):
+            _variables = {}
+            for key, value in variables.items():
+                _variables[key], was_changed = cls.custom_escape(value, escape=escape)
+                changed = changed or was_changed
+            return _variables, changed
+
+        elif isinstance(variables, list):
+            _variables = []
+            for item in variables:
+                new_item, was_changed = cls.custom_escape(item, escape=escape)
+                changed = changed or was_changed
+                _variables.append(new_item)
+            return _variables, changed
+
+        else:
+            _chars = cls._escape_tokens.keys() if escape else cls._escape_tokens.values()
+            if any(char in variables for char in _chars):
+                changed = True
+                for char, token in Util._escape_tokens.items():
+                    if escape:
+                        variables = variables.replace(char, token)
+                    else:
+                        variables = variables.replace(token, char)
+        return variables, changed

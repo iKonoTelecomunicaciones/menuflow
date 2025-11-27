@@ -22,11 +22,11 @@ class SetVars(Base):
 
     async def run(self):
         """This function runs the set_var node."""
-        self.log.debug(f"Room {self.room.room_id} enters set_var node {self.id}")
+        self.log.debug(f"[{self.room.room_id}] Entering set_var node {self.id}")
         variables = self.variables
         if not variables:
             self.log.warning(
-                f"The variables in {self.id} have not been set because they are empty"
+                f"[{self.room.room_id}] The variables in {self.id} have not been set because they are empty"
             )
             return
 

@@ -68,7 +68,12 @@ class GPTAssistant(Switch):
 
     @property
     def inactivity_options(self) -> Dict[str, Any]:
-        return self.content.get("inactivity_options", {})
+        inactivity = self.content.get("inactivity_options", {})
+        if (
+            "active" not in inactivity and inactivity
+        ):  # TODO: Remove this once the inactivity options are updated
+            inactivity["active"] = True
+        return inactivity
 
     @property
     def group_messages_timeout(self) -> int:
@@ -171,7 +176,7 @@ class GPTAssistant(Switch):
         _variable = self.variable
         if self.room.route.state == RouteState.INPUT:
             if not messages:
-                self.log.warning("A problem occurred getting message event.")
+                self.log.warning(f"[{self.room.room_id}] A problem occurred getting message event")
                 return
 
             await self.add_message(messages)
@@ -182,7 +187,7 @@ class GPTAssistant(Switch):
 
             await self.room.set_variable(_variable, value=response)
 
-            if _inactivity:
+            if _inactivity.get("active"):
                 await Util.cancel_task(task_name=self.room.room_id)
 
             output = await Switch.run(self, update_state=False, generate_event=False)
@@ -193,7 +198,7 @@ class GPTAssistant(Switch):
             # and the node is an input node.
             # In this case, the message is shown and the menu is updated to the node's id
             # and the room state is set to input.
-            self.log.debug(f"Room {self.room.room_id} enters gpt_assistant node {self.id}")
+            self.log.debug(f"[{self.room.room_id}] Entering gpt_assistant node {self.id}")
 
             if not await self.room.get_variable(_variable):
                 if _initial_info := self.initial_info:
@@ -209,7 +214,9 @@ class GPTAssistant(Switch):
             await self.room.matrix_client.send_text(room_id=self.room.room_id, text=message)
             await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
 
-            if _inactivity and not Util.get_tasks_by_name(task_name=self.room.room_id):
+            if _inactivity.get("active") and not Util.get_tasks_by_name(
+                task_name=self.room.room_id
+            ):
                 await self.timeout_active_chats(_inactivity)
 
     async def timeout_active_chats(self, inactivity: dict):
@@ -235,14 +242,14 @@ class GPTAssistant(Switch):
                 inactivity_handler.start(), name=self.room.room_id, metadata=metadata
             )
 
-            self.log.debug(f"INACTIVITY TRIES COMPLETED -> {self.room.room_id}")
+            self.log.debug(f"[{self.room.room_id}] INACTIVITY TRIES COMPLETED")
             o_connection = await self.get_case_by_id("timeout")
             await self.room.update_menu(node_id=o_connection, state=None)
             return
 
         except asyncio.CancelledError:
-            self.log.error(f"Inactivity handler cancelled for room: {self.room.room_id}")
+            self.log.error(f"[{self.room.room_id}] Inactivity handler cancelled")
         except Exception as e:
-            self.log.error(f"Inactivity handler error for room: {self.room.room_id}: {e}")
+            self.log.error(f"[{self.room.room_id}] Inactivity handler error: {e}")
         finally:
             await Util.cancel_task(task_name=f"inactivity_restored_{self.room.room_id}")

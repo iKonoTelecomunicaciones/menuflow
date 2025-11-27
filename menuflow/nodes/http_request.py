@@ -11,6 +11,7 @@ from ..events.event_generator import send_node_event
 from ..repository import HTTPRequest as HTTPRequestModel
 from ..room import Room
 from ..utils import Nodes, Util
+from ..utils.flags import RenderFlags
 from .switch import Switch
 
 if TYPE_CHECKING:
@@ -68,7 +69,7 @@ class HTTPRequest(Switch):
         body = self.content.get("json", "")
         if isinstance(body, dict):
             body = json.dumps(body)
-        return self.render_data(body)
+        return self.render_data(body, flags=RenderFlags.CUSTOM_ESCAPE | RenderFlags.LITERAL_EVAL)
 
     @property
     def context_params(self) -> dict[str, str]:
@@ -110,8 +111,8 @@ class HTTPRequest(Switch):
         -------
             The status code and the response text.
         """
-
-        self.log.debug(f"Room {self.room.room_id} enters http_request node {self.id}")
+        _room_id = self.room.room_id
+        self.log.debug(f"[{_room_id}] Entering http_request node {self.id}")
 
         request_body = self.prepare_request()
 
@@ -137,11 +138,11 @@ class HTTPRequest(Switch):
         except asyncio.TimeoutError:
             exception, status = "TimeoutError", 408
             self.log.warning(
-                f"Request timeout after {timeout_config}s [method: {self.method}] [url: {_url}]"
+                f"[{_room_id}] Request timeout after {timeout_config}s [method: {self.method}] [url: {self.url}]"
             )
         except Exception as e:
             exception, status = e, 500
-            self.log.exception(f"Error in http_request node: {e}")
+            self.log.exception(f"[{_room_id}] Error in http_request node: {e}")
 
         if exception:
             o_connection = await self.get_case_by_id(id=status)
@@ -149,11 +150,11 @@ class HTTPRequest(Switch):
             return status, exception, o_connection
 
         self.log.debug(
-            f"node: {self.id} method: {self.method} url: {_url} status: {response.status}"
+            f"[{_room_id}] node: {self.id} method: {self.method} url: {self.url} status: {response.status}"
         )
 
         if response.status >= 400:
-            self.log.debug(f"Response: {await response.text()}")
+            self.log.debug(f"[{_room_id}] Response: {await response.text()}")
 
         if response.status == 401:
             o_connection = None
@@ -199,7 +200,7 @@ class HTTPRequest(Switch):
                             data_match: list = [match.value for match in expr.find(response_data)]
                         except Exception as error:
                             self.log.error(
-                                f"""Error parsing '{_http_variables[variable]}' with jsonpath
+                                f"""[{_room_id}] Error parsing '{self.http_variables[variable]}' with jsonpath
                                 on variable '{variable}'. Set to default value ({default_value}).
                                 Error message: {error}"""
                             )
@@ -207,7 +208,7 @@ class HTTPRequest(Switch):
                         jq_result: dict = Util.jq_compile(_http_variables[variable], response_data)
                         if jq_result.get("status") != 200:
                             self.log.error(
-                                f"""Error parsing '{_http_variables[variable]}' with jq
+                                f"""[{_room_id}] Error parsing '{self.http_variables[variable]}' with jq
                                 on variable '{variable}'. Set to default value ({default_value}).
                                 Error message: {jq_result.get("error")}, Status: {jq_result.get("status")}"""
                             )
@@ -252,7 +253,9 @@ class HTTPRequest(Switch):
             and self.HTTP_ATTEMPTS[self.room.room_id]["last_http_node"] == self.id
             and self.HTTP_ATTEMPTS[self.room.room_id]["attempts_count"] >= self.middleware.attempts
         ):
-            self.log.debug("Attempts limit reached, o_connection set as `default`")
+            self.log.debug(
+                f"[{self.room.room_id}] Attempts limit reached, o_connection set as `default`"
+            )
             self.HTTP_ATTEMPTS.update(
                 {self.room.room_id: {"last_http_node": None, "attempts_count": 0}}
             )
@@ -272,7 +275,7 @@ class HTTPRequest(Switch):
                 }
             )
             self.log.debug(
-                "HTTP auth attempt "
+                f"[{self.room.room_id}] HTTP auth attempt "
                 f"{self.HTTP_ATTEMPTS[self.room.room_id]['attempts_count']}, trying again ..."
             )
 
@@ -282,7 +285,9 @@ class HTTPRequest(Switch):
         """
         try:
             status, response, o_connection = await self.make_request()
-            self.log.info(f"http_request node {self.id} had a status of {status}")
+            self.log.info(
+                f"[{self.room.room_id}] http_request node {self.id} had a status of {status}"
+            )
         except Exception as e:
             self.log.exception(e)
 
