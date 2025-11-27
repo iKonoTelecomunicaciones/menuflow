@@ -78,7 +78,7 @@ class Tag(SerializableAttrs):
         return [cls._from_row(row) for row in rows]
 
     @classmethod
-    async def get_count_by_flow_id(cls, flow_id: int) -> int:
+    async def get_tags_count(cls, flow_id: int) -> int:
         q = "SELECT COUNT(*) FROM tag WHERE flow_id=$1"
         return await cls.db.fetchval(q, flow_id)
 

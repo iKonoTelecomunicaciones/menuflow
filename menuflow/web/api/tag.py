@@ -56,7 +56,7 @@ async def get_tags_by_flow(request: web.Request) -> web.Response:
             except ValueError:
                 return resp.bad_request("offset and limit must be valid integers", uuid)
 
-            count = await DBTag.get_count_by_flow_id(flow_id)
+            count = await DBTag.get_tags_count(flow_id)
             tags = await DBTag.get_flow_tags(flow_id, offset=offset, limit=limit)
 
             tags_list = [tag.to_dict() for tag in tags]
