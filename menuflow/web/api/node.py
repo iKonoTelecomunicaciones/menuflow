@@ -58,8 +58,19 @@ async def get_node_list(request: web.Request) -> web.Response:
         if not await DBFlow.check_exists(flow_id):
             return resp.not_found(f"Flow with ID {flow_id} not found in the database", uuid)
 
-        current_tag = await DBTag.get_current_tag(int(flow_id))
-        modules = await DBModule.get_tag_modules(int(current_tag.id))
+        tag_id = request.query.get("tag_id")
+        if tag_id:
+            try:
+                tag_id = int(tag_id)
+            except ValueError:
+                return resp.bad_request("tag_id must be an integer", uuid)
+
+            modules = await DBModule.get_tag_modules(tag_id)
+        else:
+            current_tag = await DBTag.get_current_tag(int(flow_id))
+            if current_tag is None:
+                return resp.not_found(f"No current tag found for flow ID {flow_id}", uuid)
+            modules = await DBModule.get_tag_modules(int(current_tag.id))
 
         node_list = []
         for module in modules:
