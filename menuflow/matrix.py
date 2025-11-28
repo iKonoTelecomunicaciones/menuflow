@@ -344,7 +344,11 @@ class MatrixHandler(MatrixClient):
             )
 
     async def algorithm(
-        self, room: Room, evt: MessageEvent | None = None, process_evt: bool = True
+        self,
+        room: Room,
+        evt: MessageEvent | None = None,
+        process_evt: bool = True,
+        node_id: str | None = None,
     ) -> None:
         """The algorithm function is the main function that runs the flow.
         It takes a room and an event as parameters
@@ -355,9 +359,19 @@ class MatrixHandler(MatrixClient):
             The room object.
         evt : MessageEvent | None
             The event that triggered the algorithm.
+        process_evt : bool
+            Whether to process the event or not.
+        node_id : str | None
+            A specific node ID to process it, this can be used to proccess a node or a flow step
+            independently.
         """
         max_recursion_depth = self.config["menuflow.max_recursion_depth"]
         actual_recursion_depth = 0
+        node_data = None
+
+        if node_id:
+            # Get the node data for the specified node_id
+            node_data = self.flow.get_node_by_id(node_id)
 
         while actual_recursion_depth < max_recursion_depth:
             actual_recursion_depth += 1
@@ -372,7 +386,9 @@ class MatrixHandler(MatrixClient):
                 )
                 break
 
-            node = self.flow.node(room=room)
+            node = self.flow.node(room=room, node_data=node_data)
+            # Reset node_data to None to avoid reusing it in the next iteration.
+            node_data = None
 
             if node is None:
                 self.log.debug(f"[{room.room_id}] Does not have a valid node. Updating to start")
