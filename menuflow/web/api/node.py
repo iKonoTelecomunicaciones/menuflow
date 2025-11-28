@@ -68,6 +68,8 @@ async def get_node_list(request: web.Request) -> web.Response:
             modules = await DBModule.get_tag_modules(tag_id)
         else:
             current_tag = await DBTag.get_current_tag(int(flow_id))
+            if current_tag is None:
+                return resp.not_found(f"No current tag found for flow ID {flow_id}", uuid)
             modules = await DBModule.get_tag_modules(int(current_tag.id))
 
         node_list = []

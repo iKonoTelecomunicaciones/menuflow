@@ -76,9 +76,9 @@ class Module(SerializableAttrs):
         return cls._from_row(row) if row else None
 
     @classmethod
-    async def get_by_fields(cls, flow_id: int, fields: list, tag_id: int) -> list:
+    async def get_by_fields(cls, flow_id: int, fields: list, tag_id: int | None = None) -> list:
 
-        if tag_id:
+        if tag_id is not None:
             q = f"SELECT {', '.join(fields)} FROM module WHERE tag_id=$1 ORDER BY name ASC"
             rows = await cls.db.fetch(q, tag_id)
             return [cls._to_dict(row, cls._json_columns.split(",")) for row in rows] if rows else []
