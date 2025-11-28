@@ -309,8 +309,14 @@ async def get_module_list(request: web.Request) -> web.Response:
     uuid = Util.generate_uuid()
     log.info(f"({uuid}) -> '{request.method}' '{request.path}' Getting module list")
 
-    fields = request.query.getall("fields", ["id", "name"])
+    tag_id = request.query.get("tag_id")
+    if tag_id:
+        try:
+            tag_id = int(tag_id)
+        except ValueError:
+            return resp.bad_request("tag_id must be an integer", uuid)
 
+    fields = request.query.getall("fields", ["id", "name"])
     flow_identifier = request.match_info["flow_identifier"]
 
     try:
@@ -323,7 +329,7 @@ async def get_module_list(request: web.Request) -> web.Response:
         if not flow:
             return resp.not_found(f"Flow with identifier {flow_identifier} not found", uuid)
 
-        modules = {"modules": await DBModule.get_by_fields(flow.id, fields)}
+        modules = {"modules": await DBModule.get_by_fields(flow.id, fields, tag_id)}
 
     except Exception as e:
         return resp.server_error(str(e), uuid)
