@@ -29,6 +29,8 @@ class Config(BaseFileConfig):
         copy("menuflow.max_recursion_depth")
         copy_dict("menuflow.regex")
         copy("menuflow.mautrix_state_key")
+        copy("meta.private_key")
+        copy("meta.private_key_passphrase")
         copy("server.hostname")
         copy("server.port")
         copy("server.public_url")

@@ -1843,4 +1843,48 @@ components:
               value:
                 detail:
                   message: "Current tag not found for flow 1"
-  # End of responses
+
+    HandleMetaFlowRequestSuccess:
+      description: Meta flow request handled successfully.
+      content:
+        text/plain:
+          schema:
+            type: string
+            description: Base64 encoded encrypted response
+            example: "aBcDeF123456..."
+
+    HandleMetaFlowRequestBadRequest:
+      description: Bad request - missing required fields or invalid format.
+      content:
+        text/plain:
+          schema:
+            type: string
+            description: Base64 encoded encrypted error message
+            example: "error_encrypted_response..."
+
+    HandleMetaFlowRequestNotFound:
+      description: Meta flow request not found - client or room not found.
+      content:
+        text/plain:
+          schema:
+            type: string
+            description: Base64 encoded encrypted error message
+            example: "error_encrypted_response..."
+
+    HandleMetaFlowRequestDecryptionError:
+      description: Decryption failed - invalid private key or corrupted data.
+      content:
+        text/plain:
+          schema:
+            type: string
+            description: Error message indicating decryption failure
+            example: "Failed to decrypt the request. Please verify your private key."
+
+    HandleMetaFlowRequestServerError:
+      description: Error processing meta flow request.
+      content:
+        text/plain:
+          schema:
+            type: string
+            description: Base64 encoded encrypted error message
+            example: "error_encrypted_response..."

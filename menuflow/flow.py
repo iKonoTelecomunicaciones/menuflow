@@ -153,8 +153,9 @@ class Flow:
 
         return middleware_initialized
 
-    def node(self, room: Room) -> Node | None:
-        node_data = self.get_node_by_id(node_id=room.route.node_id)
+    def node(self, room: Room, node_data: dict | None = None) -> Node | None:
+        if not node_data:
+            node_data = self.get_node_by_id(node_id=room.route.node_id)
 
         if not node_data:
             return

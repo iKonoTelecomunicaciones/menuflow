@@ -124,7 +124,7 @@ class Switch(Base):
                 send_event=self.content.get("send_event"),
                 event_type=MenuflowNodeEvents.NodeEntry,
                 room_id=self.room.room_id,
-                sender=self.room.matrix_client.mxid,
+                sender=self.room.matrix_client.mxid if self.room.matrix_client else "",
                 node_type=Nodes.switch,
                 node_id=self.id,
                 o_connection=o_connection,
