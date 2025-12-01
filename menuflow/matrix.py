@@ -356,77 +356,63 @@ class MatrixHandler(MatrixClient):
         evt : MessageEvent | None
             The event that triggered the algorithm.
         """
-        max_recursion_depth = self.config["menuflow.max_recursion_depth"]
-        actual_recursion_depth = 0
 
-        while actual_recursion_depth < max_recursion_depth:
-            actual_recursion_depth += 1
+        node = self.flow.node(room=room)
 
-            if actual_recursion_depth == max_recursion_depth:
+        if node is None:
+            self.log.debug(f"[{room.room_id}] Does not have a valid node. Updating to start")
+            await room.update_menu(node_id="start")
+            return
+
+        self.log.debug(
+            f"[{room.room_id}] Executing node: [{node.id}]. "
+            f"State: ({room.route.state}). "
+            f"Triggered by: ({evt.event_id if getattr(evt, 'event_id', None) else 'unknown'}). "
+            f"Sender: ({evt.sender if getattr(evt, 'sender', None) else 'unknown'}). "
+            f"Timestamp: ({evt.timestamp if getattr(evt, 'timestamp', None) else 'unknown'}). "
+            f"Type evt: ({type(evt)}). "
+        )
+        if not process_evt:
+            evt = None
+
+        if type(node) in (Input, InteractiveInput, FormInput, GPTAssistant, Webhook):
+            if isinstance(node, GPTAssistant) and room.route.state == RouteState.INPUT:
+                await self.group_message(room=room, message=evt, node=node)
+                return
+
+            if room.room_id in self.message_group_by_room:
+                del self.message_group_by_room[room.room_id]
+
+            try:
+                await node.run(evt)
+            except MLimitExceeded as e:
                 self.log.error(
-                    f"Max recursion depth reached in room {room.room_id}. Stopping algorithm...\n"
-                    f"Current node: {room.route.node_id}\n"
-                    f"Please check your flow configuration for potential infinite loops. "
-                    f"Actual recursion depth: {actual_recursion_depth} is equal to max "
-                    f"recursion depth: {max_recursion_depth}."
+                    f"MLimitExceeded exception has occurred in the pipeline [{node.id}]: {e}\n"
+                    f"Room [{room.room_id}], please check your flow configuration "
+                    "to prevent this."
                 )
-                break
 
-            node = self.flow.node(room=room)
+            if room.route.state == RouteState.INPUT:
+                return
+        else:
+            try:
+                await node.run()
+            except MLimitExceeded as e:
+                self.log.error(
+                    f"MLimitExceeded exception has occurred in the pipeline [{node.id}]: {e}\n"
+                    f"Room [{room.room_id}], please check your flow configuration "
+                    "to prevent this."
+                )
 
-            if node is None:
-                self.log.debug(f"[{room.room_id}] Does not have a valid node. Updating to start")
-                await room.update_menu(node_id="start")
-                break
+            if room.route.state == RouteState.INVITE:
+                return
 
-            self.log.debug(
-                f"[{room.room_id}] Executing node: [{node.id}]. "
-                f"State: ({room.route.state}). "
-                f"Triggered by: ({evt.event_id if getattr(evt, 'event_id', None) else 'unknown'}). "
-                f"Sender: ({evt.sender if getattr(evt, 'sender', None) else 'unknown'}). "
-                f"Timestamp: ({evt.timestamp if getattr(evt, 'timestamp', None) else 'unknown'}). "
-                f"Type evt: ({type(evt)}). "
-            )
-            if not process_evt:
-                evt = None
+        if room.route.state == RouteState.END:
+            self.log.debug(f"The room {room.room_id} has terminated the flow")
+            await room.update_menu(node_id="start")
+            return
 
-            if type(node) in (Input, InteractiveInput, FormInput, GPTAssistant, Webhook):
-                # TODO: Change this to support GPTAssistant node
-                # if isinstance(node, GPTAssistant) and room.route.state == RouteState.INPUT:
-                #    await self.group_message(room=room, message=evt, node=node)
-                #    break
-                #
-                # if room.room_id in self.message_group_by_room:
-                #    del self.message_group_by_room[room.room_id]
-
-                try:
-                    await node.run(evt)
-                except MLimitExceeded as e:
-                    self.log.error(
-                        f"MLimitExceeded exception has occurred in the pipeline [{node.id}]: {e}\n"
-                        f"Room [{room.room_id}], please check your flow configuration "
-                        "to prevent this."
-                    )
-
-                if room.route.state == RouteState.INPUT:
-                    break
-            else:
-                try:
-                    await node.run()
-                except MLimitExceeded as e:
-                    self.log.error(
-                        f"MLimitExceeded exception has occurred in the pipeline [{node.id}]: {e}\n"
-                        f"Room [{room.room_id}], please check your flow configuration "
-                        "to prevent this."
-                    )
-
-                if room.route.state == RouteState.INVITE:
-                    break
-
-            if room.route.state == RouteState.END:
-                self.log.debug(f"The room {room.room_id} has terminated the flow")
-                await room.update_menu(node_id="start")
-                break
+        await self.algorithm(room=room, evt=evt)
 
     async def create_inactivity_tasks(self) -> None:
         """This function creates tasks for rooms that are in the input state
