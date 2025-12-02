@@ -155,9 +155,12 @@ async def restore_tag(request: web.Request) -> web.Response:
     source_tag = await DBTag.get_by_id(source_tag_id)
     if not source_tag:
         return resp.not_found(f"Tag with ID {source_tag_id} not found", uuid)
+    if source_tag.flow_id != flow_id:
+        return resp.bad_request(
+            f"Tag with ID {source_tag_id} does not belong to flow {flow_id}", uuid
+        )
 
     # Create new current tag
-    log.info(f"({uuid}) -> Creating new current tag")
     new_current_tag = DBTag(
         flow_id=flow_id,
         name="current",
@@ -168,7 +171,6 @@ async def restore_tag(request: web.Request) -> web.Response:
     new_current_tag_id = await new_current_tag.insert()
 
     # Copy modules from source tag to new current tag
-    log.info(f"({uuid}) -> Copying modules from tag {source_tag_id} to new current tag")
     copy_result = await DBModule.copy_modules_from_tag(source_tag_id, new_current_tag_id)
 
     if not copy_result.get("success"):
