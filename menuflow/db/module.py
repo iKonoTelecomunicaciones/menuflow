@@ -202,7 +202,7 @@ class Module(SerializableAttrs):
             return {"success": False, "error": str(e)}
 
     @classmethod
-    async def delete_modules_by_tag(cls, tag_id: int) -> list[int]:
+    async def delete_modules_by_tag(cls, tag_id: int) -> dict[str, bool | str]:
         q = "DELETE FROM module WHERE tag_id=$1"
         try:
             result = await cls.db.execute(q, tag_id)
