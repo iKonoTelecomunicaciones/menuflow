@@ -69,6 +69,32 @@ async def get_tags_by_flow(request: web.Request) -> web.Response:
         return resp.server_error(str(e), uuid)
 
 
+@routes.get("/v1/{flow_id}/flow_vars")
+async def get_flow_vars(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Getting flow vars")
+
+    flow_id = int(request.match_info["flow_id"])
+    tag_id = request.query.get("tag_id")
+
+    if tag_id:
+        try:
+            tag_id = int(tag_id)
+        except ValueError:
+            return resp.bad_request("tag_id must be a valid integer", uuid)
+
+        tag = await DBTag.get_by_id(tag_id)
+        if not tag:
+            return resp.not_found(f"Tag with ID {tag_id} not found", uuid)
+    else:
+        tag = await DBTag.get_current_tag(flow_id)
+        if not tag:
+            return resp.not_found(f"Current tag for flow {flow_id} not found", uuid)
+
+    log_msg = f"Returning flow vars for tag: {tag.id}"
+    return resp.success(data={"flow_vars": tag.flow_vars}, log_msg=log_msg)
+
+
 @routes.delete("/v1/tag/{tag_id}")
 @Util.docstring(delete_tag_doc)
 async def delete_tag(request: web.Request) -> web.Response:

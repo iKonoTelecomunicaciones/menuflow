@@ -76,15 +76,22 @@ class Module(SerializableAttrs):
         return cls._from_row(row) if row else None
 
     @classmethod
-    async def get_by_fields(cls, flow_id: int, fields: list) -> list:
-        current_tag = await cls.get_current_tag(flow_id)
+    async def get_by_fields(cls, flow_id: int, fields: list, tag_id: int | None = None) -> list:
+        query_tag_id = None
+        if tag_id:
+            query_tag_id = tag_id
 
-        if not current_tag:
-            log.warning(f"No current tag found for flow_id: {flow_id}")
-            return []
+        else:
+            current_tag = await cls.get_current_tag(flow_id)
+
+            if not current_tag:
+                log.warning(f"No current tag found for flow_id: {flow_id}")
+                return []
+
+            query_tag_id = current_tag["id"]
 
         q = f"SELECT {', '.join(fields)} FROM module WHERE tag_id=$1 ORDER BY name ASC"
-        rows = await cls.db.fetch(q, current_tag["id"])
+        rows = await cls.db.fetch(q, query_tag_id)
 
         return [cls._to_dict(row, cls._json_columns.split(",")) for row in rows] if rows else []
 
@@ -114,6 +121,7 @@ class Module(SerializableAttrs):
     @classmethod
     async def check_exists_by_name(cls, name: str, flow_id: int, module_id: int = None) -> bool:
         current_tag = await cls.get_current_tag(flow_id)
+
         if not module_id:
             q = "SELECT EXISTS(SELECT 1 FROM module WHERE name=$1 AND tag_id=$2)"
             return await cls.db.fetchval(q, name, current_tag["id"])
