@@ -200,3 +200,14 @@ class Module(SerializableAttrs):
                       to tag {target_tag_id}: {e}"""
             )
             return {"success": False, "error": str(e)}
+
+    @classmethod
+    async def delete_modules_by_tag(cls, tag_id: int) -> list[int]:
+        q = "DELETE FROM module WHERE tag_id=$1"
+        try:
+            result = await cls.db.execute(q, tag_id)
+            log.info(f"Modules deleted successfully from tag {tag_id}: {result}")
+            return {"success": True}
+        except Exception as e:
+            log.error(f"Error deleting modules from tag {tag_id}: {e}")
+            return {"success": False, "error": str(e)}
