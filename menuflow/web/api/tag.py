@@ -132,13 +132,18 @@ async def restore_tag(request: web.Request) -> web.Response:
     except ValueError:
         return resp.bad_request("flow_id must be a valid integer", uuid)
 
-    source_tag_id = request.query.get("tag_id")
+    try:
+        data = await request.json()
+    except JSONDecodeError:
+        return resp.bad_request("Invalid JSON in request body", uuid)
+
+    source_tag_id = data.get("tag_id")
     if not source_tag_id:
         return resp.bad_request("tag_id is required", uuid)
 
     try:
         source_tag_id = int(source_tag_id)
-    except ValueError:
+    except (ValueError, TypeError):
         return resp.bad_request("tag_id must be a valid integer", uuid)
 
     # Get the current tag
