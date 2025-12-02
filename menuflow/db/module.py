@@ -77,22 +77,21 @@ class Module(SerializableAttrs):
 
     @classmethod
     async def get_by_fields(cls, flow_id: int, fields: list, tag_id: int | None = None) -> list:
+        query_tag_id = None
+        if tag_id:
+            query_tag_id = tag_id
 
-        if tag_id is not None:
-            q = f"SELECT {', '.join(fields)} FROM module WHERE tag_id=$1 ORDER BY name ASC"
-            rows = await cls.db.fetch(q, tag_id)
-            return (
-                [cls._to_dict(row, cls._json_columns.split(",")) for row in rows] if rows else []
-            )
+        else:
+            current_tag = await cls.get_current_tag(flow_id)
 
-        current_tag = await cls.get_current_tag(flow_id)
+            if not current_tag:
+                log.warning(f"No current tag found for flow_id: {flow_id}")
+                return []
 
-        if not current_tag:
-            log.warning(f"No current tag found for flow_id: {flow_id}")
-            return []
+            query_tag_id = current_tag["id"]
 
         q = f"SELECT {', '.join(fields)} FROM module WHERE tag_id=$1 ORDER BY name ASC"
-        rows = await cls.db.fetch(q, current_tag["id"])
+        rows = await cls.db.fetch(q, query_tag_id)
 
         return [cls._to_dict(row, cls._json_columns.split(",")) for row in rows] if rows else []
 
