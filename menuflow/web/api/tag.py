@@ -122,7 +122,7 @@ async def delete_tag(request: web.Request) -> web.Response:
         return resp.server_error(str(e), uuid)
 
 
-@routes.post("/v1/{flow_id}/tag/restore")
+@routes.post("/v1/{flow_id}/tag_restore")
 async def restore_tag(request: web.Request) -> web.Response:
     uuid = Util.generate_uuid()
     log.info(f"({uuid}) -> '{request.method}' '{request.path}' Restoring tag")
