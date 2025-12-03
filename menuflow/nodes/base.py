@@ -119,9 +119,9 @@ class Base:
             await self.set_typing(room_id=room_id)
 
         if "body" in content:
-            content["body"] = re.sub(r"¬¬¬", r"", content["body"])
+            content["body"] = Util.remove_jinja_markers(content["body"])
         if "formatted_body" in content:
-            content["formatted_body"] = re.sub(r"¬¬¬", r"", content["formatted_body"])
+            content["formatted_body"] = Util.remove_jinja_markers(content["formatted_body"])
 
         await self.room.matrix_client.send_message(room_id=room_id, content=content)
 

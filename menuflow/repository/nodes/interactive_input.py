@@ -1,9 +1,8 @@
-import re
-
 from attr import dataclass, ib
 from mautrix.types import BaseMessageEventContent, SerializableAttrs
 
 from .input import Input
+from menuflow.utils.util import Util
 
 
 @dataclass
@@ -27,13 +26,13 @@ class InteractiveMessage(SerializableAttrs, BaseMessageEventContent):
             super().trim_reply_fallback()
             return
 
-        self.interactive_message["body"] = re.sub(
-            r"¬¬¬", r"", self.interactive_message.get("body", "")
+        self.interactive_message["body"] = Util.remove_jinja_markers(
+            self.interactive_message.get("body", "")
         )
 
         try:
-            self.interactive_message["content"]["text"] = re.sub(
-                r"¬¬¬", r"", content.get("text", "")
+            self.interactive_message["content"]["text"] = Util.remove_jinja_markers(
+                content.get("text", "")
             )
         except KeyError:
             pass

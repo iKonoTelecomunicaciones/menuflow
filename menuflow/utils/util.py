@@ -1,13 +1,12 @@
 import ast
 import asyncio
-import html
 import json
 import traceback
 from asyncio import Task, all_tasks
 from copy import deepcopy
 from datetime import datetime, timezone
 from logging import getLogger
-from re import match, sub
+from re import compile, match, sub
 
 import holidays
 import jq
@@ -56,6 +55,7 @@ class Util:
         "\t": "@@@TAB@@@",
         "\\": "@@@BSL@@@",
     }  # fmt: skip
+    _jinja_marker_re = compile(r"¬¬¬")
 
     def __init__(self, config: Config):
         self.config = config
@@ -774,3 +774,16 @@ class Util:
                     else:
                         variables = variables.replace(token, char)
         return variables, changed
+
+    @staticmethod
+    def remove_jinja_markers(text: str) -> str:
+        """It removes the jinja markers from the text.
+        Parameters
+        ----------
+        text : str
+            The text to remove the jinja markers from.
+        Returns
+        -------
+            The text without the jinja markers.
+        """
+        return Util._jinja_marker_re.sub("", text) if isinstance(text, str) and text else text
