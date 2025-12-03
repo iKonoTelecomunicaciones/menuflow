@@ -10,7 +10,7 @@ from ...db.flow import Flow as DBFlow
 from ...db.module import Module as DBModule
 from ...db.tag import Tag as DBTag
 from ..base import get_config, routes
-from ..docs.tag import delete_tag_doc, get_tags_by_flow_doc
+from ..docs.tag import delete_tag_doc, get_tags_by_flow_doc, publish_tag_doc, restore_tag_doc
 from ..responses import resp
 from ..util import Util
 
@@ -125,6 +125,7 @@ async def delete_tag(request: web.Request) -> web.Response:
 
 
 @routes.post("/v1/{flow_id}/tag_restore")
+@Util.docstring(restore_tag_doc)
 async def restore_tag(request: web.Request) -> web.Response:
     uuid = Util.generate_uuid()
     log.info(f"({uuid}) -> '{request.method}' '{request.path}' Restoring tag")
@@ -192,6 +193,7 @@ async def restore_tag(request: web.Request) -> web.Response:
 
 
 @routes.post("/v1/{flow_id}/publish/{tag_id}")
+@Util.docstring(publish_tag_doc)
 async def publish_tag(request: web.Request) -> web.Response:
     uuid = Util.generate_uuid()
     log.info(f"({uuid}) -> '{request.method}' '{request.path}' Publishing tag")
@@ -210,8 +212,7 @@ async def publish_tag(request: web.Request) -> web.Response:
         config: Config = get_config()
         if config["menuflow.load_flow_from"] == "database":
             tag = await DBTag.get_by_id(tag_id)
-            modules = await DBModule.get_tag_modules(int(tag_id))
-            # tag is already fetched above
+            modules = await DBModule.get_tag_modules(tag_id)
             nodes = [node for module in modules for node in module.nodes]
             await Util.update_flow_db_clients(
                 flow_id, {"flow_variables": tag.flow_vars, "nodes": nodes}, config
