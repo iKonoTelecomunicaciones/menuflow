@@ -1,8 +1,8 @@
 from attr import dataclass, ib
 from mautrix.types import BaseMessageEventContent, SerializableAttrs
 
-from .input import Input
 from menuflow.utils.util import Util
+from .input import Input
 
 
 @dataclass
