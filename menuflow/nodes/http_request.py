@@ -69,6 +69,7 @@ class HTTPRequest(Switch):
         body = self.content.get("json", "")
         if isinstance(body, dict):
             body = json.dumps(body)
+        body = Util.remove_jinja_markers(body)
         return self.render_data(body, flags=RenderFlags.CUSTOM_ESCAPE | RenderFlags.LITERAL_EVAL)
 
     @property
