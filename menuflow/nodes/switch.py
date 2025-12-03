@@ -94,8 +94,6 @@ class Switch(Base):
             )
             return await self.validate_cases()
 
-        self.log.info(f"[{self.room.room_id}] Validation obtained [{result}] in [{self.id}]")
-
         return await self.get_case_by_id(result)
 
     async def run(self, update_state: bool = True, generate_event: bool = True) -> str:
