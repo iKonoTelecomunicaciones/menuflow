@@ -7,6 +7,7 @@ from aiohttp import web
 
 from ...config import Config
 from ...db.flow import Flow as DBFlow
+from ...db.module import Module as DBModule
 from ...db.tag import Tag as DBTag
 from ..base import routes
 from ..docs.tag import delete_tag_doc, get_tags_by_flow_doc
@@ -119,3 +120,70 @@ async def delete_tag(request: web.Request) -> web.Response:
     except Exception as e:
         log.error(f"({uuid}) -> Error deleting tag: {e}", exc_info=True)
         return resp.server_error(str(e), uuid)
+
+
+@routes.post("/v1/{flow_id}/tag_restore")
+async def restore_tag(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Restoring tag")
+
+    try:
+        flow_id = int(request.match_info["flow_id"])
+    except ValueError:
+        return resp.bad_request("flow_id must be a valid integer", uuid)
+
+    try:
+        data = await request.json()
+    except JSONDecodeError:
+        return resp.bad_request("Invalid JSON in request body", uuid)
+
+    source_tag_id = data.get("tag_id")
+    if not source_tag_id:
+        return resp.bad_request("tag_id is required", uuid)
+
+    try:
+        source_tag_id = int(source_tag_id)
+    except (ValueError, TypeError):
+        return resp.bad_request("tag_id must be a valid integer", uuid)
+
+    # Get the current tag
+    current_tag = await DBTag.get_current_tag(flow_id)
+    if not current_tag:
+        return resp.not_found(f"Current tag for flow {flow_id} not found", uuid)
+
+    # Rename current tag to current_temp
+    log.info(f"({uuid}) -> Renaming current tag to current_temp")
+    current_tag.name = "current_temp"
+    await current_tag.update()
+
+    # Get source tag to copy flow_vars
+    source_tag = await DBTag.get_by_id(source_tag_id)
+    if not source_tag:
+        return resp.not_found(f"Tag with ID {source_tag_id} not found", uuid)
+    if source_tag.flow_id != flow_id:
+        return resp.bad_request(
+            f"Tag with ID {source_tag_id} does not belong to flow {flow_id}", uuid
+        )
+
+    # Create new current tag
+    new_current_tag = DBTag(
+        flow_id=flow_id,
+        name="current",
+        author="system",
+        active=False,
+        flow_vars=source_tag.flow_vars,
+    )
+    new_current_tag_id = await new_current_tag.insert()
+
+    # Copy modules from source tag to new current tag
+    copy_result = await DBModule.copy_modules_from_tag(source_tag_id, new_current_tag_id)
+
+    if not copy_result.get("success"):
+        return resp.server_error(f"Error copying modules: {copy_result.get('error')}", uuid)
+
+    # Delete modules from current_temp tag and delete current_temp tag
+    log.info(f"({uuid}) -> Deleting current_temp tag")
+    await DBModule.delete_modules_by_tag(current_tag.id)
+    await current_tag.delete()
+
+    return resp.ok({"message": "Tag restored successfully"}, uuid)
