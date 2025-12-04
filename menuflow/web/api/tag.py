@@ -218,7 +218,6 @@ async def publish_tag(request: web.Request) -> web.Response:
         # Restart flow
         config: Config = get_config()
         if config["menuflow.load_flow_from"] == "database":
-            tag = await DBTag.get_by_id(tag_id)
             modules = await DBModule.get_tag_modules(tag_id)
             nodes = [node for module in modules for node in module.nodes]
             await Util.update_flow_db_clients(
