@@ -208,6 +208,10 @@ async def publish_tag(request: web.Request) -> web.Response:
         return resp.bad_request("flow_id and tag_id must be valid integers", uuid)
 
     try:
+        tag = await DBTag.get_by_id(tag_id)
+        if tag.active:
+            return resp.conflict(f"Tag with ID {tag_id} is active and cannot be published", uuid)
+
         await DBTag.deactivate_tags(flow_id)
         await DBTag.activate_tag(tag_id)
 
