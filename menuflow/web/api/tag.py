@@ -108,11 +108,14 @@ async def delete_tag(request: web.Request) -> web.Response:
         if not tag:
             return resp.not_found(f"Tag with ID {tag_id} not found", uuid)
 
+        if tag.active:
+            return resp.conflict(f"Tag with ID {tag_id} is active and cannot be deleted", uuid)
+
         await DBModule.delete_modules_by_tag(tag_id)
 
         deleted = await tag.delete()
         if not deleted:
-            return resp.conflict(f"Tag with ID {tag_id} is active and cannot be deleted", uuid)
+            return resp.server_error(f"Tag with ID {tag_id} could not be deleted", uuid)
 
         log.info(f"({uuid}) -> Tag with ID {tag_id} deleted successfully")
         return resp.ok({"message": f"Tag with ID {tag_id} deleted successfully"}, uuid)
