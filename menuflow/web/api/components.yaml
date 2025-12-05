@@ -1843,4 +1843,63 @@ components:
               value:
                 detail:
                   message: "Current tag not found for flow 1"
+    RestoreTagSuccess:
+      description: Tag restored successfully.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "Tag restored successfully"
+
+    RestoreTagBadRequest:
+      description: Bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "tag_id is required"
+
+    RestoreTagNotFound:
+      description: Tag not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "Tag with ID 1 not found"
+
+    PublishTagSuccess:
+      description: Tag published successfully.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "Tag published successfully"
+
+    PublishTagBadRequest:
+      description: Bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "flow_id and tag_id must be valid integers"
+
+    PublishTagNotFound:
+      description: Tag not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "Tag with ID 1 not found"
   # End of responses

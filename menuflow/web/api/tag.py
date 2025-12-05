@@ -9,8 +9,8 @@ from ...config import Config
 from ...db.flow import Flow as DBFlow
 from ...db.module import Module as DBModule
 from ...db.tag import Tag as DBTag
-from ..base import routes
-from ..docs.tag import delete_tag_doc, get_tags_by_flow_doc
+from ..base import get_config, routes
+from ..docs.tag import delete_tag_doc, get_tags_by_flow_doc, publish_tag_doc, restore_tag_doc
 from ..responses import resp
 from ..util import Util
 
@@ -108,9 +108,14 @@ async def delete_tag(request: web.Request) -> web.Response:
         if not tag:
             return resp.not_found(f"Tag with ID {tag_id} not found", uuid)
 
+        if tag.active:
+            return resp.conflict(f"Tag with ID {tag_id} is active and cannot be deleted", uuid)
+
+        await DBModule.delete_modules_by_tag(tag_id)
+
         deleted = await tag.delete()
         if not deleted:
-            return resp.conflict(f"Tag with ID {tag_id} is active and cannot be deleted", uuid)
+            return resp.server_error(f"Tag with ID {tag_id} could not be deleted", uuid)
 
         log.info(f"({uuid}) -> Tag with ID {tag_id} deleted successfully")
         return resp.ok({"message": f"Tag with ID {tag_id} deleted successfully"}, uuid)
@@ -123,6 +128,7 @@ async def delete_tag(request: web.Request) -> web.Response:
 
 
 @routes.post("/v1/{flow_id}/tag_restore")
+@Util.docstring(restore_tag_doc)
 async def restore_tag(request: web.Request) -> web.Response:
     uuid = Util.generate_uuid()
     log.info(f"({uuid}) -> '{request.method}' '{request.path}' Restoring tag")
@@ -187,3 +193,40 @@ async def restore_tag(request: web.Request) -> web.Response:
     await current_tag.delete()
 
     return resp.ok({"message": "Tag restored successfully"}, uuid)
+
+
+@routes.post("/v1/{flow_id}/publish/{tag_id}")
+@Util.docstring(publish_tag_doc)
+async def publish_tag(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Publishing tag")
+
+    try:
+        flow_id = int(request.match_info["flow_id"])
+        tag_id = int(request.match_info["tag_id"])
+    except ValueError:
+        return resp.bad_request("flow_id and tag_id must be valid integers", uuid)
+
+    try:
+        tag = await DBTag.get_by_id(tag_id)
+        if tag.active:
+            return resp.conflict(f"Tag with ID {tag_id} is active and cannot be published", uuid)
+
+        await DBTag.deactivate_tags(flow_id)
+        await DBTag.activate_tag(tag_id)
+
+        # Restart flow
+        config: Config = get_config()
+        if config["menuflow.load_flow_from"] == "database":
+            modules = await DBModule.get_tag_modules(tag_id)
+            nodes = [node for module in modules for node in module.nodes]
+            await Util.update_flow_db_clients(
+                flow_id, {"flow_variables": tag.flow_vars, "nodes": nodes}, config
+            )
+
+        log.info(f"({uuid}) -> Tag {tag_id} published successfully for flow {flow_id}")
+        return resp.ok({"message": "Tag published successfully"}, uuid)
+
+    except Exception as e:
+        log.error(f"({uuid}) -> Error publishing tag: {e}", exc_info=True)
+        return resp.server_error(str(e), uuid)

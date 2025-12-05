@@ -104,3 +104,76 @@ delete_tag_doc = """
         '500':
             $ref: '#/components/responses/InternalServerError'
 """
+
+restore_tag_doc = """
+    ---
+    summary: Restore a tag.
+    description: Restore a tag by creating a new current tag with the modules and flow variables from the selected tag.
+    tags:
+        - Tag
+
+    parameters:
+        - name: flow_id
+          in: path
+          required: true
+          description: The ID of the flow.
+          schema:
+            type: integer
+          example: 123
+
+    requestBody:
+        required: true
+        content:
+            application/json:
+                schema:
+                    type: object
+                    properties:
+                        tag_id:
+                            type: integer
+                            description: The ID of the tag to restore.
+                            example: 1
+
+    responses:
+        '200':
+            $ref: '#/components/responses/RestoreTagSuccess'
+        '400':
+            $ref: '#/components/responses/RestoreTagBadRequest'
+        '404':
+            $ref: '#/components/responses/RestoreTagNotFound'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
+"""
+
+publish_tag_doc = """
+    ---
+    summary: Publish a tag.
+    description: Publish a tag by deactivating the current active tag and activating the selected tag.
+    tags:
+        - Tag
+
+    parameters:
+        - name: flow_id
+          in: path
+          required: true
+          description: The ID of the flow.
+          schema:
+            type: integer
+          example: 123
+        - name: tag_id
+          in: path
+          required: true
+          description: The ID of the tag to publish.
+          schema:
+            type: integer
+          example: 1
+
+    responses:
+        '200':
+            $ref: '#/components/responses/PublishTagSuccess'
+        '400':
+            $ref: '#/components/responses/PublishTagBadRequest'
+        '404':
+            $ref: '#/components/responses/PublishTagNotFound'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
+"""
