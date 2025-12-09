@@ -71,19 +71,14 @@ class Tag(SerializableAttrs):
     async def get_flow_tags(
         cls, flow_id: int, offset: int = 0, limit: int = 10, search: str = None
     ) -> list[Tag]:
+
+        base_query = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1"
+        order_by = "ORDER BY active DESC, create_date DESC"
         if search:
-            q = f"""
-                SELECT id, {cls._columns} FROM tag
-                WHERE flow_id=$1 AND name ILIKE $2
-                ORDER BY active DESC , create_date DESC LIMIT $3 OFFSET $4
-                """
+            q = f"{base_query} AND name ILIKE $2 {order_by} LIMIT $3 OFFSET $4"
             rows = await cls.db.fetch(q, flow_id, f"%{search}%", limit, offset)
         else:
-            q = f"""
-                SELECT id, {cls._columns} FROM tag
-                WHERE flow_id=$1
-                ORDER BY active DESC , create_date DESC LIMIT $2 OFFSET $3
-                """
+            q = f"{base_query} {order_by} LIMIT $2 OFFSET $3"
             rows = await cls.db.fetch(q, flow_id, limit, offset)
 
         if not rows:
