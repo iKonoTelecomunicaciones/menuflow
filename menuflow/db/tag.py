@@ -68,19 +68,37 @@ class Tag(SerializableAttrs):
         return cls._from_row(row) if row else None
 
     @classmethod
-    async def get_flow_tags(cls, flow_id: int, offset: int = 0, limit: int = 10) -> list[Tag]:
-        q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 ORDER BY create_date DESC LIMIT $2 OFFSET $3"
+    async def get_flow_tags(
+        cls, flow_id: int, offset: int = 0, limit: int = 10, search: str = None
+    ) -> list[Tag]:
+        if search:
+            q = f"""
+                SELECT id, {cls._columns} FROM tag
+                WHERE flow_id=$1 AND name ILIKE $2
+                ORDER BY active DESC , create_date DESC LIMIT $3 OFFSET $4
+                """
+            rows = await cls.db.fetch(q, flow_id, f"%{search}%", limit, offset)
+        else:
+            q = f"""
+                SELECT id, {cls._columns} FROM tag
+                WHERE flow_id=$1
+                ORDER BY active DESC , create_date DESC LIMIT $2 OFFSET $3
+                """
+            rows = await cls.db.fetch(q, flow_id, limit, offset)
 
-        rows = await cls.db.fetch(q, flow_id, limit, offset)
         if not rows:
             return []
 
         return [cls._from_row(row) for row in rows]
 
     @classmethod
-    async def get_tags_count(cls, flow_id: int) -> int:
-        q = "SELECT COUNT(*) FROM tag WHERE flow_id=$1"
-        return await cls.db.fetchval(q, flow_id)
+    async def get_tags_count(cls, flow_id: int, search: str = None) -> int:
+        if search:
+            q = "SELECT COUNT(*) FROM tag WHERE flow_id=$1 AND name ILIKE $2"
+            return await cls.db.fetchval(q, flow_id, f"%{search}%")
+        else:
+            q = "SELECT COUNT(*) FROM tag WHERE flow_id=$1"
+            return await cls.db.fetchval(q, flow_id)
 
     @classmethod
     async def get_by_name(cls, flow_id: int, name: str) -> Tag | None:
