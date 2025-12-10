@@ -682,11 +682,15 @@ components:
     GetAllTagsOk:
       type: object
       properties:
+        count:
+          type: integer
+          description: Total number of tags found
         tags:
           type: array
           items:
             type: object
       example:
+        count: 2
         tags:
           - id: 1
             flow_id: 123
@@ -1666,6 +1670,7 @@ components:
                   variable2: "value2"
             MultipleTags:
               value:
+                count: 2
                 tags:
                   - id: 1
                     flow_id: 123

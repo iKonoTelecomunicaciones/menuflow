@@ -64,6 +64,26 @@ get_tags_by_flow_doc = f"""
             type: string
           description: The tag name to get a specific tag.
           example: "production"
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Search term to filter tags by name.
+          example: "prod"
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+          description: Number of tags to skip for pagination.
+          example: 0
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Maximum number of tags to return.
+          example: 10
 
     responses:
         '200':

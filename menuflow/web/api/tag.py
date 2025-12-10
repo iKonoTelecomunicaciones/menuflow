@@ -27,6 +27,7 @@ async def get_tags_by_flow(request: web.Request) -> web.Response:
         flow_id = int(request.match_info["flow_id"])
         tag_id = request.query.get("id")
         tag_name = request.query.get("name")
+        search = request.query.get("search")
 
         if tag_id:
             try:
@@ -57,11 +58,13 @@ async def get_tags_by_flow(request: web.Request) -> web.Response:
             except ValueError:
                 return resp.bad_request("offset and limit must be valid integers", uuid)
 
-            count = await DBTag.get_tags_count(flow_id)
-            tags = await DBTag.get_flow_tags(flow_id, offset=offset, limit=limit)
+            count = await DBTag.get_tags_count(flow_id, search=search)
+            tags = await DBTag.get_flow_tags(flow_id, offset=offset, limit=limit, search=search)
 
             tags_list = [tag.to_dict() for tag in tags]
-            return resp.ok({"count": count, "tags": tags_list}, uuid)
+
+            log_msg = f"({uuid}) -> Returning {count} tags for flowId: {flow_id}"
+            return resp.success(data={"count": count, "tags": tags_list}, log_msg=log_msg)
 
     except ValueError:
         return resp.bad_request("flow_id must be a valid integer", uuid)
