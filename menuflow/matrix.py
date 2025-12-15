@@ -46,9 +46,9 @@ class MatrixHandler(MatrixClient):
         self.flow_utils = flow_utils
         self.util = Util(self.config)
         self.flow = flow
+        self.LOCKED_ROOMS = set()
         self.LAST_JOIN_EVENT: dict[RoomID, StrippedStateEvent] = {}
         self.QUEUE_MESSAGE: dict[RoomID, asyncio.Queue] = {}
-        self.LOCKED_ROOMS = set()
         Base.init_cls(config=self.config, session=self.api.session)
 
     def handle_sync(self, data: dict) -> list[asyncio.Task]:
@@ -421,12 +421,8 @@ class MatrixHandler(MatrixClient):
 
         self.log.info(f"[{room_id}] Waiting for messages...")
 
+        # TODO: Review if is necessary to use a timeout.
         message_event = await queue.get()
-        # try:
-        # message_event = await asyncio.wait_for(queue.get(), timeout=60)
-        # except asyncio.TimeoutError:
-        # self.log.warning(f"[{room_id}] Timeout waiting for messages")
-        # return None
         return message_event
 
     async def algorithm(self, room: Room, evt: MessageEvent | None = None) -> None:
