@@ -266,3 +266,10 @@ async def upgrade_v11(conn: Connection) -> None:
     await conn.execute("CREATE INDEX idx_tag_create_date ON tag (create_date)")
     await conn.execute("CREATE INDEX IF NOT EXISTS idx_flow_create_date ON flow (create_date)")
     await conn.execute("CREATE INDEX idx_module_tag_id ON module (tag_id)")
+
+
+@upgrade_table.register(description="Add status column to room table")
+async def upgrade_v12(conn: Connection) -> None:
+    await conn.execute(
+        "ALTER TABLE room ADD COLUMN IF NOT EXISTS status JSONB DEFAULT '{}'::jsonb"
+    )
