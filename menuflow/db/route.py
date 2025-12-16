@@ -117,6 +117,17 @@ class Route:
         preserve_constants: bool = False,
         var_keep_list: list[str] | None = None,
     ) -> None:
+        """Cleans up the route when the node is set to start or when the route is reset.
+
+        Parameters
+        ----------
+        update_state : bool
+            If true, the state of the route will be set to start.
+        preserve_constants : bool
+            If true, the constants will be preserved.
+        var_keep_list : list[str] | None
+            The list of route variables to keep.
+        """
         constants = (
             ["customer_room_id", "bot_mxid", "customer_mxid", "puppet_mxid"]
             if preserve_constants
