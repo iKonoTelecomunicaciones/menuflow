@@ -124,6 +124,9 @@ class Util:
 
         nodes = {}
 
+        for module_name in positions.keys():
+            nodes[module_name] = {"nodes": []}
+
         for node in flow_copy.get("menu", {}).get("nodes", []):
             name = node.pop("module")
             if name not in nodes:
