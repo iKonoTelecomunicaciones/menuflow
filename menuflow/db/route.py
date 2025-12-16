@@ -111,12 +111,20 @@ class Route:
         """
         await self.db.execute(q, *self.values)
 
-    async def clean_up(self, update_state: bool = True, preserve_constants: bool = False) -> None:
+    async def clean_up(
+        self,
+        update_state: bool = True,
+        preserve_constants: bool = False,
+        var_keep_list: list[str] | None = None,
+    ) -> None:
         constants = (
-            ("customer_room_id", "bot_mxid", "customer_mxid", "puppet_mxid")
+            ["customer_room_id", "bot_mxid", "customer_mxid", "puppet_mxid"]
             if preserve_constants
-            else ()
+            else []
         )
+
+        if var_keep_list:
+            constants.extend(var_keep_list)
 
         if update_state:
             self.state = RouteState.START
