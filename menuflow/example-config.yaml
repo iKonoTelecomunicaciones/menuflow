@@ -60,7 +60,7 @@ menuflow:
 
     webhook_queue:
         time_to_live: 120 # seconds, time to live for webhook events in the queue
-    
+
     # Variables to maintain when cleaning the route, only used when the state is set to start
     route_keep_vars: []
 
