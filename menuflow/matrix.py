@@ -111,8 +111,12 @@ class MatrixHandler(MatrixClient):
                 await self.handle_reject_invite(evt)
 
     async def handle_leave(self, evt: StrippedStateEvent):
-        # TODO: Review if is necessary to create the room if it not exists.
-        room: Room = await Room.get_by_room_id(room_id=evt.room_id, bot_mxid=self.mxid)
+        room: Room = await Room.get_by_room_id(
+            room_id=evt.room_id, bot_mxid=self.mxid, create=False
+        )
+        if not room:
+            self.log.warning(f"[{evt.room_id}] Room not found. Ignoring leave event")
+            return
         room.room_status = RoomStatus.deserialize(room._status)
 
         if getattr(evt, "timestamp", 0) < room.room_status.last_join_ts:
@@ -334,7 +338,10 @@ class MatrixHandler(MatrixClient):
         # room.set_node_var(inactivity={})
         # await room.route.update_node_vars()
 
-        queue = await self.publish_event(message=message, room=room)
+        queue = None
+
+        if self.config["menuflow.enqueue_messages"] or room.route.state == RouteState.INPUT:
+            queue = await self.publish_event(message=message, room=room)
 
         # TODO: Review this logic
         if not queue:
@@ -468,7 +475,6 @@ class MatrixHandler(MatrixClient):
                 else:
                     await node.run()
                     if room.route.state == RouteState.INVITE:
-                        # TODO: Review this logic
                         self.log.debug(
                             f"[{room.room_id}] Invite state detected. Breaking out of the loop"
                         )
