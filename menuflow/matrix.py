@@ -243,10 +243,17 @@ class MatrixHandler(MatrixClient):
         room.room_status = RoomStatus.deserialize(room._status)
         last_join_evt = room.room_status.last_join_event
 
-        if getattr(evt, "timestamp", 0) <= room.room_status.last_join_ts:
+        if getattr(evt, "timestamp", 0) < room.room_status.last_join_ts:
             self.log.warning(
                 f"[{evt.room_id}] Ignoring {membership_evt} event ({evt.event_id}). "
                 f"Is older than last join event ({last_join_evt.event_id})"
+            )
+            return
+
+        if evt.event_id == last_join_evt.get("event_id"):
+            self.log.warning(
+                f"[{evt.room_id}] Ignoring {membership_evt} event ({evt.event_id}). "
+                f"Already processed."
             )
             return
 
@@ -299,7 +306,7 @@ class MatrixHandler(MatrixClient):
 
         if last_message_time > current_message_time:
             self.log.warning(
-                f"[{message.room_id}] Ignoring message because it's older than the last message"
+                f"[{message.room_id}] Ignoring message because it's older than the last processed message"
             )
             return
 
