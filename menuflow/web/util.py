@@ -124,6 +124,7 @@ class Util:
 
         nodes = {}
 
+        # Initialize empty node lists for all modules
         for module_name in positions.keys():
             nodes[module_name] = {"nodes": []}
 
