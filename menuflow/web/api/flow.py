@@ -312,7 +312,7 @@ async def publish_flow(request: web.Request) -> web.Response:
 
     result = await DBModule.copy_modules_from_tag(current_tag["id"], tag_id)
     if not result.get("success"):
-        return resp.server_error(f"Error copying modules: {result.get('error')}", uuid)
+        return resp.internal_error(f"Error copying modules: {result.get('error')}", uuid)
 
     await DBTag.deactivate_tags(flow_id)
     await DBTag.activate_tag(tag_id)
