@@ -30,6 +30,7 @@ class FormMessage(SerializableAttrs, BaseMessageEventContent):
 
 @dataclass
 class InactivityOptions(SerializableAttrs):
+    active: bool = ib(default=False)
     chat_timeout: int = ib(default=None)
     warning_message: str = ib(default=None)
     time_between_attempts: int = ib(default=None)
@@ -66,6 +67,7 @@ class Form(Input):
         message: "Message"
         attempts: 3
       inactivity_options:
+        active: true
         chat_timeout: 20 #seconds
         warning_message: "Message"
         time_between_attempts: 10 #seconds
