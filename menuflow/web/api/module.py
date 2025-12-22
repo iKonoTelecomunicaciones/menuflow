@@ -78,7 +78,7 @@ async def get_module(request: web.Request) -> web.Response:
     except Exception as e:
         return resp.server_error(str(e), uuid)
 
-    return resp.ok(data, uuid)
+    return resp.success(data=data, uuid=uuid, log_msg=f"Modules: {len(data)}")
 
 
 @routes.post("/v1/{flow_id}/module")

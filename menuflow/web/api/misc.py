@@ -226,7 +226,7 @@ async def countries(request: web.Request) -> web.Response:
     except GettingDataError as e:
         return resp.server_error(f"Error getting countries: {e}")
 
-    return resp.success(data=countries, uuid=trace_id)
+    return resp.success(data=countries, uuid=trace_id, log_msg="Countries fetched successfully")
 
 
 @routes.get("/v1/mis/get_task", allow_head=False)
