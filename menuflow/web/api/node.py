@@ -40,7 +40,9 @@ async def get_node(request: web.Request) -> web.Response:
     if not node:
         return resp.not_found(f"Node with ID '{node_id}' not found in the database", uuid)
 
-    return resp.ok(node, uuid)
+    return resp.success(
+        data=node, uuid=uuid, log_msg=f"Returning node {node_id} for flow {flow_id}"
+    )
 
 
 @routes.get("/v1/{flow_id}/node", allow_head=False)
@@ -88,4 +90,5 @@ async def get_node_list(request: web.Request) -> web.Response:
     except Exception as e:
         return resp.server_error(str(e), uuid)
 
-    return resp.ok({"nodes": node_list}, uuid)
+    log_msg = f"Returning {len(node_list)} nodes for flow {flow_id}"
+    return resp.success(data={"nodes": node_list}, uuid=uuid, log_msg=log_msg)
