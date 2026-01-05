@@ -44,14 +44,9 @@ class BaseEvent(SerializableAttrs):
         self, config: Config, jetstream: JetStreamContext, event: Optional[str] = None
     ):
         event = event or json.dumps(self.serialize()).encode()
-        subject = config["nats.subject"]
         cep_subject = f"{config['nats.subject']}_cep"
         mntr_subject = f"{config['nats.subject']}_mntr"
 
-        await jetstream.publish(
-            subject=f"{subject}.{self.event_type}",
-            payload=event,
-        )
         await jetstream.publish(
             subject=f"{cep_subject}.{self.event_type}",
             payload=event,

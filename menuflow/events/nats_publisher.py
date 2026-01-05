@@ -45,11 +45,6 @@ class NatsPublisher:
         )
         js = nc.jetstream()
 
-        # Set the original stream configuration
-        stream_name = cls.config["nats.stream"]
-        subject = f"{cls.config['nats.subject']}.*"
-        stream_config = StreamConfig(name=stream_name, subjects=[subject])
-
         # Set the CEP stream configuration
         cep_stream_name = cls.config["nats.stream"] + "_CEP"
         cep_subject = f"{cls.config['nats.subject']}_cep.*"
@@ -71,9 +66,7 @@ class NatsPublisher:
             max_age=24 * 60 * 60,  # Keep messages for 1 day maximum (in seconds)
         )
 
-        await cls.stream_handler(
-            config_list=[stream_config, cep_stream_config, mntr_stream_config], js=js
-        )
+        await cls.stream_handler(config_list=[cep_stream_config, mntr_stream_config], js=js)
 
         return nc, js
 
