@@ -70,7 +70,7 @@ class Module(SerializableAttrs):
     async def get_by_name(cls, name: str, flow_id: int) -> Module | None:
         current_tag = await cls.get_current_tag(flow_id)
 
-        q = f"SELECT id, {cls._columns} FROM module WHERE name=$1 AND tag_id=$3"
+        q = f"SELECT id, {cls._columns} FROM module WHERE name=$1 AND tag_id=$2"
         row = await cls.db.fetchrow(q, name, current_tag["id"])
 
         return cls._from_row(row) if row else None
@@ -211,3 +211,33 @@ class Module(SerializableAttrs):
         except Exception as e:
             log.error(f"Error deleting modules from tag {tag_id}: {e}")
             return {"success": False, "error": str(e)}
+
+    @classmethod
+    async def get_node_data(cls, flow_id: int, path: list[str], node_type: str | None) -> list:
+        current_tag = await cls.get_current_tag(flow_id)
+        if not current_tag:
+            log.warning(f"No current tag found for flow_id: {flow_id}")
+            return []
+
+        q = """
+            SELECT elem #> $2 AS value
+            FROM module m
+            CROSS JOIN LATERAL jsonb_array_elements(m.nodes) AS elem
+            WHERE m.tag_id = $1
+              AND ($3::text IS NULL OR elem->>'type' = $3)
+              AND elem #> $2 IS NOT NULL
+        """
+
+        rows = await cls.db.fetch(q, current_tag["id"], path, node_type)
+
+        result = []
+        for row in rows or []:
+            val = row["value"]
+            if isinstance(val, str):
+                try:
+                    val = json.loads(val)
+                except Exception:
+                    pass
+            result.append(val)
+
+        return result

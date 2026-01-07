@@ -298,3 +298,45 @@ get_module_list_doc = """
         '500':
             $ref: '#/components/responses/InternalServerError'
 """
+
+get_module_node_data_doc = """
+    ---
+    summary: Get node data by JSON path.
+    description: |
+        Returns values found at the provided dot-separated path across nodes in the current tag's modules.
+        Optionally filter by node type.
+    tags:
+        - Module
+
+    parameters:
+        - name: flow_id
+          in: path
+          required: true
+          description: The ID of the flow.
+          schema:
+            type: integer
+        - name: path
+          in: query
+          required: true
+          description: Dot-separated JSON path inside each node (e.g. "inactivity_options.message").
+          schema:
+            type: string
+          example: inactivity_options.message
+        - name: node_type
+          in: query
+          required: false
+          description: Filter results to nodes with this type (e.g. "message").
+          schema:
+            type: string
+          example: message
+
+    responses:
+        '200':
+            $ref: '#/components/responses/GetModuleNodeDataSuccess'
+        '400':
+            $ref: '#/components/responses/GetModuleNodeDataBadRequest'
+        '404':
+            $ref: '#/components/responses/GetModuleNodeDataNotFound'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
+"""

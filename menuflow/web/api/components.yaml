@@ -561,6 +561,20 @@ components:
       example:
         detail:
           message: Template is required
+    GetModuleNodeDataOk:
+      type: array
+      items:
+        oneOf:
+          - type: string
+          - type: number
+          - type: boolean
+          - type: object
+            additionalProperties: true
+          - type: array
+            items: {}
+      example:
+        - "Hello, world!"
+        - {"text": "Hola"}
     GetNodeOk:
       type: object
       properties:
@@ -1646,7 +1660,46 @@ components:
                 coro: task_1
                 repr: <Task pending name='task_1' coro=<_TaskWakeupWakeupPollingTaskWakeupWakeup() running at 0x7f5b58000000>>
                 metadata: {}
-
+    GetModuleNodeDataSuccess:
+      description: Get node data by path success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GetModuleNodeDataOk"
+          examples:
+            ArrayValues:
+              value:
+                - "Hello, world!"
+                - { text: "Hola" }
+                - ["a", "b"]
+            EmptyList:
+              value: []
+    GetModuleNodeDataBadRequest:
+      description: Get node data bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            MissingPath:
+              value:
+                detail:
+                  message: "Missing path parameter"
+            InvalidFlowID:
+              value:
+                detail:
+                  message: "Invalid or missing flow ID"
+    GetModuleNodeDataNotFound:
+      description: Get node data not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            FlowNotFound:
+              value:
+                detail:
+                  message: "Flow with ID 1 not found in the database"
     # Tag responses
     GetTagsSuccess:
       description: Get tags success.
