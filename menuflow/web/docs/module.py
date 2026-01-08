@@ -305,6 +305,7 @@ get_module_node_data_doc = """
     description: |
         Returns values found at the provided dot-separated path across nodes in the current tag's modules.
         Optionally filter by node type.
+        Returns 404 if no data is found for the given path and node type.
     tags:
         - Module
 
