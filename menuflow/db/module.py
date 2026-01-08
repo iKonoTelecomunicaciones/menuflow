@@ -220,7 +220,7 @@ class Module(SerializableAttrs):
             return []
 
         q = """
-            SELECT elem #> $2 AS value
+            SELECT DISTINCT elem #> $2 AS value
             FROM module m
             CROSS JOIN LATERAL jsonb_array_elements(m.nodes) AS elem
             WHERE m.tag_id = $1

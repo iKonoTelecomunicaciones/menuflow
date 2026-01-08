@@ -365,6 +365,9 @@ async def get_node_data(request: web.Request) -> web.Response:
         data = await DBModule.get_node_data(
             flow_id=flow_id, path=path.split("."), node_type=node_type
         )
+
+        if not data:
+            return resp.not_found(f"No data found for path '{path}'", uuid)
     except Exception as e:
         return resp.server_error(str(e), uuid)
 
