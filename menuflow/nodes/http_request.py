@@ -211,7 +211,7 @@ class HTTPRequest(Switch):
                             self.log.error(
                                 f"[{_room_id}] Error parsing '{self.http_variables[variable]}' with jq "
                                 f"on variable '{variable}'. Set to default value ({default_value}). "
-                                f"Error message: {jq_result.get("error")}, Status: {jq_result.get("status")}"
+                                f"Error message: {jq_result.get('error')}, Status: {jq_result.get('status')}"
                             )
                         data_match = jq_result.get("result")
 

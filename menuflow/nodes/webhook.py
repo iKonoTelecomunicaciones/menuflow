@@ -317,7 +317,7 @@ class Webhook(Input):
         if jq_result.get("status") != 200:
             self.log.error(
                 f"Error parsing '{filter}' with jq on variable '{event_data}'. "
-                f"Error message: {jq_result.get("error")}, Status: {jq_result.get("status")} "
+                f"Error message: {jq_result.get('error')}, Status: {jq_result.get('status')}"
                 f"Room_id: {self.room.room_id}"
             )
             return False
@@ -355,7 +355,7 @@ class Webhook(Input):
             self.log.error(
                 f"Error parsing '{self.variables[variable]}' with jq "
                 f"on variable '{variable}'. Set to default value ({default_value}). "
-                f"Error message: {jq_result.get("error")}, Status: {jq_result.get("status")}"
+                f"Error message: {jq_result.get('error')}, Status: {jq_result.get('status')}"
             )
         return jq_result.get("result")
 
