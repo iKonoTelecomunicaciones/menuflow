@@ -209,10 +209,7 @@ class Webhook(Input):
                 continue
 
             self.log.debug(
-                f"""
-                Webhook filter {webhook.filter} matched for room {self.room.room_id} with event:
-                {event}
-                """
+                f"Webhook filter {webhook.filter} matched for room {self.room.room_id} with event: {event}"
             )
 
             event_to_managed = event
@@ -240,8 +237,8 @@ class Webhook(Input):
                 await self.management_webhook(evt=json.loads(event_to_manage.event))
             except json.JSONDecodeError:
                 self.log.error(
-                    f"""Error decoding JSON for event {event_to_manage.id}.
-                    Event: {event_to_manage.event}"""
+                    f"Error decoding JSON for event {event_to_manage.id}. "
+                    f"Event: {event_to_manage.event}"
                 )
 
             return
@@ -319,10 +316,9 @@ class Webhook(Input):
 
         if jq_result.get("status") != 200:
             self.log.error(
-                f"""Error parsing '{filter}' with jq on variable '{event_data}'.
-                Error message: {jq_result.get("error")}, Status: {jq_result.get("status")}
-                Room_id: {self.room.room_id}
-                """
+                f"Error parsing '{filter}' with jq on variable '{event_data}'. "
+                f"Error message: {jq_result.get("error")}, Status: {jq_result.get("status")} "
+                f"Room_id: {self.room.room_id}"
             )
             return False
 
@@ -357,9 +353,9 @@ class Webhook(Input):
         jq_result: dict = Util.jq_compile(self.variables[variable], data)
         if jq_result.get("status") != 200:
             self.log.error(
-                f"""Error parsing '{self.variables[variable]}' with jq
-                on variable '{variable}'. Set to default value ({default_value}).
-                Error message: {jq_result.get("error")}, Status: {jq_result.get("status")}"""
+                f"Error parsing '{self.variables[variable]}' with jq "
+                f"on variable '{variable}'. Set to default value ({default_value}). "
+                f"Error message: {jq_result.get("error")}, Status: {jq_result.get("status")}"
             )
         return jq_result.get("result")
 
