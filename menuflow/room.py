@@ -444,3 +444,13 @@ class Room(DBRoom):
             The node variables to update.
         """
         self.route._node_vars = {**self.route._node_vars, **kwargs}
+
+    @property
+    def conversation_uuid(self) -> str | None:
+        """This function retrieves the conversation UUID from the room's variables.
+
+        Returns
+        -------
+            The conversation UUID is being returned as a string or None.
+        """
+        return self.all_variables.get("room", {}).get("conversation_uuid")

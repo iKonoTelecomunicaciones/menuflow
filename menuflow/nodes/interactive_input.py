@@ -70,7 +70,7 @@ class InteractiveInput(Input):
                 node_id=self.id,
                 o_connection=o_connection,
                 variables=self.room.all_variables | self.default_variables,
-                conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
+                conversation_uuid=self.room.conversation_uuid,
             )
         else:
             # This is the case where the room is not in the input state
@@ -97,8 +97,8 @@ class InteractiveInput(Input):
                 node_type=Nodes.media,
                 node_id=self.id,
                 o_connection=None,
-                variables=self.room.all_variables | self.default_variables,
-                conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
+                variables=None,
+                conversation_uuid=self.room.conversation_uuid,
             )
 
             inactivity = self.inactivity_options
