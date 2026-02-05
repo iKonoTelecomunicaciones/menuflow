@@ -58,8 +58,8 @@ class CheckHoliday(Switch):
             node_type=Nodes.check_holiday,
             node_id=self.id,
             o_connection=o_connection,
-            variables=self.room.all_variables | self.default_variables,
-            conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
+            variables=None,
+            conversation_uuid=self.room.conversation_uuid,
         )
 
     def check_holidays(self, date: datetime) -> bool:
