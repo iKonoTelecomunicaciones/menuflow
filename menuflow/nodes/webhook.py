@@ -94,6 +94,10 @@ class Webhook(Input):
         if o_connection:
             await self.room.update_menu(o_connection)
 
+        _variables = None
+        if event_type != MenuflowNodeEvents.NodeEntry:
+            _variables = self.room.all_variables | self.default_variables
+
         await send_node_event(
             config=self.room.config,
             send_event=self.content.get("send_event"),
@@ -103,8 +107,8 @@ class Webhook(Input):
             node_type=node_type,
             node_id=self.id,
             o_connection=o_connection,
-            variables=self.room.all_variables | self.default_variables,
-            conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
+            variables=_variables,
+            conversation_uuid=self.room.conversation_uuid,
         )
 
     async def management_message(self, evt: dict, webhook: ControllerWebhook) -> None:
