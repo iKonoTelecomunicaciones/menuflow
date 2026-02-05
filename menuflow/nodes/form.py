@@ -144,7 +144,7 @@ class FormInput(Input):
                 node_type=Nodes.media,
                 node_id=self.id,
                 o_connection=None,
-                variables=self.room.all_variables | self.default_variables,
+                variables=None,
                 conversation_uuid=self.room.conversation_uuid,
             )
 
