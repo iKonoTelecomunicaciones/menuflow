@@ -310,7 +310,7 @@ class Room(DBRoom):
 
         scope, key = Util.get_scope_and_key(variable_id)
 
-        self.log.debug(f"Saving variable ([{scope.value}].{key}). Content: {repr(value)}")
+        self.log.debug(f"Saving variable ({scope.value}.{key}). Content: {repr(value)}")
 
         try:
             entry = Scope(room=self, route=self.route).resolve(scope)

@@ -318,7 +318,11 @@ class Util:
             if isinstance(rendered, (dict, list)):
                 return rendered
             else:
-                if RenderFlags.REMOVE_QUOTES in flags and len(rendered) >= 2:
+                if (
+                    RenderFlags.REMOVE_QUOTES in flags
+                    and isinstance(rendered, str)
+                    and len(rendered) >= 2
+                ):
                     # Remove the quotes from the value if it is a string in double quotes like "'Hello'" or '"World"'
                     # This is necessary to preserve a string
                     enclosers = rendered[0] + rendered[-1]

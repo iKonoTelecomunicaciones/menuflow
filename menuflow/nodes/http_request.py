@@ -201,17 +201,17 @@ class HTTPRequest(Switch):
                             data_match: list = [match.value for match in expr.find(response_data)]
                         except Exception as error:
                             self.log.error(
-                                f"""[{_room_id}] Error parsing '{self.http_variables[variable]}' with jsonpath
-                                on variable '{variable}'. Set to default value ({default_value}).
-                                Error message: {error}"""
+                                f"[{_room_id}] Error parsing '{self.http_variables[variable]}' with jsonpath "
+                                f"on variable '{variable}'. Set to default value ({default_value}). "
+                                f"Error message: {error}"
                             )
                     else:
                         jq_result: dict = Util.jq_compile(_http_variables[variable], response_data)
                         if jq_result.get("status") != 200:
                             self.log.error(
-                                f"""[{_room_id}] Error parsing '{self.http_variables[variable]}' with jq
-                                on variable '{variable}'. Set to default value ({default_value}).
-                                Error message: {jq_result.get("error")}, Status: {jq_result.get("status")}"""
+                                f"[{_room_id}] Error parsing '{self.http_variables[variable]}' with jq "
+                                f"on variable '{variable}'. Set to default value ({default_value}). "
+                                f"Error message: {jq_result.get('error')}, Status: {jq_result.get('status')}"
                             )
                         data_match = jq_result.get("result")
 
