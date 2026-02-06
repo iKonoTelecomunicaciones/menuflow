@@ -66,8 +66,8 @@ menuflow:
 
     # Options to recreate inactivity tasks on startup and save flow
     inactivity_options:
-        recreate_on_startup: false
-        recreate_on_save_flow: false
+        recreate_on_startup: true
+        recreate_on_save_flow: true
 
 server:
     # The IP and port to listen to.
@@ -90,7 +90,6 @@ events:
     # - all: all events are stored in sqlite database
     # - buffer: only fail events are stored in sqlite database
     sqlite_action: "buffer"
-
 
 # Nats configuration
 nats:
