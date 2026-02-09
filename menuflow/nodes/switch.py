@@ -255,7 +255,7 @@ class Switch(Base):
         default_case = cases.get(case_to_be_used, {})
 
         # Load variables defined in the case into the room
-        await self.load_variables(default_case)
+        await self.load_variables(default_case.get("variables", {}))
 
         # Getting the o_connection of the default case
         default_o_connection = self.render_data(default_case.get("o_connection"))
