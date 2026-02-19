@@ -219,7 +219,7 @@ class Room(DBRoom):
         except KeyError:
             pass
 
-        room = cast(cls, await super().get_by_room_id(room_id))
+        room: Room | None = cast(cls, await super().get_by_room_id(room_id))
 
         if room is not None:
             room.bot_mxid = bot_mxid
@@ -273,7 +273,7 @@ class Room(DBRoom):
 
         try:
             _value = glom(self.all_variables, self._jq2glom.to_glom_path(f"{scope.value}.{key}"))
-            self.log.debug(f"[VAR][GET] {scope.value}.{key} = {repr(_value)}")
+            self.log.debug(f"[VAR][GET] {scope.value}.{key} => {repr(_value)}")
             return _value
         except PathAccessError as e:
             # TODO: Compatibility with old variables format
