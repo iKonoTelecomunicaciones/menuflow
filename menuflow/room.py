@@ -280,7 +280,9 @@ class Room(DBRoom):
             old_value = self.all_variables.get(scope.value, {}).get(key, None)
 
             if old_value:
-                self.log.warning(f"[VAR][GET][OLD_FORMAT] {scope.value}.{key} = {repr(old_value)}")
+                self.log.warning(
+                    f"[VAR][GET][OLD_FORMAT] {scope.value}.{key} => {repr(old_value)}"
+                )
                 await self.del_variable(variable_id)
                 await self.set_variable(variable_id, old_value)
                 return old_value
