@@ -260,4 +260,4 @@ async def get_task(request: web.Request) -> web.Response:
                 }
             )
     response = {"tasks": task_list}
-    return resp.success(data=response, uuid=trace_id)
+    return resp.success(log_msg=f"Returning {len(task_list)} tasks", data=response, uuid=trace_id)

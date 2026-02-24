@@ -61,17 +61,16 @@ class InteractiveInput(Input):
             self.room.set_node_var(content=evt.content.body)
             o_connection = await self.input_text(text=evt.content.body)
 
-            await send_node_event(
-                config=self.room.config,
-                send_event=self.content.get("send_event"),
-                event_type=MenuflowNodeEvents.NodeInputData,
-                room_id=self.room.room_id,
-                sender=self.room.matrix_client.mxid,
-                node_id=self.id,
-                o_connection=o_connection,
-                variables=self.room.all_variables | self.default_variables,
-                conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
-            )
+            event_type = MenuflowNodeEvents.NodeInputData
+            await self.handle_send_event(event_type=event_type, o_connection=o_connection)
+
+        elif self.room.route.state == RouteState.TIMEOUT:
+            o_connection = await self.get_case_by_id("timeout")
+            event_type = MenuflowNodeEvents.NodeInputTimeout
+
+            await self.room.update_menu(node_id=o_connection, state=None)
+            await self.handle_send_event(event_type=event_type, o_connection=o_connection)
+
         else:
             # This is the case where the room is not in the input state
             # and the node is an input node.
@@ -88,21 +87,7 @@ class InteractiveInput(Input):
                 node_id=self.id, state=RouteState.INPUT, update_node_vars=False
             )
 
-            await send_node_event(
-                config=self.room.config,
-                send_event=self.content.get("send_event"),
-                event_type=MenuflowNodeEvents.NodeEntry,
-                room_id=self.room.room_id,
-                sender=self.room.matrix_client.mxid,
-                node_type=Nodes.media,
-                node_id=self.id,
-                o_connection=None,
-                variables=self.room.all_variables | self.default_variables,
-                conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
+            event_type = MenuflowNodeEvents.NodeEntry
+            await self.handle_send_event(
+                event_type=event_type, o_connection=None, node_type=Nodes.media
             )
-
-            inactivity = self.inactivity_options
-            if inactivity.get("active") and not Util.get_tasks_by_name(
-                task_name=self.room.room_id
-            ):
-                await self.timeout_active_chats(inactivity)
