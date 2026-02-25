@@ -531,15 +531,7 @@ class MatrixHandler(MatrixClient):
 
             task_name = room.room_id
             if room and not Util.get_tasks_by_name(task_name):
-                self.log.warning(
-                    "\n"
-                    "  ────────────────── Reloading inactivity options ──────────────────\n"
-                    "     Task name:  %-20s \n"
-                    "     Room ID:    %-20s \n"
-                    "  ──────────────────────────────────────────────────────────────────",
-                    task_name,
-                    room.room_id,
-                )
+                self.log.warning(f"[{room.room_id}] Reloading inactivity options")
 
                 if room.matrix_client is None:
                     room.matrix_client = self
