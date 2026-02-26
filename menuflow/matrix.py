@@ -78,7 +78,7 @@ class MatrixHandler(MatrixClient):
 
     def unlock_room(self, room_id: RoomID, evt: StrippedStateEvent = None):
         self.log.debug(
-            f"[{room_id}] Unlocking room for event ({evt.event_id if evt else 'unknown'})"
+            f"[{room_id}] Unlocking room for event ({evt.event_id if isinstance(evt, StrippedStateEvent) else 'unknown'})"
         )
         self.LOCKED_ROOMS.discard(room_id)
 
@@ -408,16 +408,6 @@ class MatrixHandler(MatrixClient):
                     f"Message received, waiting ({timeout} seconds) for next message..."
                 )
                 message_list.append(msg)
-
-            # while True:
-            #     self.log.info(
-            #         f"[{room_id}] Grouping messages enabled. "
-            #         f"Waiting ({timeout} seconds) for next message..."
-            #     )
-            #     msg = await self.wait_for_queue_item(queue=queue, timeout=timeout)
-            #     if msg is None:
-            #         break
-            #     message_list.append(msg)
         return message_list
 
     async def algorithm(
@@ -544,7 +534,7 @@ class MatrixHandler(MatrixClient):
                     ),
                     name=task_name,
                 )
-                task.metadata = {"bot_mxid": self.mxid}
+                task.bot_mxid = self.mxid
                 task.created_at = datetime.now(timezone.utc).timestamp()
                 recreate_rooms.append(room.room_id)
 

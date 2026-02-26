@@ -682,30 +682,6 @@ class Util:
             **status,
         }
 
-    @staticmethod
-    def create_task_by_metadata(coro, *, name: str = None, metadata: dict = None) -> Task:
-        """Create a task by name and metadata.
-
-        Parameters
-        ----------
-        coro: coroutine
-            The coroutine to create the task from.
-        name: str
-            The name of the task.
-        metadata: dict
-            The metadata of the task.
-
-        Returns
-        -------
-            The created task.
-        """
-
-        log.warning(f"CREATING TASK: {name} with metadata: {metadata}")
-        task = asyncio.create_task(coro, name=name)
-        task.metadata = metadata or {}
-        task.created_at = datetime.now(timezone.utc).timestamp()
-        return task
-
     @classmethod
     def custom_escape(
         cls, variables: str | dict | list, escape: bool = True

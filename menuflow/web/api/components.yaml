@@ -622,9 +622,8 @@ components:
                 type: string
               repr:
                 type: string
-              metadata:
-                type: object
-                additionalProperties: true
+              bot_mxid:
+                type: string
 
     # Error schemas
     ErrorReadingData:
@@ -1641,7 +1640,7 @@ components:
                 created_at: 1716393600.000000
                 coro: task_1
                 repr: <Task pending name='task_1' coro=<_TaskWakeupWakeupPollingTaskWakeupWakeup() running at 0x7f5b58000000>>
-                metadata: {}
+                bot_mxid: "@bot:example.com"
 
     # Tag responses
     GetTagsSuccess:

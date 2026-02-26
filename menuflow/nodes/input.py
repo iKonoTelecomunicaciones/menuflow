@@ -108,7 +108,7 @@ class Input(Switch, Message):
         # Otherwise, run the node and update the menu to the output connection.
         return await Switch.run(self, generate_event=False)
 
-    async def handle_send_event(self, **kwargs):
+    async def _send_node_event(self, **kwargs):
         """It sends the event to the room.
 
         Parameters
@@ -191,14 +191,14 @@ class Input(Switch, Message):
                 o_connection = await self.input_location(content=evt.content)
 
             event_type = MenuflowNodeEvents.NodeInputData
-            await self.handle_send_event(event_type=event_type, o_connection=o_connection)
+            await self._send_node_event(event_type=event_type, o_connection=o_connection)
 
         elif self.room.route.state == RouteState.TIMEOUT:
             o_connection = await self.get_case_by_id("timeout")
             event_type = MenuflowNodeEvents.NodeInputTimeout
 
             await self.room.update_menu(node_id=o_connection, state=None)
-            await self.handle_send_event(event_type=event_type, o_connection=o_connection)
+            await self._send_node_event(event_type=event_type, o_connection=o_connection)
 
         else:
             # This is the case where the room is not in the input state
@@ -214,6 +214,6 @@ class Input(Switch, Message):
             )
 
             event_type = MenuflowNodeEvents.NodeEntry
-            await self.handle_send_event(
+            await self._send_node_event(
                 event_type=event_type, o_connection=None, node_type=Nodes.input
             )

@@ -183,27 +183,31 @@ class Util:
         for db_client in db_clients:
             client = MenuClient.cache[db_client.id]
             await client.flow_cls.load_flow(flow_mxid=client.id, content=content, config=config)
-            await Util.cancel_inactivity_tasks(
-                client=client, config=config, metadata={"bot_mxid": client.id}, uuid=uuid
+            await Util.reload_inactivity_tasks(
+                client=client, config=config, bot_mxid=client.id, uuid=uuid
             )
 
     @staticmethod
-    async def cancel_inactivity_tasks(
-        client: MenuClient, config: Config, metadata: dict = None, uuid: str = None
+    async def reload_inactivity_tasks(
+        client: MenuClient, config: Config, bot_mxid: str, uuid: str = None
     ) -> None:
         """Wait until no tasks with the given prefix are running."""
-        metadata = metadata or {}
         regex_room_id = config["menuflow.regex.room_id"]
         cancelled_tasks = []
 
         for task in asyncio.all_tasks():
-            if match(regex_room_id, task.get_name()) and all(
-                getattr(task, "metadata", {}).get(k) == v for k, v in metadata.items()
+            if (
+                match(regex_room_id, task.get_name())
+                and getattr(task, "bot_mxid", None) == bot_mxid
             ):
                 cancelled_tasks.append(task.get_name())
                 task.cancel()
 
-        if cancelled_tasks and config["menuflow.inactivity_options.recreate_on_save_flow"]:
+        # TODO: Remove this once the inactive options are working correctly.
+        if not config["menuflow.inactivity_options.recreate_on_save_flow"]:
+            return
+
+        if cancelled_tasks:
             await client.matrix_handler.create_inactivity_tasks()
         else:
             log.debug(

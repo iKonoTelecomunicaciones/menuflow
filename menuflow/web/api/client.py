@@ -175,9 +175,7 @@ async def update_client(request: web.Request) -> web.Response:
         content={"flow_variables": flow_db.flow_vars, "nodes": nodes},
         config=config,
     )
-    await Util.cancel_inactivity_tasks(
-        client=client, config=config, metadata={"bot_mxid": client.id}, uuid=uuid
-    )
+    await Util.reload_inactivity_tasks(client=client, config=config, bot_mxid=client.id, uuid=uuid)
 
     await client.update()
     return resp.success(data=client.to_dict(), uuid=uuid)
@@ -196,9 +194,7 @@ async def reload_client_flow(request: web.Request) -> web.Response:
 
     config: Config = get_config()
     await client.flow_cls.load_flow(flow_mxid=client.id, config=config)
-    await Util.cancel_inactivity_tasks(
-        client=client, config=config, metadata={"bot_mxid": client.id}, uuid=uuid
-    )
+    await Util.reload_inactivity_tasks(client=client, config=config, bot_mxid=client.id, uuid=uuid)
 
     return resp.success(message="Flow reloaded successfully", uuid=uuid)
 

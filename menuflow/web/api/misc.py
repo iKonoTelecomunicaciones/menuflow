@@ -256,7 +256,7 @@ async def get_task(request: web.Request) -> web.Response:
                     "created_at": getattr(task, "created_at", None),
                     "coro": getattr(coro, "__qualname__", str(coro)),
                     "repr": repr(task),
-                    "metadata": getattr(task, "metadata", {}),
+                    "bot_mxid": getattr(task, "bot_mxid", None),
                 }
             )
     response = {"tasks": task_list}
