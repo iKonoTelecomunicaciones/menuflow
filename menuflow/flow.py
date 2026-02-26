@@ -207,7 +207,7 @@ class Flow:
             if node_data.get("middleware"):
                 middleware = self.middleware(node_data.get("middleware"), room)
                 node_initialized.middleware = middleware
-        elif node_data.get("type") == "interactive_input":
+        elif node_data.get("type") in ("interactive_input", "interactive_form_input"):
             node_initialized = InteractiveInput(
                 interactive_input_data=node_data, room=room, default_variables=self.flow_variables
             )
