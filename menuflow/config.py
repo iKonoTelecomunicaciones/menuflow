@@ -37,7 +37,6 @@ class Config(BaseFileConfig):
         copy_dict("logging")
         copy_dict("homeserver")
         copy("menuflow.inactivity_options.recreate_on_startup")
-        copy("menuflow.inactivity_options.recreate_on_save_flow")
         copy("menuflow.enqueue_messages")
         shared_secret = self["server.unshared_secret"]
         if shared_secret is None or shared_secret == "generate":
