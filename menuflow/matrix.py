@@ -591,11 +591,14 @@ class MatrixHandler(MatrixClient):
                 await room.route.update_node_vars()
 
             start_sleep = inactivity_db["start_ttl"] - now
-            self.log.info(f"[{room.room_id}] Start chat timeout, sleeping {start_sleep} seconds")
+            if start_sleep > 0:
+                self.log.info(
+                    f"[{room.room_id}] Start chat timeout, sleeping {start_sleep} seconds"
+                )
 
-            msg = await self.wait_for_queue_item(queue=queue, timeout=start_sleep)
-            if msg is not None:
-                return msg
+                msg = await self.wait_for_queue_item(queue=queue, timeout=start_sleep)
+                if msg is not None:
+                    return msg
 
         while True:
             attempt = inactivity_db["attempt"]
