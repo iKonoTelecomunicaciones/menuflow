@@ -268,8 +268,13 @@ async def upgrade_v11(conn: Connection) -> None:
     await conn.execute("CREATE INDEX idx_module_tag_id ON module (tag_id)")
 
 
-@upgrade_table.register(description="Add status column to room table")
+@upgrade_table.register(description="Add author_name column to tag table")
 async def upgrade_v12(conn: Connection) -> None:
+    await conn.execute("ALTER TABLE tag ADD COLUMN IF NOT EXISTS author_name TEXT")
+
+
+@upgrade_table.register(description="Add status column to room table")
+async def upgrade_v13(conn: Connection) -> None:
     await conn.execute(
         "ALTER TABLE room ADD COLUMN IF NOT EXISTS status JSONB DEFAULT '{}'::jsonb"
     )

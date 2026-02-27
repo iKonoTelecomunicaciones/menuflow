@@ -36,6 +36,7 @@ class Config(BaseFileConfig):
         copy_dict("nats")
         copy_dict("logging")
         copy_dict("homeserver")
+        copy("menuflow.route_keep_vars")
         copy("menuflow.inactivity_options.recreate_on_startup")
         copy("menuflow.enqueue_messages")
         shared_secret = self["server.unshared_secret"]

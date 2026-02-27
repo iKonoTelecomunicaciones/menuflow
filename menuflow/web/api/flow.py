@@ -287,6 +287,7 @@ async def publish_flow(request: web.Request) -> web.Response:
 
     name = data.get("name")
     author = data.get("author")
+    author_name = data.get("author_name")
 
     if not name or not author:
         return resp.bad_request("Parameters 'name' and 'author' are required", uuid)
@@ -303,6 +304,7 @@ async def publish_flow(request: web.Request) -> web.Response:
         flow_id=flow_id,
         name=name,
         author=author,
+        author_name=author_name,
         flow_vars=current_tag["flow_vars"],
         active=False,
     )

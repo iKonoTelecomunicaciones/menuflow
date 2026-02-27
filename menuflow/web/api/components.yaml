@@ -561,6 +561,20 @@ components:
       example:
         detail:
           message: Template is required
+    GetModuleNodeDataOk:
+      type: array
+      items:
+        oneOf:
+          - type: string
+          - type: number
+          - type: boolean
+          - type: object
+            additionalProperties: true
+          - type: array
+            items: {}
+      example:
+        - "Hello, world!"
+        - {"text": "Hola"}
     GetNodeOk:
       type: object
       properties:
@@ -681,11 +695,15 @@ components:
     GetAllTagsOk:
       type: object
       properties:
+        count:
+          type: integer
+          description: Total number of tags found
         tags:
           type: array
           items:
             type: object
       example:
+        count: 2
         tags:
           - id: 1
             flow_id: 123
@@ -1641,7 +1659,54 @@ components:
                 coro: task_1
                 repr: <Task pending name='task_1' coro=<_TaskWakeupWakeupPollingTaskWakeupWakeup() running at 0x7f5b58000000>>
                 bot_mxid: "@bot:example.com"
-
+    GetModuleNodeDataSuccess:
+      description: Get node data by path success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GetModuleNodeDataOk"
+          examples:
+            ArrayValues:
+              value:
+                - "Hello, world!"
+                - { text: "Hola" }
+                - ["a", "b"]
+            EmptyList:
+              value: []
+    GetModuleNodeDataBadRequest:
+      description: Get node data bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            MissingPath:
+              value:
+                detail:
+                  message: "Missing path parameter"
+            InvalidFlowID:
+              value:
+                detail:
+                  message: "Invalid or missing flow ID"
+    GetModuleNodeDataNotFound:
+      description: Get node data not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            FlowNotFound:
+              value:
+                detail:
+                  message: "Flow with ID 1 not found in the database"
+            NoDataFound:
+              value:
+                detail:
+                  message: "No data found for path 'inactivity_options.message'"
+            NoDataFoundWithType:
+              value:
+                detail:
+                  message: "No data found for path 'inactivity_options.message' and node_type 'message'"
     # Tag responses
     GetTagsSuccess:
       description: Get tags success.
@@ -1665,6 +1730,7 @@ components:
                   variable2: "value2"
             MultipleTags:
               value:
+                count: 2
                 tags:
                   - id: 1
                     flow_id: 123
@@ -1842,4 +1908,63 @@ components:
               value:
                 detail:
                   message: "Current tag not found for flow 1"
+    RestoreTagSuccess:
+      description: Tag restored successfully.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "Tag restored successfully"
+
+    RestoreTagBadRequest:
+      description: Bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "tag_id is required"
+
+    RestoreTagNotFound:
+      description: Tag not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "Tag with ID 1 not found"
+
+    PublishTagSuccess:
+      description: Tag published successfully.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "Tag published successfully"
+
+    PublishTagBadRequest:
+      description: Bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "flow_id and tag_id must be valid integers"
+
+    PublishTagNotFound:
+      description: Tag not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "Tag with ID 1 not found"
   # End of responses

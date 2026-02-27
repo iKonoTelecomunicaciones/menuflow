@@ -161,6 +161,7 @@ class GPTAssistant(Switch):
             json_str = match.group(1).strip()
             json_str = html.unescape(json_str)
             return json_str
+        return text
 
     async def run(self, messages: Optional[List[MessageEvent]] = None):
         """If the room is in input mode, then set the variable.
@@ -183,8 +184,17 @@ class GPTAssistant(Switch):
             await self.add_message(messages)
             assistant_resp = await self.run_assistant()
             response = int(assistant_resp) if assistant_resp.isdigit() else assistant_resp
-            if json_str := self.json_in_text(response):
+            self.log.debug(
+                f"[{self.room.room_id}] GPT Assistant original response: {repr(response)}"
+            )
+            json_str = self.json_in_text(response)
+            try:
                 response = json.loads(json_str)
+                self.log.debug(
+                    f"[{self.room.room_id}] GPT Assistant response is valid JSON: {repr(response)}"
+                )
+            except Exception as e:
+                pass
 
             await self.room.set_variable(_variable, value=response)
 
@@ -212,8 +222,15 @@ class GPTAssistant(Switch):
 
                 assistant_resp = await self.run_assistant()
                 response = int(assistant_resp) if assistant_resp.isdigit() else assistant_resp
-                if json_str := self.json_in_text(response):
+                json_str = self.json_in_text(response)
+                try:
                     response = json.loads(json_str)
+                    self.log.debug(
+                        f"[{self.room.room_id}] GPT Assistant response is valid JSON: {repr(response)}"
+                    )
+                except Exception as e:
+                    pass
+
                 await self.room.set_variable(_variable, value=response)
 
             message = await self.room.get_variable(_variable)

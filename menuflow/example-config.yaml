@@ -61,13 +61,16 @@ menuflow:
     webhook_queue:
         time_to_live: 120 # seconds, time to live for webhook events in the queue
 
+    # Variables to maintain when cleaning the route, only used when the state is set to start
+    route_keep_vars: []
+
     # Options to recreate inactivity tasks on startup and save flow
     inactivity_options:
-        recreate_on_startup: false
+        recreate_on_startup: true
 
     # If true, all messages will be queued and processed later by the matrix algorithm.
     # Otherwise, the messages will be processed immediately.
-    enqueue_messages: false
+    enqueue_messages: true
 
 server:
     # The IP and port to listen to.
@@ -90,7 +93,6 @@ events:
     # - all: all events are stored in sqlite database
     # - buffer: only fail events are stored in sqlite database
     sqlite_action: "buffer"
-
 
 # Nats configuration
 nats:

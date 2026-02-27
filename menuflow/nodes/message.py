@@ -69,7 +69,10 @@ class Message(Base):
         self.log.debug(f"[{_room_id}] Entering message node {self.id}")
 
         if self.id == RouteState.START.value and self.room.route.state != RouteState.START:
-            await self.room.route.clean_up(update_state=False, preserve_constants=True)
+            var_keep_list = self.room.config["menuflow.route_keep_vars"]
+            await self.room.route.clean_up(
+                update_state=False, preserve_constants=True, var_keep_list=var_keep_list
+            )
 
         _text = self.text
         if not _text:
@@ -106,6 +109,6 @@ class Message(Base):
                 node_type=Nodes.message,
                 node_id=self.id,
                 o_connection=o_connection,
-                variables=self.room.all_variables | self.default_variables,
-                conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
+                variables=None,
+                conversation_uuid=self.room.conversation_uuid,
             )

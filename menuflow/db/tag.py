@@ -16,7 +16,7 @@ fake_db = Database.create("") if TYPE_CHECKING else None
 @dataclass
 class Tag(SerializableAttrs):
     db: ClassVar[Database] = fake_db
-    _columns: ClassVar[str] = "flow_id, create_date, author, active, name, flow_vars"
+    _columns: ClassVar[str] = "flow_id, create_date, author, author_name, active, name, flow_vars"
     _json_columns: ClassVar[str] = "flow_vars"
 
     id: int = ib(default=None)
@@ -24,12 +24,20 @@ class Tag(SerializableAttrs):
     name: str = ib(default=None)
     create_date: datetime = ib(default=None)
     author: str = ib(default=None)
+    author_name: str = ib(default=None)
     active: bool = ib(default=True)
     flow_vars: dict = ib(factory=dict)
 
     @property
     def values(self) -> tuple:
-        return (self.flow_id, self.author, self.active, self.name, self.flow_vars)
+        return (
+            self.flow_id,
+            self.author,
+            self.author_name,
+            self.active,
+            self.name,
+            self.flow_vars,
+        )
 
     @classmethod
     def _from_row(cls, row: Record) -> Tag | None:
@@ -42,6 +50,7 @@ class Tag(SerializableAttrs):
             name=row["name"],
             create_date=row["create_date"],
             author=row["author"],
+            author_name=row["author_name"],
             active=row["active"],
             flow_vars=json.loads(row["flow_vars"]),
         )
@@ -68,19 +77,32 @@ class Tag(SerializableAttrs):
         return cls._from_row(row) if row else None
 
     @classmethod
-    async def get_flow_tags(cls, flow_id: int, offset: int = 0, limit: int = 10) -> list[Tag]:
-        q = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1 ORDER BY create_date DESC LIMIT $2 OFFSET $3"
+    async def get_flow_tags(
+        cls, flow_id: int, offset: int = 0, limit: int = 10, search: str = None
+    ) -> list[Tag]:
 
-        rows = await cls.db.fetch(q, flow_id, limit, offset)
+        base_query = f"SELECT id, {cls._columns} FROM tag WHERE flow_id=$1"
+        order_by = "ORDER BY active DESC, create_date DESC"
+        if search:
+            q = f"{base_query} AND name ILIKE $2 {order_by} LIMIT $3 OFFSET $4"
+            rows = await cls.db.fetch(q, flow_id, f"%{search}%", limit, offset)
+        else:
+            q = f"{base_query} {order_by} LIMIT $2 OFFSET $3"
+            rows = await cls.db.fetch(q, flow_id, limit, offset)
+
         if not rows:
             return []
 
         return [cls._from_row(row) for row in rows]
 
     @classmethod
-    async def get_tags_count(cls, flow_id: int) -> int:
-        q = "SELECT COUNT(*) FROM tag WHERE flow_id=$1"
-        return await cls.db.fetchval(q, flow_id)
+    async def get_tags_count(cls, flow_id: int, search: str = None) -> int:
+        if search:
+            q = "SELECT COUNT(*) FROM tag WHERE flow_id=$1 AND name ILIKE $2"
+            return await cls.db.fetchval(q, flow_id, f"%{search}%")
+        else:
+            q = "SELECT COUNT(*) FROM tag WHERE flow_id=$1"
+            return await cls.db.fetchval(q, flow_id)
 
     @classmethod
     async def get_by_name(cls, flow_id: int, name: str) -> Tag | None:
@@ -104,19 +126,25 @@ class Tag(SerializableAttrs):
         await cls.db.execute(q, flow_id)
 
     async def insert(self) -> int:
-        q = """INSERT INTO tag (flow_id, author, active, name, flow_vars)
-            VALUES ($1, $2, $3, $4, $5) RETURNING id"""
+        q = """INSERT INTO tag (flow_id, author, author_name, active, name, flow_vars)
+            VALUES ($1, $2, $3, $4, $5, $6) RETURNING id"""
 
         flow_vars_json = (
             self.flow_vars if isinstance(self.flow_vars, str) else json.dumps(self.flow_vars)
         )
 
         return await self.db.fetchval(
-            q, self.flow_id, self.author, self.active, self.name, flow_vars_json
+            q,
+            self.flow_id,
+            self.author,
+            self.author_name,
+            self.active,
+            self.name,
+            flow_vars_json,
         )
 
     async def update(self) -> None:
-        q = """UPDATE tag SET flow_id=$2, author=$3, active=$4, name=$5, flow_vars=$6
+        q = """UPDATE tag SET flow_id=$2, author=$3, author_name=$4, active=$5, name=$6, flow_vars=$7
             WHERE id=$1"""
 
         # Verificar si flow_vars ya es string JSON o es dict
@@ -129,6 +157,7 @@ class Tag(SerializableAttrs):
             self.id,
             self.flow_id,
             self.author,
+            self.author_name,
             self.active,
             self.name,
             flow_vars_json,
@@ -156,6 +185,7 @@ class Tag(SerializableAttrs):
                 self.create_date.strftime("%Y-%m-%d %H:%M:%S") if self.create_date else None
             ),
             "author": self.author,
+            "author_name": self.author_name,
             "active": self.active,
             "flow_vars": self.flow_vars,
         }

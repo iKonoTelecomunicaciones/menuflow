@@ -116,13 +116,18 @@ class Input(Switch, Message):
         kwargs: dict[str, Any]
             The keyword arguments to send the event.
         """
+
+        _variables = None
+        if kwargs.get("event_type") != MenuflowNodeEvents.NodeEntry:
+            _variables = self.room.all_variables | self.default_variables
+
         await send_node_event(
             config=self.room.config,
             send_event=self.content.get("send_event"),
             room_id=self.room.room_id,
             sender=self.room.matrix_client.mxid,
             node_id=self.id,
-            variables=self.room.all_variables | self.default_variables,
+            variables=_variables,
             conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
             **kwargs,
         )
