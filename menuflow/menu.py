@@ -104,9 +104,7 @@ class MenuClient(DBClient):
         self.started = False
         self.sync_ok = True
         self.flow_cls = Flow()
-        await self.flow_cls.load_flow(
-            flow_mxid=self.id, config=self.menuflow.config, cancel_tasks=False
-        )
+        await self.flow_cls.load_flow(flow_mxid=self.id, config=self.menuflow.config)
         self.matrix_handler: MatrixHandler = self._make_client()
         asyncio.create_task(self.matrix_handler.load_all_room_constants())
         if self.menuflow.config["menuflow.inactivity_options.recreate_on_startup"]:

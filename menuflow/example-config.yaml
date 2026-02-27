@@ -67,7 +67,10 @@ menuflow:
     # Options to recreate inactivity tasks on startup and save flow
     inactivity_options:
         recreate_on_startup: true
-        recreate_on_save_flow: true
+
+    # If true, all messages will be queued and processed later by the matrix algorithm.
+    # Otherwise, the messages will be processed immediately.
+    enqueue_messages: true
 
 server:
     # The IP and port to listen to.

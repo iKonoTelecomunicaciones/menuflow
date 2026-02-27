@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, ClassVar, Dict
+from typing import TYPE_CHECKING, ClassVar
 
 from asyncpg import Record
-from attr import dataclass
+from attr import dataclass, ib
 from mautrix.types import RoomID, UserID
 from mautrix.util.async_db import Database
 
@@ -17,7 +17,8 @@ class Room:
 
     id: int | None
     room_id: RoomID
-    variables: Dict | None
+    variables: dict | None
+    status: dict = ib(factory=dict)
 
     @classmethod
     def _from_row(cls, row: Record) -> Room | None:
@@ -28,21 +29,33 @@ class Room:
         return (
             self.room_id,
             self.variables,
+            json.dumps(self.status) if isinstance(self.status, dict) else self.status,
         )
 
-    _columns = "room_id, variables"
+    _columns = "room_id, variables, status"
 
     @property
-    def _variables(self) -> Dict:
+    def _variables(self) -> dict:
         return json.loads(self.variables) if self.variables else {}
 
+    @property
+    def _status(self) -> dict:
+        if isinstance(self.status, dict):
+            return self.status
+
+        return json.loads(self.status) if self.status else {}
+
     async def insert(self) -> str:
-        q = f"INSERT INTO room ({self._columns}) VALUES ($1, $2)"
+        q = f"INSERT INTO room ({self._columns}) VALUES ($1, $2, $3)"
         await self.db.execute(q, *self.values)
 
     async def update(self) -> None:
-        q = "UPDATE room SET variables = $2 WHERE room_id = $1"
+        q = "UPDATE room SET variables = $2, status = $3 WHERE room_id = $1"
         await self.db.execute(q, *self.values)
+
+    async def update_status(self) -> None:
+        q = "UPDATE room SET status = $2 WHERE room_id = $1"
+        await self.db.execute(q, self.room_id, json.dumps(self.status))
 
     @classmethod
     async def get_by_room_id(cls, room_id: RoomID) -> Room | None:
