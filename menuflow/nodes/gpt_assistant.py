@@ -10,7 +10,6 @@ from mautrix.types import MessageEvent, MessageType, RoomID
 from mautrix.util.magic import mimetype
 
 from ..db.route import RouteState
-from ..inactivity_handler import InactivityHandler
 from ..repository import GPTAssistant as GPTAssistantModel
 from ..room import Room
 from ..utils import Middlewares, Util
@@ -73,6 +72,8 @@ class GPTAssistant(Switch):
             "active" not in inactivity and inactivity
         ):  # TODO: Remove this once the inactivity options are updated
             inactivity["active"] = True
+        if inactivity.get("warning_message"):
+            inactivity["warning_message"] = self.render_data(inactivity["warning_message"])
         return inactivity
 
     @property
@@ -193,6 +194,11 @@ class GPTAssistant(Switch):
             output = await Switch.run(self, update_state=False, generate_event=False)
             o_connection = output if output else self.id
             await self.room.update_menu(o_connection)
+
+        elif self.room.route.state == RouteState.TIMEOUT:
+            o_connection = await self.get_case_by_id("timeout")
+            await self.room.update_menu(node_id=o_connection, state=None)
+
         else:
             # This is the case where the room is not in the input state
             # and the node is an input node.
@@ -213,43 +219,3 @@ class GPTAssistant(Switch):
             message = await self.room.get_variable(_variable)
             await self.room.matrix_client.send_text(room_id=self.room.room_id, text=message)
             await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
-
-            if _inactivity.get("active") and not Util.get_tasks_by_name(
-                task_name=self.room.room_id
-            ):
-                await self.timeout_active_chats(_inactivity)
-
-    async def timeout_active_chats(self, inactivity: dict):
-        """It sends messages in time intervals to communicate customer
-        that not entered information to input option.
-
-        Parameters
-        ----------
-        inactivity : dict
-            The inactivity options.
-
-        """
-        if inactivity.get("chat_timeout") is None and inactivity.get("attempts") is None:
-            return
-
-        if inactivity.get("warning_message"):
-            inactivity["warning_message"] = self.render_data(inactivity["warning_message"])
-
-        inactivity_handler = InactivityHandler(room=self.room, inactivity=inactivity)
-        try:
-            metadata = {"bot_mxid": self.room.bot_mxid}
-            await Util.create_task_by_metadata(
-                inactivity_handler.start(), name=self.room.room_id, metadata=metadata
-            )
-
-            self.log.debug(f"[{self.room.room_id}] INACTIVITY TRIES COMPLETED")
-            o_connection = await self.get_case_by_id("timeout")
-            await self.room.update_menu(node_id=o_connection, state=None)
-            return
-
-        except asyncio.CancelledError:
-            self.log.error(f"[{self.room.room_id}] Inactivity handler cancelled")
-        except Exception as e:
-            self.log.error(f"[{self.room.room_id}] Inactivity handler error: {e}")
-        finally:
-            await Util.cancel_task(task_name=f"inactivity_restored_{self.room.room_id}")

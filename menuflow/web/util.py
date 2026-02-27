@@ -4,6 +4,7 @@ import asyncio
 import uuid
 from copy import deepcopy
 from logging import Logger, getLogger
+from re import match
 from textwrap import indent
 from typing import Any, Dict, List
 
@@ -167,7 +168,9 @@ class Util:
         return lines[0] + "\n" + indent("\n".join(lines[1:]), " " * (indent_level or 20))
 
     @staticmethod
-    async def update_flow_db_clients(flow_id: int, content: dict, config: Config) -> None:
+    async def update_flow_db_clients(
+        flow_id: int, content: dict, config: Config, uuid: str
+    ) -> None:
         """Update the flow of the db clients.
 
         Args:
@@ -180,36 +183,6 @@ class Util:
         for db_client in db_clients:
             client = MenuClient.cache[db_client.id]
             await client.flow_cls.load_flow(flow_mxid=client.id, content=content, config=config)
-
-            await Util.wait_until_no_tasks(
-                prefix="inactivity_restored_", metadata={"bot_mxid": client.id}
-            )
-            if config["menuflow.inactivity_options.recreate_on_save_flow"]:
-                await client.matrix_handler.create_inactivity_tasks()
-
-    @staticmethod
-    async def wait_until_no_tasks(prefix: str, check_interval=0.3, metadata: dict = None) -> None:
-        """Wait until no tasks with the given prefix are running."""
-        metadata = metadata or {}
-        count = 0
-        while True:
-            tasks = [
-                task
-                for task in asyncio.all_tasks()
-                if task.get_name().startswith(prefix)
-                and all(getattr(task, "metadata", {}).get(k) == v for k, v in metadata.items())
-            ]
-
-            if not tasks:
-                if count == 0:
-                    msg = f"No tasks with prefix {prefix} and metadata {metadata} have been found"
-                else:
-                    msg = f"All tasks with prefix {prefix} and metadata {metadata} have been cancelled"
-                log.info(msg)
-                break
-
-            count += 1
-            await asyncio.sleep(check_interval)
 
     @staticmethod
     async def validate_and_process_nodes(

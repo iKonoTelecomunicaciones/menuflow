@@ -80,7 +80,7 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
             modules = await DBModule.all(int(flow_id))
             nodes = [node for module in modules for node in module.get("nodes", [])]
             await Util.update_flow_db_clients(
-                flow_id, {"flow_variables": variables, "nodes": nodes}, config
+                flow_id, {"flow_variables": variables, "nodes": nodes}, config, uuid
             )
 
         message = "Flow updated successfully"
@@ -323,7 +323,7 @@ async def publish_flow(request: web.Request) -> web.Response:
         flow_vars = await DBTag.get_by_id(tag_id)
         nodes = [node for module in modules for node in module.get("nodes", [])]
         await Util.update_flow_db_clients(
-            flow_id, {"flow_variables": flow_vars.flow_vars, "nodes": nodes}, config
+            flow_id, {"flow_variables": flow_vars.flow_vars, "nodes": nodes}, config, uuid
         )
 
     return resp.ok(

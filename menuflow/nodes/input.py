@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import asyncio
-from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from mautrix.types import (
@@ -14,7 +12,6 @@ from mautrix.types import (
 from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
 from ..events.event_generator import send_node_event
-from ..inactivity_handler import InactivityHandler
 from ..repository import Input as InputModel
 from ..room import Room
 from ..utils import Middlewares, Nodes, Util
@@ -49,6 +46,9 @@ class Input(Switch, Message):
             "active" not in inactivity and inactivity
         ):  # TODO: Remove this once the inactivity options are updated
             inactivity["active"] = True
+
+        if inactivity.get("warning_message"):
+            inactivity["warning_message"] = self.render_data(inactivity["warning_message"])
         return inactivity
 
     async def _set_input_content(
@@ -107,6 +107,25 @@ class Input(Switch, Message):
         # If the node has an output connection, then update the menu to the output connection.
         # Otherwise, run the node and update the menu to the output connection.
         return await Switch.run(self, generate_event=False)
+
+    async def _send_node_event(self, **kwargs):
+        """It sends the event to the room.
+
+        Parameters
+        ----------
+        kwargs: dict[str, Any]
+            The keyword arguments to send the event.
+        """
+        await send_node_event(
+            config=self.room.config,
+            send_event=self.content.get("send_event"),
+            room_id=self.room.room_id,
+            sender=self.room.matrix_client.mxid,
+            node_id=self.id,
+            variables=self.room.all_variables | self.default_variables,
+            conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
+            **kwargs,
+        )
 
     async def run(self, evt: Optional[MessageEvent]):
         """If the room is in input mode, then set the variable.
@@ -171,17 +190,16 @@ class Input(Switch, Message):
             elif _input_type == MessageType.LOCATION:
                 o_connection = await self.input_location(content=evt.content)
 
-            await send_node_event(
-                config=self.room.config,
-                send_event=self.content.get("send_event"),
-                event_type=MenuflowNodeEvents.NodeInputData,
-                room_id=self.room.room_id,
-                sender=self.room.matrix_client.mxid,
-                node_id=self.id,
-                o_connection=o_connection,
-                variables=self.room.all_variables | self.default_variables,
-                conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
-            )
+            event_type = MenuflowNodeEvents.NodeInputData
+            await self._send_node_event(event_type=event_type, o_connection=o_connection)
+
+        elif self.room.route.state == RouteState.TIMEOUT:
+            o_connection = await self.get_case_by_id("timeout")
+            event_type = MenuflowNodeEvents.NodeInputTimeout
+
+            await self.room.update_menu(node_id=o_connection, state=None)
+            await self._send_node_event(event_type=event_type, o_connection=o_connection)
+
         else:
             # This is the case where the room is not in the input state
             # and the node is an input node.
@@ -195,68 +213,7 @@ class Input(Switch, Message):
                 node_id=self.id, state=RouteState.INPUT, update_node_vars=False
             )
 
-            await send_node_event(
-                config=self.room.config,
-                send_event=self.content.get("send_event"),
-                event_type=MenuflowNodeEvents.NodeEntry,
-                room_id=self.room.room_id,
-                sender=self.room.matrix_client.mxid,
-                node_type=Nodes.input,
-                node_id=self.id,
-                o_connection=None,
-                variables=self.room.all_variables | self.default_variables,
-                conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
+            event_type = MenuflowNodeEvents.NodeEntry
+            await self._send_node_event(
+                event_type=event_type, o_connection=None, node_type=Nodes.input
             )
-
-            inactivity = self.inactivity_options
-            if inactivity.get("active") and not Util.get_tasks_by_name(
-                task_name=self.room.room_id
-            ):
-                await self.timeout_active_chats(inactivity)
-
-    async def timeout_active_chats(self, inactivity: dict):
-        """It sends messages in time intervals to communicate customer
-        that not entered information to input option.
-
-        Parameters
-        ----------
-        inactivity : dict
-            The inactivity options.
-
-        """
-        if inactivity.get("chat_timeout") is None and inactivity.get("attempts") is None:
-            return
-
-        if inactivity.get("warning_message"):
-            inactivity["warning_message"] = self.render_data(inactivity["warning_message"])
-
-        inactivity_handler = InactivityHandler(room=self.room, inactivity=inactivity)
-        try:
-            metadata = {"bot_mxid": self.room.bot_mxid}
-            await Util.create_task_by_metadata(
-                inactivity_handler.start(), name=self.room.room_id, metadata=metadata
-            )
-
-            self.log.debug(f"[{self.room.room_id}] INACTIVITY TRIES COMPLETED")
-            o_connection = await self.get_case_by_id("timeout")
-            await self.room.update_menu(node_id=o_connection, state=None)
-
-            await send_node_event(
-                config=self.room.config,
-                send_event=self.content.get("send_event"),
-                event_type=MenuflowNodeEvents.NodeInputTimeout,
-                room_id=self.room.room_id,
-                sender=self.room.matrix_client.mxid,
-                node_id=self.id,
-                o_connection=o_connection,
-                variables=self.room.all_variables | self.default_variables,
-                conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
-            )
-            return
-
-        except asyncio.CancelledError:
-            self.log.error(f"[{self.room.room_id}] Inactivity handler cancelled")
-        except Exception as e:
-            self.log.error(f"[{self.room.room_id}] Inactivity handler error: {e}")
-        finally:
-            await Util.cancel_task(task_name=f"inactivity_restored_{self.room.room_id}")

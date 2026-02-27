@@ -36,8 +36,6 @@ if TYPE_CHECKING:
 
 
 class MatrixHandler(MatrixClient):
-    message_group_by_room: dict[RoomID, list[MessageEvent]] = {}
-
     def __init__(
         self, config: Config, flow: Flow, flow_utils: FlowUtils | None = None, *args, **kwargs
     ) -> None:
@@ -80,7 +78,7 @@ class MatrixHandler(MatrixClient):
 
     def unlock_room(self, room_id: RoomID, evt: StrippedStateEvent = None):
         self.log.debug(
-            f"[{room_id}] Unlocking room for event ({evt.event_id if evt else 'unknown'})"
+            f"[{room_id}] Unlocking room for event ({evt.event_id if isinstance(evt, StrippedStateEvent) else 'unknown'})"
         )
         self.LOCKED_ROOMS.discard(room_id)
 
@@ -221,22 +219,20 @@ class MatrixHandler(MatrixClient):
             self.log.warning(f"[{room.room_id}] Invalid event type: {evt.type.t}. Ignoring...")
             return
 
-        self.log.info(f"[{room.room_id}] {msg}")
         room.status = room.room_status.serialize()
         await room.update_status()
+        self.log.info(f"[{room.room_id}] {msg}")
 
     async def handle_join(self, evt: StateEvent):
         membership_evt = evt.content.get("membership")
+        base_msg = f"[{evt.room_id}] Ignoring {membership_evt} event ({evt.event_id})."
 
         if evt.room_id in Room.pending_invites and not Room.pending_invites[evt.room_id].done():
             Room.pending_invites[evt.room_id].set_result(True)
 
         locked = evt.room_id in self.LOCKED_ROOMS
         if locked or not evt.state_key == self.mxid:
-            _msg = "Menu locked." if locked else "Not from the bot"
-            self.log.warning(
-                f"[{evt.room_id}] Ignoring {membership_evt} event ({evt.event_id}). {_msg}"
-            )
+            self.log.warning(f"{base_msg} {"Menu locked." if locked else "Not from the bot"}")
             return
 
         room: Room = await Room.get_by_room_id(room_id=evt.room_id, bot_mxid=self.mxid)
@@ -245,16 +241,12 @@ class MatrixHandler(MatrixClient):
 
         if getattr(evt, "timestamp", 0) < room.room_status.last_join_ts:
             self.log.warning(
-                f"[{evt.room_id}] Ignoring {membership_evt} event ({evt.event_id}). "
-                f"Is older than last join event ({last_join_evt.event_id})"
+                f"{base_msg} Is older than last join event ({last_join_evt.event_id})"
             )
             return
 
-        if evt.event_id == last_join_evt.get("event_id"):
-            self.log.warning(
-                f"[{evt.room_id}] Ignoring {membership_evt} event ({evt.event_id}). "
-                f"Already processed."
-            )
+        if last_join_evt and evt.event_id == last_join_evt.get("event_id"):
+            self.log.warning(f"{base_msg} Already processed.")
             return
 
         self.log.info(f"[{evt.room_id}] Join event ({evt.event_id}) from {evt.state_key} accepted")
@@ -328,65 +320,17 @@ class MatrixHandler(MatrixClient):
             self.log.warning(f"[{room.room_id}] Ignoring message in pending invite")
             return
 
-        # TODO: Review this logic to cancel the inactivity task if it exists
-        # node = self.flow.node(room=room)
-        #
-        # if node and room.route._node_vars.get("inactivity"):
-        # self.log.info(f"[{room.room_id}] Inactivity config detected")
-        # await Util.cancel_task(task_name=room.room_id)
-        # if not isinstance(node, Webhook):
-        # room.set_node_var(inactivity={})
-        # await room.route.update_node_vars()
-
         queue = None
 
         if self.config["menuflow.enqueue_messages"] or room.route.state == RouteState.INPUT:
-            queue = await self.publish_event(message=message, room=room)
+            queue = await self.enqueue_message(message=message, room=room)
 
         # TODO: Review this logic
         if not queue:
             await self.algorithm(room=room, evt=message)
 
-    async def group_message(self, room: Room, message: MessageEvent, node: Node) -> bool:
-        """This function groups messages together based on the group_messages_timeout parameter.
-
-        Parameters
-        ----------
-        room_id : RoomID
-            The ID of the Matrix room.
-        message : MessageEvent
-            The message event object.
-        node : Node
-            The node object.
-
-        Returns
-        -------
-        bool
-            Returns True if the timeout is done, otherwise False.
-        """
-
-        message_group = self.message_group_by_room.setdefault(room.room_id, [])
-        message_group.append(message)
-
-        async def run_node():
-            await node.run(message_group)
-            await self.algorithm(room=room)
-
-        def run_sync():
-            self.log.info(
-                f"Time's up, sending group message [room: {room.room_id}] [node: {node.id}] [messages: {len(message_group)}]"
-            )
-            asyncio.create_task(run_node())
-
-        if len(message_group) == 1:
-            loop = asyncio.get_event_loop()
-            loop.call_later(node.group_messages_timeout, run_sync)
-            self.log.info(
-                f"Created task for group message [room: {room.room_id}] [node: {node.id}] in {node.group_messages_timeout} seconds"
-            )
-
-    async def publish_event(self, message: MessageEvent, room: Room) -> asyncio.Queue | None:
-        """This function publishes a message to the room.
+    async def enqueue_message(self, message: MessageEvent, room: Room) -> asyncio.Queue | None:
+        """Enqueues a message associated with a room and updates the room status.
 
         Parameters
         ----------
@@ -404,42 +348,71 @@ class MatrixHandler(MatrixClient):
 
         if queue is None:
             self.log.warning(f"[{room.room_id}] Doesn't have a message queue")
-            return
+            return None
 
         queue.put_nowait(message)
-        self.log.info(f"[{room.room_id}] Message ({message.event_id}) published")
+        self.log.info(f"[{room.room_id}] Message ({message.event_id}) enqueued")
         await self.update_room_status(room=room, evt=message)
 
         return queue
 
-    async def wait_for_messages(self, room: Room) -> MessageEvent:
-        """This function waits for messages to be published to the room.
+    async def get_input_response(self, room: Room, node: Node) -> list[MessageEvent] | None:
+        """Waits for the next message(s) from the room, applying inactivity and grouping settings.
 
         Parameters
         ----------
         room : Room
             The room object.
+        node : Node
+            The node object.
 
         Returns
         -------
-        message_event : MessageEvent
-            The message event object.
+        message_list : list[MessageEvent] | None
+            The list of message events or None if the timeout is reached.
         """
         room_id = room.room_id
-        queue = self.QUEUE_MESSAGE.get(room_id)
+        message_list: list[MessageEvent] = []
+        queue = self.QUEUE_MESSAGE.setdefault(room_id, asyncio.Queue())
 
-        if queue is None:
-            self.log.warning(f"[{room_id}] Doesn't have a queue. Creating one")
-            queue = asyncio.Queue()
-            self.QUEUE_MESSAGE[room_id] = queue
+        inactivity = getattr(node, "inactivity_options", {})
+        is_active = inactivity.get("active", False)
+        chat_timeout = inactivity.get("chat_timeout", 0)
 
-        self.log.info(f"[{room_id}] Waiting for messages...")
+        use_inactivity = is_active and not (isinstance(node, Webhook) and chat_timeout <= 0)
 
-        # TODO: Review if is necessary to use a timeout.
-        message_event = await queue.get()
-        return message_event
+        if use_inactivity:
+            self.log.info(f"[{room_id}] Waiting for messages...")
+            msg = await self.process_inactivity_options(
+                room=room, inactivity=inactivity, queue=queue
+            )
 
-    async def algorithm(self, room: Room, evt: MessageEvent | None = None) -> None:
+            room.set_node_var(inactivity={})
+            await room.route.update()
+
+            if room.route.state == RouteState.TIMEOUT:
+                return message_list
+
+            message_list.append(msg)
+        else:
+            self.log.info(f"[{room_id}] Inactivity options not detected")
+            return None
+
+        if timeout := getattr(node, "group_messages_timeout", 0):
+            # Grouping messages until the timeout is reached or the queue is empty.
+            while (
+                msg := await self.wait_for_queue_item(queue=queue, timeout=timeout)
+            ) is not None:
+                self.log.info(
+                    f"[{room_id}] Grouping messages enabled. "
+                    f"Message received, waiting ({timeout} seconds) for next message..."
+                )
+                message_list.append(msg)
+        return message_list
+
+    async def algorithm(
+        self, room: Room, evt: MessageEvent | None = None, run_input_node: bool = True
+    ) -> None:
         """The algorithm function is the main function that runs the flow.
         It takes a room and an event as parameters
 
@@ -449,12 +422,21 @@ class MatrixHandler(MatrixClient):
             The room object.
         evt : MessageEvent | None
             The event that triggered the algorithm.
+        run_input_node : bool, optional
+            If True (default), the current input-like node is executed.
+            If False, the execution of the input node is skipped only on the
+            first iteration of this call (used when resuming from
+            `create_inactivity_tasks` so the same message is not processed
+            again); from the next iteration onward the flag is treated as True.
+
         """
-        if room.room_id in self.LOCKED_ROOMS:
+        room_locked = room.room_id in self.LOCKED_ROOMS
+        if room_locked and run_input_node:
             self.log.warning(f"[{room.room_id}] Algorithm already running skipping...")
             return
 
-        self.lock_room(room_id=room.room_id, evt=evt)
+        if not room_locked:
+            self.lock_room(room_id=room.room_id, evt=evt)
 
         while (node := self.flow.node(room=room)) and room.route.state != RouteState.END:
             self.log.debug(
@@ -468,10 +450,26 @@ class MatrixHandler(MatrixClient):
 
             try:
                 if type(node) in (Input, InteractiveInput, FormInput, GPTAssistant, Webhook):
-                    await node.run(evt)
+                    if run_input_node:
+                        await node.run(evt)
+                    run_input_node = True  # one-time reset to True
                     if room.route.state == RouteState.INPUT:
-                        evt = await self.wait_for_messages(room=room)
-                        self.log.info(f"[{room.room_id}] Message received in algorithm")
+                        evt = await self.get_input_response(room=room, node=node)
+                        if evt is None:
+                            self.log.info(
+                                f"[{room.room_id}] Stopping the flow until a new message arrives"
+                            )
+                            break
+
+                        if evt:
+                            _msg = f"{len(evt)} message(s) received in algorithm"
+
+                            # TODO: Review this logic when all input nodes can receive a list of messages.
+                            if not isinstance(node, GPTAssistant):
+                                evt = evt[0]
+                        else:
+                            _msg = "No messages received in algorithm. Continuing with the flow"
+                        self.log.info(f"[{room.room_id}] {_msg}")
                 else:
                     await node.run()
                     if room.route.state == RouteState.INVITE:
@@ -508,7 +506,7 @@ class MatrixHandler(MatrixClient):
 
     async def create_inactivity_tasks(self) -> None:
         """This function creates tasks for rooms that are in the input state
-        and in an inactive state after the last system reboot."""
+        and in an inactive state after the last system reboot or flow save."""
 
         inactivity_rooms: list[DBRoom] = await DBRoom.get_node_var_by_state(
             state=RouteState.INPUT.value, variable_name="inactivity", menuflow_bot_mxid=self.mxid
@@ -519,41 +517,151 @@ class MatrixHandler(MatrixClient):
             room: Room = await Room.get_by_room_id(
                 room_id=inactivity_room.get("room_id"), bot_mxid=self.mxid
             )
+            room.room_status = RoomStatus.deserialize(room._status)
 
-            task_name = f"inactivity_restored_{room.room_id}"
+            task_name = room.room_id
             if room and not Util.get_tasks_by_name(task_name):
-                self.log.warning(
-                    f"Recreating inactivity task for room: {room.room_id} in {self.mxid}"
-                )
+                self.log.warning(f"[{room.room_id}] Reloading inactivity options")
 
-                self.lock_room(room_id=room.room_id)
                 if room.matrix_client is None:
                     room.matrix_client = self
 
-                node = self.flow.node(room=room)
-                if node is None:
-                    self.log.warning(
-                        f"Node was not found for room: {room.room_id} in {self.mxid} and will be updated to start"
-                    )
-                    await room.update_menu(node_id=RouteState.START)
-                    continue
+                task = asyncio.create_task(
+                    self.algorithm(
+                        room=room,
+                        evt=room.room_status.last_processed_message,
+                        run_input_node=False,
+                    ),
+                    name=task_name,
+                )
+                task.bot_mxid = self.mxid
+                task.created_at = datetime.now(timezone.utc).timestamp()
+                recreate_rooms.append(room.room_id)
 
-                inactivity = node.inactivity_options
-                if inactivity.get("active"):
-                    self.log.warning(f"[{room.room_id}] Creating inactivity task ({task_name})")
-                    task = asyncio.create_task(
-                        node.timeout_active_chats(inactivity), name=task_name
-                    )
-                    task.metadata = {"bot_mxid": self.mxid}
-                    task.created_at = datetime.now(timezone.utc).timestamp()
-                    # This ensures that the algorithm runs after the inactivity_options task completes.
-                    task.add_done_callback(
-                        lambda _task, _room=room: asyncio.ensure_future(self.algorithm(room=_room))
-                    )  # _task is required because add_done_callback always passes the completed task as the first argument.
-                    recreate_rooms.append(room.room_id)
+                task.add_done_callback(
+                    lambda _task, _room=room: self._on_inactivity_done(_task, _room)
+                )  # _task is required because add_done_callback always passes the completed task as the first argument.
 
         if recreate_rooms:
             self.log.info(
-                f"[{len(recreate_rooms)} rooms] inactivity_option tasks that were in progress have been recreated in {self.mxid}"
-                f" {recreate_rooms=}"
+                f"[{len(recreate_rooms)} rooms] inactivity_option tasks that were in progress "
+                f"have been recreated in {self.mxid} {recreate_rooms=}"
             )
+
+    async def process_inactivity_options(
+        self, room: Room, inactivity: dict, queue: asyncio.Queue
+    ) -> MessageEvent | None:
+        """Execute the node's idle policy until the timeout is reached,
+        the maximum number of attempts is reached, or a new event enters the queue.
+
+        Parameters
+        ----------
+        room : Room
+            The room object.
+        inactivity : dict
+            The inactivity options.
+        queue : asyncio.Queue
+            The queue object.
+
+        Returns
+        -------
+        MessageEvent | None
+            The message event object or None.
+        """
+        chat_timeout = inactivity.get("chat_timeout", 0) or 0
+        attempts = inactivity.get("attempts", 0) or 0
+
+        if chat_timeout is None and attempts is None:
+            return
+
+        self.log.info(f"[{room.room_id}] Processing inactivity options...")
+
+        inactivity_db: dict = room.route._node_vars.setdefault("inactivity", {})
+        for key in ("attempt", "start_ttl", "attempt_ttl"):
+            inactivity_db.setdefault(key, 0)
+
+        warning_message = inactivity.get("warning_message", "")
+        time_between_attempts = inactivity.get("time_between_attempts", 0) or 0
+
+        if inactivity_db["attempt"] == 0:
+            now = datetime.now().timestamp()
+            if inactivity_db.get("start_ttl") == 0:
+                inactivity_db["start_ttl"] = now + chat_timeout
+                room.set_node_var(inactivity=inactivity_db)
+                await room.route.update_node_vars()
+
+            start_sleep = inactivity_db["start_ttl"] - now
+            if start_sleep > 0:
+                self.log.info(
+                    f"[{room.room_id}] Start chat timeout, sleeping {start_sleep} seconds"
+                )
+
+                msg = await self.wait_for_queue_item(queue=queue, timeout=start_sleep)
+                if msg is not None:
+                    return msg
+
+        while True:
+            attempt = inactivity_db["attempt"]
+            attempt_ttl = inactivity_db.get("attempt_ttl")
+            now = datetime.now().timestamp()
+
+            if (attempt == attempts and attempt_ttl - now < 0) or attempt > attempts:
+                break
+
+            if attempt_ttl - now < 0:
+                inactivity_db["attempt_ttl"] = now + time_between_attempts
+                inactivity_db["attempt"] += 1
+                room.set_node_var(inactivity=inactivity_db)
+                await room.route.update_node_vars()
+
+                if warning_message:
+                    await room.matrix_client.send_text(room_id=room.room_id, text=warning_message)
+
+            attempt_sleep = inactivity_db["attempt_ttl"] - now
+            self.log.info(
+                f"[{room.room_id}] Inactivity Attempts {inactivity_db['attempt']} of "
+                f"{attempts} sleeping ({attempt_sleep} seconds)"
+            )
+
+            msg = await self.wait_for_queue_item(queue=queue, timeout=attempt_sleep)
+            if msg is not None:
+                return msg
+
+        self.log.warning(f"[{room.room_id}] INACTIVITY TRIES COMPLETED...")
+        room.route.state = RouteState.TIMEOUT
+
+    async def wait_for_queue_item(self, queue: asyncio.Queue, timeout: int):
+        """Wait for the next item in the queue until the time limit expires.
+
+        Parameters
+        ----------
+        queue : asyncio.Queue
+            The asynchronous queue from which the message is retrieved (consumed with `queue.get()`).
+        timeout : int
+            The maximum waiting time in seconds. If it is 0 or negative, it immediately returns `None`.
+
+        Returns:
+            The message retrieved from the queue if it arrives before the `timeout`; otherwise, `None`.
+        """
+        if timeout <= 0:
+            return None
+
+        try:
+            return await asyncio.wait_for(queue.get(), timeout=timeout)
+        except asyncio.TimeoutError:
+            return None
+
+    def _on_inactivity_done(self, task: asyncio.Task, room: Room) -> None:
+        """Callback function for the inactivity task.
+        It is used to handle the cancellation of the inactivity task.
+
+        Parameters
+        ----------
+        task : asyncio.Task
+            The task object.
+        room : Room
+            The room object.
+        """
+        if task.cancelled():
+            self.log.warning(f"[{room.room_id}] Inactivity task was cancelled")
+            return

@@ -177,7 +177,7 @@ async def update_client(request: web.Request) -> web.Response:
     )
 
     await client.update()
-    return resp.ok(client.to_dict(), uuid)
+    return resp.success(data=client.to_dict(), uuid=uuid)
 
 
 @routes.post("/v1/client/{mxid}/flow/reload")
@@ -194,7 +194,7 @@ async def reload_client_flow(request: web.Request) -> web.Response:
     config: Config = get_config()
     await client.flow_cls.load_flow(flow_mxid=client.id, config=config)
 
-    return resp.ok({"detail": {"message": "Flow reloaded successfully"}}, uuid)
+    return resp.success(message="Flow reloaded successfully", uuid=uuid)
 
 
 @routes.patch("/v1/client/{mxid}/{action}")
@@ -220,7 +220,7 @@ async def enable_disable_client(request: web.Request) -> web.Response:
         return resp.bad_request("Invalid action provided", uuid)
 
     await client.update()
-    return resp.ok({"detail": {"message": f"Client {action}d successfully"}}, uuid)
+    return resp.success(message=f"Client {action}d successfully", uuid=uuid)
 
 
 @routes.get("/v1/room/{room_id}/get_variables", allow_head=False)
@@ -262,7 +262,11 @@ async def get_variables(request: web.Request) -> web.Response:
     except Exception as e:
         return resp.server_error(str(e), uuid)
 
-    return resp.ok(response, uuid) if response else resp.not_found("Scopes not found")
+    return (
+        resp.success(data=response, uuid=uuid)
+        if response
+        else resp.not_found("Scopes not found", uuid)
+    )
 
 
 @routes.get("/v1/room/{room_id}/status", allow_head=False)

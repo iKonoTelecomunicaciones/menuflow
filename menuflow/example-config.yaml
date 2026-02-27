@@ -64,7 +64,6 @@ menuflow:
     # Options to recreate inactivity tasks on startup and save flow
     inactivity_options:
         recreate_on_startup: false
-        recreate_on_save_flow: false
 
     # If true, all messages will be queued and processed later by the matrix algorithm.
     # Otherwise, the messages will be processed immediately.
