@@ -172,9 +172,7 @@ class Util:
         return lines[0] + "\n" + indent("\n".join(lines[1:]), " " * (indent_level or 20))
 
     @staticmethod
-    async def update_flow_db_clients(
-        flow_id: int, content: dict, config: Config, uuid: str
-    ) -> None:
+    async def update_flow_db_clients(flow_id: int, content: dict, config: Config) -> None:
         """Update the flow of the db clients.
 
         Args:
