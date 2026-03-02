@@ -17,7 +17,7 @@ from mautrix.util.logging import TraceLogger
 from .config import Config
 from .db.room import Room as DBRoom
 from .db.route import Route, RouteState
-from .repository.room_status import RoomStatus
+from .repository.room_events import RoomEvents
 from .scope import Scope
 from .utils import JQ2Glom, Util
 from .utils.types import Scopes
@@ -44,14 +44,14 @@ class Room(DBRoom):
         room_id: RoomID,
         id: int = None,
         variables: str = "{}",
-        status: dict = {},
+        events: dict = {},
     ) -> None:
-        super().__init__(id=id, room_id=room_id, variables=f"{variables}", status=status)
+        super().__init__(id=id, room_id=room_id, variables=f"{variables}", events=events)
         self.log = self.log.getChild(self.room_id)
         self.bot_mxid: UserID = None
         self.route: Route = None
         self.matrix_client: MatrixClient = None
-        self.room_status: RoomStatus = None
+        self.room_events: RoomEvents = None
 
     @property
     async def get_ghost_number(self) -> str | None:

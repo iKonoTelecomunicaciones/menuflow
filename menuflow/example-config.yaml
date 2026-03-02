@@ -70,7 +70,7 @@ menuflow:
 
     # If true, all messages will be queued and processed later by the matrix algorithm.
     # Otherwise, the messages will be processed immediately.
-    enqueue_messages: true
+    enqueue_messages: false
 
 server:
     # The IP and port to listen to.

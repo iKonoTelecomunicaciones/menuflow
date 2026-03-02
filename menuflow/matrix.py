@@ -25,7 +25,7 @@ from .config import Config
 from .db.room import Room as DBRoom
 from .db.route import RouteState
 from .nodes import Base, FormInput, GPTAssistant, Input, InteractiveInput, Webhook
-from .repository.room_status import RoomStatus
+from .repository.room_events import RoomEvents
 from .room import Room
 from .user import User
 from .utils import Util
@@ -115,12 +115,12 @@ class MatrixHandler(MatrixClient):
         if not room:
             self.log.warning(f"[{evt.room_id}] Room not found. Ignoring leave event")
             return
-        room.room_status = RoomStatus.deserialize(room._status)
+        room.room_events = RoomEvents.deserialize(room._events)
 
-        if getattr(evt, "timestamp", 0) < room.room_status.last_join_ts:
+        if getattr(evt, "timestamp", 0) < room.room_events.last_join_ts:
             self.log.warning(
                 f"[{evt.room_id}] Ignoring {evt.content.get('membership')} event ({evt.event_id}) "
-                f"is older than last join event ({room.room_status.last_join_event.get('event_id')})"
+                f"is older than last join event ({room.room_events.last_join_event.get('event_id')})"
             )
         else:
             self.log.info(
@@ -199,8 +199,8 @@ class MatrixHandler(MatrixClient):
             puppet_mxid: str = await room.get_puppet_mxid
             await room.set_variable(variable_id="puppet_mxid", value=puppet_mxid)
 
-    async def update_room_status(self, room: Room, evt: StateEvent | MessageEvent):
-        """This function updates the room status in the database.
+    async def update_room_events(self, room: Room, evt: StateEvent | MessageEvent):
+        """This function updates the room events in the database.
 
         Parameters
         ----------
@@ -210,17 +210,17 @@ class MatrixHandler(MatrixClient):
             The event that triggered the update.
         """
         if evt.type == EventType.ROOM_MEMBER:
-            room.room_status.last_join_event = evt
+            room.room_events.last_join_event = evt
             msg = f"Updating join event ({evt.event_id}) in db from cache"
         elif evt.type == EventType.ROOM_MESSAGE:
-            room.room_status.last_processed_message = evt
+            room.room_events.last_processed_message = evt
             msg = f"Updating message event ({evt.event_id}) in db from cache"
         else:
             self.log.warning(f"[{room.room_id}] Invalid event type: {evt.type.t}. Ignoring...")
             return
 
-        room.status = room.room_status.serialize()
-        await room.update_status()
+        room.events = room.room_events.serialize()
+        await room.update_events()
         self.log.info(f"[{room.room_id}] {msg}")
 
     async def handle_join(self, evt: StateEvent):
@@ -236,10 +236,10 @@ class MatrixHandler(MatrixClient):
             return
 
         room: Room = await Room.get_by_room_id(room_id=evt.room_id, bot_mxid=self.mxid)
-        room.room_status = RoomStatus.deserialize(room._status)
-        last_join_evt = room.room_status.last_join_event
+        room.room_events = RoomEvents.deserialize(room._events)
+        last_join_evt = room.room_events.last_join_event
 
-        if getattr(evt, "timestamp", 0) < room.room_status.last_join_ts:
+        if getattr(evt, "timestamp", 0) < room.room_events.last_join_ts:
             self.log.warning(
                 f"{base_msg} Is older than last join event ({last_join_evt.event_id})"
             )
@@ -260,7 +260,7 @@ class MatrixHandler(MatrixClient):
             del GPTAssistant.assistant_cache[(room.room_id, room.route.id)]
 
         await self.load_room_constants(evt.room_id)
-        await self.update_room_status(room=room, evt=evt)
+        await self.update_room_events(room=room, evt=evt)
         await self.algorithm(room=room)
 
     async def handle_message(self, message: MessageEvent) -> None:
@@ -291,9 +291,9 @@ class MatrixHandler(MatrixClient):
             return
 
         room: Room = await Room.get_by_room_id(room_id=message.room_id, bot_mxid=self.mxid)
-        room.room_status = RoomStatus.deserialize(room._status)
+        room.room_events = RoomEvents.deserialize(room._events)
 
-        last_message_time = datetime.fromtimestamp(room.room_status.last_message_ts / 1000)
+        last_message_time = datetime.fromtimestamp(room.room_events.last_message_ts / 1000)
         current_message_time = datetime.fromtimestamp(message.timestamp / 1000)
 
         if last_message_time > current_message_time:
@@ -330,7 +330,7 @@ class MatrixHandler(MatrixClient):
             await self.algorithm(room=room, evt=message)
 
     async def enqueue_message(self, message: MessageEvent, room: Room) -> asyncio.Queue | None:
-        """Enqueues a message associated with a room and updates the room status.
+        """Enqueues a message associated with a room and updates the room events.
 
         Parameters
         ----------
@@ -352,7 +352,7 @@ class MatrixHandler(MatrixClient):
 
         queue.put_nowait(message)
         self.log.info(f"[{room.room_id}] Message ({message.event_id}) enqueued")
-        await self.update_room_status(room=room, evt=message)
+        await self.update_room_events(room=room, evt=message)
 
         return queue
 
@@ -430,13 +430,11 @@ class MatrixHandler(MatrixClient):
             again); from the next iteration onward the flag is treated as True.
 
         """
-        room_locked = room.room_id in self.LOCKED_ROOMS
-        if room_locked and run_input_node:
+        if room.room_id in self.LOCKED_ROOMS:
             self.log.warning(f"[{room.room_id}] Algorithm already running skipping...")
             return
 
-        if not room_locked:
-            self.lock_room(room_id=room.room_id, evt=evt)
+        self.lock_room(room_id=room.room_id, evt=evt)
 
         while (node := self.flow.node(room=room)) and room.route.state != RouteState.END:
             self.log.debug(
@@ -517,7 +515,7 @@ class MatrixHandler(MatrixClient):
             room: Room = await Room.get_by_room_id(
                 room_id=inactivity_room.get("room_id"), bot_mxid=self.mxid
             )
-            room.room_status = RoomStatus.deserialize(room._status)
+            room.room_events = RoomEvents.deserialize(room._events)
 
             task_name = room.room_id
             if room and not Util.get_tasks_by_name(task_name):
@@ -529,7 +527,7 @@ class MatrixHandler(MatrixClient):
                 task = asyncio.create_task(
                     self.algorithm(
                         room=room,
-                        evt=room.room_status.last_processed_message,
+                        evt=room.room_events.last_processed_message,
                         run_input_node=False,
                     ),
                     name=task_name,
