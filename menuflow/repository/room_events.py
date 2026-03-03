@@ -9,6 +9,7 @@ from mautrix.types import MessageEvent, StateEvent
 class RoomEvents:
     last_join_event: StateEvent | None = None
     last_processed_message: MessageEvent | None = None
+    leave: bool = False
 
     def serialize(self) -> dict:
         return {

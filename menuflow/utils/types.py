@@ -42,3 +42,8 @@ class NodeStatus(SerializableEnum):
     DEFAULT = "default"
     TIMEOUT = "timeout"
     WEBHOOK = "webhook"
+
+
+class QueueSignal:
+    LEAVE = object()
+    TIMEOUT = object()
