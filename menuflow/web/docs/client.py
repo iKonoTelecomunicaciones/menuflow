@@ -212,7 +212,7 @@ get_variables_doc = """
           description: The scopes of the variables to get. If not provided, all variables will be returned.
           schema:
             type: array
-            default: ["room", "route", "node"]
+            default: ["room", "route", "node", "external"]
             items:
               type: string
 

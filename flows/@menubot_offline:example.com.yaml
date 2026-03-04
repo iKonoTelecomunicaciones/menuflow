@@ -29,7 +29,7 @@ menu:
     - id: "main_menu"
       type: "input"
       text: >
-        Puedes esperar hasta que {{ route.external.agent_name }} esté disponible o enviar:<br><br>
+        Puedes esperar hasta que {{ external.agent_name }} esté disponible o enviar:<br><br>
 
         <b>1.</b> Transferir a un agente de la misma área<br>
         <b>2.</b> Ir al menú principal<br>
@@ -56,7 +56,7 @@ menu:
       middleware: "acd"
       json:
         customer_room_id: "{{ route.customer_room_id }}"
-        destination: "{{ route.external.last_selected_queue }}"
+        destination: "{{ external.last_selected_queue }}"
       cases:
         - id: 200
           o_connection: "empty_message"
@@ -104,7 +104,7 @@ menu:
       middleware: "acd"
       json:
         room_id: "{{ route.customer_room_id }}"
-        user_id: "{{ route.external.current_agent }}"
+        user_id: "{{ external.current_agent }}"
         reason: "Removed by menu, user is offline"
       cases:
         - id: 200
@@ -114,7 +114,7 @@ menu:
 
     - id: "invite_user"
       type: "invite_user"
-      invitee: "{{ route.external.main_menu }}"
+      invitee: "{{ external.main_menu }}"
       timeout: 100
       cases:
         - id: "join"

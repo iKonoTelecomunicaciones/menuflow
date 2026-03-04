@@ -145,7 +145,7 @@ async def set_variables(request: web.Request) -> web.Response:
 
     try:
         room: Room = await Room.get_by_room_id(room_id, bot_mxid)
-        await room.set_variable(variable_id="external", value=variables)
+        await room.set_external_variables(variables=variables)
         if conversation_uuid:
             await room.set_variable(variable_id="room.conversation_uuid", value=conversation_uuid)
     except Exception as e:
@@ -243,7 +243,7 @@ async def get_variables(request: web.Request) -> web.Response:
 
     room_id = request.match_info["room_id"]
     bot_mxid = request.query.get("bot_mxid", None)
-    scopes = request.query.getall("scopes", ["room", "route", "node"])
+    scopes = request.query.getall("scopes", ["room", "route", "node", "external"])
     response = {}
 
     try:
@@ -268,6 +268,8 @@ async def get_variables(request: web.Request) -> web.Response:
                     response[scope] = route._variables
                 case "node":
                     response[scope] = route._node_vars
+                case "external":
+                    response[scope] = route._external_vars
                 case _:
                     log.warning(f"({uuid}) -> Invalid scope: {scope}, skipping")
 
