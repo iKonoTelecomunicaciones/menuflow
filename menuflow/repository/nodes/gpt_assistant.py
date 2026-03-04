@@ -41,7 +41,7 @@ class GPTAssistant(Switch):
           model: "gpt-3.5-turbo"
           assistant_id: "123456"
           api_key: "123456"
-          initial_info: "{{ route.context }}, {{ route.external.user_name }}"
+          initial_info: "{{ route.context }}, {{ external.user_name }}"
           variable: opt
           validation: '{{ opt.isdigit() }}'
           validation_fail:

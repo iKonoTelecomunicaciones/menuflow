@@ -1521,6 +1521,9 @@ components:
             node:
               variable_1: value_1
               variable_2: value_2
+            external:
+              variable_3: value_3
+              variable_4: value_4
     GetVariablesNotFound:
       description: Get variables not found.
       content:

@@ -278,3 +278,10 @@ async def upgrade_v13(conn: Connection) -> None:
     await conn.execute(
         "ALTER TABLE room ADD COLUMN IF NOT EXISTS events JSONB DEFAULT '{}'::jsonb"
     )
+
+
+@upgrade_table.register(description="Add external_vars column to route table")
+async def upgrade_v14(conn: Connection) -> None:
+    await conn.execute(
+        "ALTER TABLE route ADD COLUMN IF NOT EXISTS external_vars JSONB DEFAULT '{}'::jsonb"
+    )

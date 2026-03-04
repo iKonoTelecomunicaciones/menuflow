@@ -154,7 +154,7 @@ menu:
       - id: message-node
         type: message
         text: |
-          Para {{ route.external.name }} {{ route.external.last_name }}
+          Para {{ external.name }} {{ external.last_name }}
 
           In a few years, Macondo was a more orderly and industrious village
           than any of those known up to that time by its three hundred inhabitants.

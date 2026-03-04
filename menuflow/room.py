@@ -190,6 +190,7 @@ class Room(DBRoom):
             "room": self._variables,
             "route": self.route._variables,
             "node": self.route._node_vars,
+            "external": self.route._external_vars,
         }
 
     @classmethod
@@ -274,6 +275,14 @@ class Room(DBRoom):
         """
         scope, key = Util.get_scope_and_key(variable_id)
 
+        # TODO: Remove when external variables are fully supported
+        if scope == Scopes.ROUTE and key.startswith("external."):
+            self.log.error(
+                f"[{self.room_id}] [VAR][GET] route.external is deprecated. Use external.key to get variables."
+            )
+            scope = Scopes.EXTERNAL
+            key = key.replace("external.", "", 1)
+
         try:
             _value = glom(self.all_variables, self._jq2glom.to_glom_path(f"{scope.value}.{key}"))
             self.log.debug(f"[VAR][GET] {scope.value}.{key} => {repr(_value)}")
@@ -315,6 +324,14 @@ class Room(DBRoom):
             return
 
         scope, key = Util.get_scope_and_key(variable_id)
+
+        # TODO: Remove when external variables are fully supported
+        if scope == Scopes.ROUTE and key.startswith("external."):
+            self.log.error(
+                f"[{self.room_id}] [VAR][SET] route.external is deprecated. Use external.key to set variables."
+            )
+            scope = Scopes.EXTERNAL
+            key = key.replace("external.", "", 1)
 
         try:
             entry = Scope(room=self, route=self.route).resolve(scope)
@@ -367,6 +384,14 @@ class Room(DBRoom):
             return
 
         scope, key = Util.get_scope_and_key(variable_id)
+
+        # TODO: Remove when external variables are fully supported
+        if scope == Scopes.ROUTE and key.startswith("external."):
+            self.log.error(
+                f"[{self.room_id}] [VAR][DEL] route.external is deprecated. Use external.key to delete variables."
+            )
+            scope = Scopes.EXTERNAL
+            key = key.replace("external.", "", 1)
 
         try:
             entry = Scope(room=self, route=self.route).resolve(scope)
@@ -456,3 +481,29 @@ class Room(DBRoom):
             The conversation UUID is being returned as a string or None.
         """
         return self.all_variables.get("room", {}).get("conversation_uuid")
+
+    async def set_external_variables(self, variables: Dict) -> None:
+        """Deletes the external variables and sets the new ones.
+
+        Parameters
+        ----------
+        variables : Dict
+            A dictionary of variable names and values.
+
+        """
+        scope = Scopes.EXTERNAL
+        try:
+            entry = Scope(room=self, route=self.route).resolve(scope)
+        except Exception as e:
+            self.log.error(str(e))
+            return
+
+        if entry.get_vars():
+            self.log.debug(f"[{self.room_id}] Cleaning external variables")
+            entry.set_vars({})
+            await entry.update_func()
+
+        for variable in variables:
+            await self.set_variable(
+                variable_id=f"{scope.value}.{variable}", value=variables[variable]
+            )

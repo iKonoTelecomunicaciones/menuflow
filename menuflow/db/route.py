@@ -38,6 +38,7 @@ class Route:
     variables: str = ib(default="{}")
     stack: str = ib(default="{}")
     node_vars: str = ib(default="{}")
+    external_vars: str = ib(default="{}")
 
     @classmethod
     def _from_row(cls, row: Record) -> Route | None:
@@ -59,9 +60,10 @@ class Route:
             self.variables,
             self.stack,
             self.node_vars,
+            self.external_vars,
         )
 
-    _columns = "room, client, node_id, state, variables, stack, node_vars"
+    _columns = "room, client, node_id, state, variables, stack, node_vars, external_vars"
 
     @property
     def _variables(self) -> Dict:
@@ -74,6 +76,14 @@ class Route:
     @_node_vars.setter
     def _node_vars(self, node_vars: dict) -> None:
         self.node_vars = json.dumps(node_vars)
+
+    @property
+    def _external_vars(self) -> Dict:
+        return json.loads(self.external_vars)
+
+    @_external_vars.setter
+    def _external_vars(self, external_vars: dict) -> None:
+        self.external_vars = json.dumps(external_vars)
 
     @property
     def _stack(self) -> LifoQueue | None:
@@ -108,7 +118,7 @@ class Route:
 
     async def update(self) -> None:
         q = """
-            UPDATE route SET node_id = $3, state = $4, variables = $5, stack = $6, node_vars = $7
+            UPDATE route SET node_id = $3, state = $4, variables = $5, stack = $6, node_vars = $7, external_vars = $8
             WHERE room = $1 and client = $2
         """
         await self.db.execute(q, *self.values)
@@ -143,12 +153,17 @@ class Route:
             self.state = RouteState.START
         self.node_id = "start"
         _vars = self._variables
+        self.variables = {}
 
-        log.info(f"[{_vars.get('customer_room_id')}] Cleaning up route for client '{self.client}'")
-
-        self.variables = json.dumps(
-            {"external": _vars.pop("external", {}), **{c: _vars.pop(c, "") for c in constants}}
+        log.info(
+            f"[{_vars.get('customer_room_id')}] Cleaning up route for client '{self.client}', preserving constants: {constants}"
         )
+
+        if constants:
+            self.variables = {c: _vars.get(c, "") for c in constants}
+
+        self.variables = json.dumps(self.variables)
+
         self.stack = json.dumps({self.client: []})
         await self.update()
 
@@ -158,3 +173,10 @@ class Route:
             WHERE room = $2 and client = $3
         """
         await self.db.execute(q, self.node_vars, self.room, self.client)
+
+    async def update_external_vars(self) -> None:
+        q = """
+            UPDATE route SET external_vars = $1
+            WHERE room = $2 and client = $3
+        """
+        await self.db.execute(q, self.external_vars, self.room, self.client)

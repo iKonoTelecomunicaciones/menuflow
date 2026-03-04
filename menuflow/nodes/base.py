@@ -152,6 +152,14 @@ class Base:
 
         variables = self.default_variables | self.room.all_variables
 
+        # TODO: Remove when external variables are fully supported
+        if "route.external" in data:
+            self.log.error(
+                f"[{self.room.room_id}] route.external is deprecated. Use external.key to render variables."
+            )
+            data = data.replace("route.external", "external")
+        # TODO: End of TODO
+
         if RenderFlags.CUSTOM_ESCAPE in flags:
             variables, changed = Util.custom_escape(variables, escape=True)
             if changed:
