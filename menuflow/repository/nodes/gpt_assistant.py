@@ -11,10 +11,10 @@ from .switch import Switch
 @dataclass
 class InactivityOptions(SerializableAttrs):
     active: bool = ib(default=False)
-    chat_timeout: int = ib(default=None)
+    chat_timeout: int = ib(default=0)
     warning_message: str = ib(default=None)
-    time_between_attempts: int = ib(default=None)
-    attempts: int = ib(default=None)
+    time_between_attempts: int = ib(default=0)
+    attempts: int = ib(default=0)
 
 
 @dataclass
