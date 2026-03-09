@@ -395,6 +395,12 @@ class MatrixHandler(MatrixClient):
         is_active = inactivity.get("active", False)
         chat_timeout = inactivity.get("chat_timeout", 0)
 
+        if not chat_timeout and not inactivity.get("attempts", 0):
+            self.log.warning(
+                f"[{room.room_id}] chat_timeout and attempts are not set. Inactivity options skipping..."
+            )
+            return
+
         use_inactivity = is_active and not (isinstance(node, Webhook) and chat_timeout <= 0)
 
         if use_inactivity:
@@ -458,25 +464,23 @@ class MatrixHandler(MatrixClient):
                     if room.route.state == RouteState.INPUT:
                         evt = await self.get_input_response(room=room, node=node)
 
-                        if evt:
-                            if evt is QueueSignal.LEAVE:
-                                _msg = "Leave detected in algorithm."
-                            elif isinstance(node, GPTAssistant) and (
-                                timeout := getattr(node, "group_messages_timeout", 0)
-                            ):
-                                # TODO: Review this logic when all input nodes can receive a list of messages.
-                                grouped_messages = await self.group_message(
-                                    room=room, timeout=timeout
-                                )
-                                _msg = f"{len(grouped_messages)} message(s) received in algorithm"
-                                evt = [evt, *grouped_messages]
-                            else:
-                                _msg = "Message received in algorithm"
-                        else:
+                        if not evt or evt is QueueSignal.CANCELLED:
                             self.log.info(
                                 f"[{room.room_id}] Stopping the flow until a new message arrives"
                             )
                             break
+
+                        if evt is QueueSignal.LEAVE:
+                            _msg = "Leave detected in algorithm."
+                        elif isinstance(node, GPTAssistant) and (
+                            timeout := getattr(node, "group_messages_timeout", 0)
+                        ):
+                            # TODO: Review this logic when all input nodes can receive a list of messages.
+                            grouped_messages = await self.group_message(room=room, timeout=timeout)
+                            _msg = f"{len(grouped_messages)} message(s) received in algorithm"
+                            evt = [evt, *grouped_messages]
+                        else:
+                            _msg = "Message received in algorithm"
 
                         self.log.info(f"[{room.room_id}] {_msg}")
                 else:
@@ -583,17 +587,16 @@ class MatrixHandler(MatrixClient):
         MessageEvent | QueueSignal
             The message event object or QueueSignal object.
         """
-        chat_timeout = inactivity.get("chat_timeout", 0) or 0
-        attempts = inactivity.get("attempts", 0) or 0
-
         self.log.info(f"[{room.room_id}] Processing inactivity options...")
+
+        chat_timeout = inactivity.get("chat_timeout", 0)
+        attempts = inactivity.get("attempts", 0)
+        warning_message = inactivity.get("warning_message", "")
+        time_between_attempts = inactivity.get("time_between_attempts", 0)
 
         inactivity_db: dict = room.route._node_vars.setdefault("inactivity", {})
         for key in ("attempt", "start_ttl", "attempt_ttl"):
             inactivity_db.setdefault(key, 0)
-
-        warning_message = inactivity.get("warning_message", "")
-        time_between_attempts = inactivity.get("time_between_attempts", 0) or 0
 
         if inactivity_db["attempt"] == 0:
             now = datetime.now().timestamp()
@@ -613,6 +616,24 @@ class MatrixHandler(MatrixClient):
                     return msg
 
         while True:
+            if (
+                _inactivity := getattr(self.flow.node(room=room), "inactivity_options", {})
+            ) != inactivity:
+                self.log.warning(
+                    f"[{room.room_id}] Inactivity options changed, updating new options {_inactivity}..."
+                )
+                inactivity = _inactivity
+                attempts = inactivity.get("attempts", 0)
+                time_between_attempts = inactivity.get("time_between_attempts", 0)
+                warning_message = inactivity.get("warning_message", "")
+
+                if not inactivity.get("active", False):
+                    self.log.info(
+                        f"[{room.room_id}] Inactivity options changed and are not active. "
+                        f"Breaking out of the loop"
+                    )
+                    return QueueSignal.CANCELLED
+
             attempt = inactivity_db["attempt"]
             attempt_ttl = inactivity_db.get("attempt_ttl")
             now = datetime.now().timestamp()

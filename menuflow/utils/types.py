@@ -48,3 +48,4 @@ class NodeStatus(SerializableEnum):
 class QueueSignal:
     LEAVE = object()
     TIMEOUT = object()
+    CANCELLED = object()
