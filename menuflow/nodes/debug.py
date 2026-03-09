@@ -1,5 +1,4 @@
 import logging
-from asyncio import sleep
 from typing import Dict
 
 from ..repository import Debug as DebugModel
@@ -18,7 +17,7 @@ class Debug(Base):
         return self.render_data(data=self.content.get("msg", ""))
 
     @property
-    def level(self) -> str:
+    def level(self) -> int:
         raw_level = self.render_data(data=self.content.get("level", "debug"))
         normalized = raw_level.strip().upper()
         level = getattr(logging, normalized, None)
