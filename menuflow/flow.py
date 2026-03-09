@@ -11,6 +11,7 @@ from .middlewares import ASRMiddleware, HTTPMiddleware, IRMMiddleware, LLMMiddle
 from .nodes import (
     CheckHoliday,
     CheckTime,
+    Debug,
     Delay,
     Email,
     FormInput,
@@ -50,6 +51,7 @@ Node = Union[
     GPTAssistant,
     FormInput,
     Webhook,
+    Debug,
 ]
 
 
@@ -250,6 +252,10 @@ class Flow:
         elif node_data.get("type") == "webhook":
             node_initialized = Webhook(
                 webhook_data=node_data, room=room, default_variables=self.flow_variables
+            )
+        elif node_data.get("type") == "debug":
+            node_initialized = Debug(
+                debug_node_data=node_data, room=room, default_variables=self.flow_variables
             )
         else:
             return

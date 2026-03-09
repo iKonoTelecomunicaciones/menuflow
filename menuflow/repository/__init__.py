@@ -5,6 +5,7 @@ from .nodes import (
     Case,
     CheckHoliday,
     CheckTime,
+    Debug,
     Delay,
     Email,
     Form,
