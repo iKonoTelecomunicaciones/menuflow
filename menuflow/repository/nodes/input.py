@@ -11,10 +11,11 @@ from .switch import Case, Switch
 
 @dataclass
 class InactivityOptions(SerializableAttrs):
-    chat_timeout: int = ib(default=None)
+    active: bool = ib(default=False)
+    chat_timeout: int = ib(default=0)
     warning_message: str = ib(default=None)
-    time_between_attempts: int = ib(default=None)
-    attempts: int = ib(default=None)
+    time_between_attempts: int = ib(default=0)
+    attempts: int = ib(default=0)
 
 
 @dataclass
@@ -38,6 +39,7 @@ class Input(Switch, Message):
         message: "Please enter a valid option"
         attempts: 3
       inactivity_options:
+        active: true
         chat_timeout: 20 #seconds
         warning_message: "Message"
         time_between_attempts: 10 #seconds

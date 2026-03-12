@@ -14,6 +14,7 @@ from ..docs.module import (
     delete_module_doc,
     get_module_doc,
     get_module_list_doc,
+    get_module_node_data_doc,
     import_module_doc,
     update_module_doc,
 )
@@ -78,7 +79,7 @@ async def get_module(request: web.Request) -> web.Response:
     except Exception as e:
         return resp.server_error(str(e), uuid)
 
-    return resp.ok(data, uuid)
+    return resp.success(data=data, uuid=uuid, log_msg=f"Modules: {len(data)}")
 
 
 @routes.post("/v1/{flow_id}/module")
@@ -335,3 +336,39 @@ async def get_module_list(request: web.Request) -> web.Response:
         return resp.server_error(str(e), uuid)
 
     return resp.ok(modules, uuid)
+
+
+@routes.get("/v1/{flow_id}/module/node", allow_head=False)
+@Util.docstring(get_module_node_data_doc)
+async def get_node_data(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Getting node data")
+
+    try:
+        flow_id = int(request.match_info["flow_id"])
+
+        if not await DBFlow.check_exists(flow_id):
+            return resp.not_found(f"Flow with ID {flow_id} not found in the database", uuid)
+
+    except (KeyError, ValueError):
+        return resp.bad_request("Invalid or missing flow ID", uuid)
+    except Exception as e:
+        return resp.server_error(str(e), uuid)
+
+    path = request.query.get("path", None)
+    node_type = request.query.get("node_type", None)
+
+    if not path:
+        return resp.bad_request("Missing path parameter", uuid)
+
+    try:
+        data = await DBModule.get_node_data(
+            flow_id=flow_id, path=path.split("."), node_type=node_type
+        )
+
+        if not data:
+            return resp.not_found(f"No data found for path '{path}'", uuid)
+    except Exception as e:
+        return resp.server_error(str(e), uuid)
+
+    return resp.success(data=data, uuid=uuid, log_msg=f"Data: {len(data)} results")

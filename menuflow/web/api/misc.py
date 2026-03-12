@@ -182,6 +182,9 @@ async def render_data(request: web.Request) -> web.Response:
                 if route_obj.node_vars:
                     dict_variables |= {"node": route_obj._node_vars}
 
+                if route_obj.external_vars:
+                    dict_variables |= {"external": route_obj._external_vars}
+
                 if flow_obj.flow_vars:
                     dict_variables |= {"flow": flow_obj.flow_vars}
 
@@ -226,7 +229,7 @@ async def countries(request: web.Request) -> web.Response:
     except GettingDataError as e:
         return resp.server_error(f"Error getting countries: {e}")
 
-    return resp.success(data=countries, uuid=trace_id)
+    return resp.success(data=countries, uuid=trace_id, log_msg="Countries fetched successfully")
 
 
 @routes.get("/v1/mis/get_task", allow_head=False)
@@ -256,8 +259,8 @@ async def get_task(request: web.Request) -> web.Response:
                     "created_at": getattr(task, "created_at", None),
                     "coro": getattr(coro, "__qualname__", str(coro)),
                     "repr": repr(task),
-                    "metadata": getattr(task, "metadata", {}),
+                    "bot_mxid": getattr(task, "bot_mxid", None),
                 }
             )
     response = {"tasks": task_list}
-    return resp.success(data=response, uuid=trace_id)
+    return resp.success(log_msg=f"Returning {len(task_list)} tasks", data=response, uuid=trace_id)

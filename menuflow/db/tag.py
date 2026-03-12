@@ -16,7 +16,7 @@ fake_db = Database.create("") if TYPE_CHECKING else None
 @dataclass
 class Tag(SerializableAttrs):
     db: ClassVar[Database] = fake_db
-    _columns: ClassVar[str] = "flow_id, create_date, author, active, name, flow_vars"
+    _columns: ClassVar[str] = "flow_id, create_date, author, author_name, active, name, flow_vars"
     _json_columns: ClassVar[str] = "flow_vars"
 
     id: int = ib(default=None)
@@ -24,12 +24,20 @@ class Tag(SerializableAttrs):
     name: str = ib(default=None)
     create_date: datetime = ib(default=None)
     author: str = ib(default=None)
+    author_name: str = ib(default=None)
     active: bool = ib(default=True)
     flow_vars: dict = ib(factory=dict)
 
     @property
     def values(self) -> tuple:
-        return (self.flow_id, self.author, self.active, self.name, self.flow_vars)
+        return (
+            self.flow_id,
+            self.author,
+            self.author_name,
+            self.active,
+            self.name,
+            self.flow_vars,
+        )
 
     @classmethod
     def _from_row(cls, row: Record) -> Tag | None:
@@ -42,6 +50,7 @@ class Tag(SerializableAttrs):
             name=row["name"],
             create_date=row["create_date"],
             author=row["author"],
+            author_name=row["author_name"],
             active=row["active"],
             flow_vars=json.loads(row["flow_vars"]),
         )
@@ -117,19 +126,25 @@ class Tag(SerializableAttrs):
         await cls.db.execute(q, flow_id)
 
     async def insert(self) -> int:
-        q = """INSERT INTO tag (flow_id, author, active, name, flow_vars)
-            VALUES ($1, $2, $3, $4, $5) RETURNING id"""
+        q = """INSERT INTO tag (flow_id, author, author_name, active, name, flow_vars)
+            VALUES ($1, $2, $3, $4, $5, $6) RETURNING id"""
 
         flow_vars_json = (
             self.flow_vars if isinstance(self.flow_vars, str) else json.dumps(self.flow_vars)
         )
 
         return await self.db.fetchval(
-            q, self.flow_id, self.author, self.active, self.name, flow_vars_json
+            q,
+            self.flow_id,
+            self.author,
+            self.author_name,
+            self.active,
+            self.name,
+            flow_vars_json,
         )
 
     async def update(self) -> None:
-        q = """UPDATE tag SET flow_id=$2, author=$3, active=$4, name=$5, flow_vars=$6
+        q = """UPDATE tag SET flow_id=$2, author=$3, author_name=$4, active=$5, name=$6, flow_vars=$7
             WHERE id=$1"""
 
         # Verificar si flow_vars ya es string JSON o es dict
@@ -142,6 +157,7 @@ class Tag(SerializableAttrs):
             self.id,
             self.flow_id,
             self.author,
+            self.author_name,
             self.active,
             self.name,
             flow_vars_json,
@@ -169,6 +185,7 @@ class Tag(SerializableAttrs):
                 self.create_date.strftime("%Y-%m-%d %H:%M:%S") if self.create_date else None
             ),
             "author": self.author,
+            "author_name": self.author_name,
             "active": self.active,
             "flow_vars": self.flow_vars,
         }

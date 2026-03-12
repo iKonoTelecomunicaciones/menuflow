@@ -37,7 +37,7 @@ tags:
           variable1: "value2"
 """
 
-get_tags_by_flow_doc = f"""
+get_tags_by_flow_doc = """
     ---
     summary: Get tags by flow ID.
     description: Retrieve tags for a specific flow. Can filter by tag ID or tag name, or retrieve all tags for the flow.

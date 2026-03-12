@@ -561,6 +561,20 @@ components:
       example:
         detail:
           message: Template is required
+    GetModuleNodeDataOk:
+      type: array
+      items:
+        oneOf:
+          - type: string
+          - type: number
+          - type: boolean
+          - type: object
+            additionalProperties: true
+          - type: array
+            items: {}
+      example:
+        - "Hello, world!"
+        - {"text": "Hola"}
     GetNodeOk:
       type: object
       properties:
@@ -622,9 +636,8 @@ components:
                 type: string
               repr:
                 type: string
-              metadata:
-                type: object
-                additionalProperties: true
+              bot_mxid:
+                type: string
 
     # Error schemas
     ErrorReadingData:
@@ -1508,6 +1521,9 @@ components:
             node:
               variable_1: value_1
               variable_2: value_2
+            external:
+              variable_3: value_3
+              variable_4: value_4
     GetVariablesNotFound:
       description: Get variables not found.
       content:
@@ -1645,8 +1661,55 @@ components:
                 created_at: 1716393600.000000
                 coro: task_1
                 repr: <Task pending name='task_1' coro=<_TaskWakeupWakeupPollingTaskWakeupWakeup() running at 0x7f5b58000000>>
-                metadata: {}
-
+                bot_mxid: "@bot:example.com"
+    GetModuleNodeDataSuccess:
+      description: Get node data by path success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/GetModuleNodeDataOk"
+          examples:
+            ArrayValues:
+              value:
+                - "Hello, world!"
+                - { text: "Hola" }
+                - ["a", "b"]
+            EmptyList:
+              value: []
+    GetModuleNodeDataBadRequest:
+      description: Get node data bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            MissingPath:
+              value:
+                detail:
+                  message: "Missing path parameter"
+            InvalidFlowID:
+              value:
+                detail:
+                  message: "Invalid or missing flow ID"
+    GetModuleNodeDataNotFound:
+      description: Get node data not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            FlowNotFound:
+              value:
+                detail:
+                  message: "Flow with ID 1 not found in the database"
+            NoDataFound:
+              value:
+                detail:
+                  message: "No data found for path 'inactivity_options.message'"
+            NoDataFoundWithType:
+              value:
+                detail:
+                  message: "No data found for path 'inactivity_options.message' and node_type 'message'"
     # Tag responses
     GetTagsSuccess:
       description: Get tags success.

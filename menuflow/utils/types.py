@@ -18,6 +18,7 @@ class Nodes(SerializableEnum):
     switch = "switch"
     delay = "delay"
     webhook = "webhook"
+    debug = "debug"
 
 
 class Middlewares(SerializableEnum):
@@ -35,6 +36,7 @@ class Scopes(SerializableEnum):
     ROOM = "room"
     ROUTE = "route"
     NODE = "node"
+    EXTERNAL = "external"
 
 
 class NodeStatus(SerializableEnum):
@@ -42,3 +44,9 @@ class NodeStatus(SerializableEnum):
     DEFAULT = "default"
     TIMEOUT = "timeout"
     WEBHOOK = "webhook"
+
+
+class QueueSignal:
+    LEAVE = object()
+    TIMEOUT = object()
+    CANCELLED = object()

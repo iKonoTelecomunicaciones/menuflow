@@ -66,8 +66,11 @@ menuflow:
 
     # Options to recreate inactivity tasks on startup and save flow
     inactivity_options:
-        recreate_on_startup: false
-        recreate_on_save_flow: false
+        recreate_on_startup: true
+
+    # If true, all messages will be queued and processed later by the matrix algorithm.
+    # Otherwise, the messages will be processed immediately.
+    enqueue_messages: false
 
 server:
     # The IP and port to listen to.
@@ -90,7 +93,6 @@ events:
     # - all: all events are stored in sqlite database
     # - buffer: only fail events are stored in sqlite database
     sqlite_action: "buffer"
-
 
 # Nats configuration
 nats:

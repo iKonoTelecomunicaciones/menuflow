@@ -3,7 +3,6 @@ import json
 from typing import TYPE_CHECKING
 
 from aiohttp import BasicAuth, ClientTimeout, ContentTypeError
-from jsonpath_ng import parse
 
 from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
@@ -193,27 +192,15 @@ class HTTPRequest(Switch):
                         pass
                     break
                 else:
-                    default_value = self.default_variables.get("flow").get("jq_default_value")
-                    if not self.default_variables.get("flow").get("jq_syntax"):
-                        try:
-                            data_match = []
-                            expr = parse(_http_variables[variable])
-                            data_match: list = [match.value for match in expr.find(response_data)]
-                        except Exception as error:
-                            self.log.error(
-                                f"""[{_room_id}] Error parsing '{self.http_variables[variable]}' with jsonpath
-                                on variable '{variable}'. Set to default value ({default_value}).
-                                Error message: {error}"""
-                            )
-                    else:
-                        jq_result: dict = Util.jq_compile(_http_variables[variable], response_data)
-                        if jq_result.get("status") != 200:
-                            self.log.error(
-                                f"""[{_room_id}] Error parsing '{self.http_variables[variable]}' with jq
-                                on variable '{variable}'. Set to default value ({default_value}).
-                                Error message: {jq_result.get("error")}, Status: {jq_result.get("status")}"""
-                            )
-                        data_match = jq_result.get("result")
+                    default_value = None
+                    jq_result: dict = Util.jq_compile(_http_variables[variable], response_data)
+                    if jq_result.get("status") != 200:
+                        self.log.error(
+                            f"[{_room_id}] Error parsing '{self.http_variables[variable]}' with jq "
+                            f"on variable '{variable}'. Set to default value ({default_value}). "
+                            f"Error message: {jq_result.get('error')}, Status: {jq_result.get('status')}"
+                        )
+                    data_match = jq_result.get("result")
 
                     try:
                         data_match = default_value if not data_match else data_match
@@ -304,6 +291,6 @@ class HTTPRequest(Switch):
             node_type=Nodes.http_request,
             node_id=self.id,
             o_connection=o_connection,
-            variables=self.room.all_variables | self.default_variables,
-            conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
+            variables=None,
+            conversation_uuid=self.room.conversation_uuid,
         )

@@ -1,6 +1,7 @@
 from .base import Base, convert_to_bool
 from .check_holiday import CheckHoliday
 from .check_time import CheckTime
+from .debug import Debug
 from .delay import Delay
 from .email import Email
 from .form import FormInput

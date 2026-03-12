@@ -105,7 +105,19 @@ async def create_client(request: web.Request) -> web.Response:
         main_module = DBModule(
             flow_id=new_flow_id,
             name="Main",
-            nodes=[],
+            nodes=[
+                {
+                    "x": 0,
+                    "y": 0,
+                    "id": "start",
+                    "name": "start",
+                    "text": "",
+                    "type": "message",
+                    "module": "Main",
+                    "message_type": "m.text",
+                    "o_connection": "",
+                }
+            ],
             position={},
             tag_id=tag_id,
         )
@@ -133,7 +145,7 @@ async def set_variables(request: web.Request) -> web.Response:
 
     try:
         room: Room = await Room.get_by_room_id(room_id, bot_mxid)
-        await room.set_variable(variable_id="external", value=variables)
+        await room.set_external_variables(variables=variables)
         if conversation_uuid:
             await room.set_variable(variable_id="room.conversation_uuid", value=conversation_uuid)
     except Exception as e:
@@ -177,7 +189,7 @@ async def update_client(request: web.Request) -> web.Response:
     )
 
     await client.update()
-    return resp.ok(client.to_dict(), uuid)
+    return resp.success(data=client.to_dict(), uuid=uuid)
 
 
 @routes.post("/v1/client/{mxid}/flow/reload")
@@ -194,7 +206,7 @@ async def reload_client_flow(request: web.Request) -> web.Response:
     config: Config = get_config()
     await client.flow_cls.load_flow(flow_mxid=client.id, config=config)
 
-    return resp.ok({"detail": {"message": "Flow reloaded successfully"}}, uuid)
+    return resp.success(message="Flow reloaded successfully", uuid=uuid)
 
 
 @routes.patch("/v1/client/{mxid}/{action}")
@@ -220,7 +232,7 @@ async def enable_disable_client(request: web.Request) -> web.Response:
         return resp.bad_request("Invalid action provided", uuid)
 
     await client.update()
-    return resp.ok({"detail": {"message": f"Client {action}d successfully"}}, uuid)
+    return resp.success(message=f"Client {action}d successfully", uuid=uuid)
 
 
 @routes.get("/v1/room/{room_id}/get_variables", allow_head=False)
@@ -231,7 +243,7 @@ async def get_variables(request: web.Request) -> web.Response:
 
     room_id = request.match_info["room_id"]
     bot_mxid = request.query.get("bot_mxid", None)
-    scopes = request.query.getall("scopes", ["room", "route", "node"])
+    scopes = request.query.getall("scopes", ["room", "route", "node", "external"])
     response = {}
 
     try:
@@ -256,13 +268,19 @@ async def get_variables(request: web.Request) -> web.Response:
                     response[scope] = route._variables
                 case "node":
                     response[scope] = route._node_vars
+                case "external":
+                    response[scope] = route._external_vars
                 case _:
                     log.warning(f"({uuid}) -> Invalid scope: {scope}, skipping")
 
     except Exception as e:
         return resp.server_error(str(e), uuid)
 
-    return resp.ok(response, uuid) if response else resp.not_found("Scopes not found")
+    return (
+        resp.success(data=response, uuid=uuid)
+        if response
+        else resp.not_found("Scopes not found", uuid)
+    )
 
 
 @routes.get("/v1/room/{room_id}/status", allow_head=False)

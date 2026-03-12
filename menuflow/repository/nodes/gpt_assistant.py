@@ -10,10 +10,11 @@ from .switch import Switch
 
 @dataclass
 class InactivityOptions(SerializableAttrs):
-    chat_timeout: int = ib(default=None)
+    active: bool = ib(default=False)
+    chat_timeout: int = ib(default=0)
     warning_message: str = ib(default=None)
-    time_between_attempts: int = ib(default=None)
-    attempts: int = ib(default=None)
+    time_between_attempts: int = ib(default=0)
+    attempts: int = ib(default=0)
 
 
 @dataclass
@@ -40,7 +41,7 @@ class GPTAssistant(Switch):
           model: "gpt-3.5-turbo"
           assistant_id: "123456"
           api_key: "123456"
-          initial_info: "{{ route.context }}, {{ route.external.user_name }}"
+          initial_info: "{{ route.context }}, {{ external.user_name }}"
           variable: opt
           validation: '{{ opt.isdigit() }}'
           validation_fail:
@@ -48,6 +49,7 @@ class GPTAssistant(Switch):
             attempts: 3
           group_messages_timeout: 10
           inactivity_options:
+            active: true
             chat_timeout: 20 #seconds
             warning_message: "Message"
             time_between_attempts: 10 #seconds
