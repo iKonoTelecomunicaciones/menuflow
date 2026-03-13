@@ -27,9 +27,17 @@ class InteractiveMessage(SerializableAttrs, BaseMessageEventContent):
             super().trim_reply_fallback()
             return
 
-        self.interactive_message["body"] = Util.remove_jinja_markers(
-            self.interactive_message.get("body", "")
-        )
+        if isinstance(self.interactive_message.get("body"), str):
+            self.interactive_message["body"] = Util.remove_jinja_markers(
+                self.interactive_message.get("body", "")
+            )
+        elif isinstance(self.interactive_message.get("body"), dict):
+            try:
+                self.interactive_message["body"]["text"] = Util.remove_jinja_markers(
+                    self.interactive_message["body"].get("text", "")
+                )
+            except KeyError:
+                pass
 
         try:
             self.interactive_message["content"]["text"] = Util.remove_jinja_markers(
