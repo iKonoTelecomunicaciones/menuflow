@@ -113,7 +113,7 @@ class Route:
         return cls._from_row(row) if row else route
 
     async def insert(self) -> str:
-        q = f"INSERT INTO route ({self._columns}) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+        q = f"INSERT INTO route ({self._columns}) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
         await self.db.execute(q, *self.values)
 
     async def update(self) -> None:
