@@ -65,11 +65,7 @@ class InteractiveInput(Input):
             await self._send_node_event(event_type=event_type, o_connection=o_connection)
 
         elif self.room.route.state == RouteState.TIMEOUT:
-            o_connection = await self.get_case_by_id("timeout")
-            event_type = MenuflowNodeEvents.NodeInputTimeout
-
-            await self.room.update_menu(node_id=o_connection, state=None)
-            await self._send_node_event(event_type=event_type, o_connection=o_connection)
+            await self._handle_input_timeout()
 
         else:
             # This is the case where the room is not in the input state
