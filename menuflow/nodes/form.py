@@ -97,10 +97,10 @@ class FormInput(Input):
         if self.room.route.state == RouteState.INPUT:
             _variable = self.variable
             if not evt or not _variable or evt.content.msgtype != "m.form_response":
-                _msg = " A problem occurred getting message event"
+                _msg = "A problem occurred getting message event"
 
                 if not _variable:
-                    _msg = " The variable is not set"
+                    _msg = "The variable is not set"
                 elif evt.content.msgtype != "m.form_response":
                     _msg = "A problem occurred getting user response, the message type is not m.form_response"
                     await self.check_fail_attempts()
