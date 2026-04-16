@@ -1,14 +1,13 @@
 from typing import Any
 
 from markdown import markdown
-from mautrix.types import Format, MessageEvent, MessageType, TextMessageEventContent
+from mautrix.types import Format, MessageEvent, MessageType, Obj, TextMessageEventContent
 
 from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
-from ..events.event_generator import send_node_event
 from ..repository import Form, FormMessage, FormMessageContent
 from ..room import Room
-from ..utils import Nodes, NodeStatus, Util
+from ..utils import Nodes, NodeStatus
 from .input import Input
 
 
@@ -62,7 +61,8 @@ class FormInput(Input):
         await self.room.update_menu(o_connection)
         return o_connection
 
-    async def check_fail_attempts(self):
+    async def check_fail_attempts(self) -> None:
+        """It checks if the user has exceeded the number of attempts and sends a message to the user."""
         if not self.validation_attempts:
             return
 
@@ -70,14 +70,14 @@ class FormInput(Input):
         await self.room.route.update_node_vars()
         if case_to_be_used == NodeStatus.ATTEMPT_EXCEEDED.value:
             await self.__update_menu(case_to_be_used)
-            return case_to_be_used
+            return
 
-        if self.validation_fail_message:
+        if message := self.validation_fail_message:
             msg_content = TextMessageEventContent(
                 msgtype=MessageType.TEXT,
-                body=self.validation_fail_message,
+                body=message,
                 format=Format.HTML,
-                formatted_body=markdown(text=self.validation_fail_message, extensions=["nl2br"]),
+                formatted_body=markdown(text=message, extensions=["nl2br"]),
             )
             await self.send_message(self.room.room_id, msg_content)
 
@@ -94,34 +94,33 @@ class FormInput(Input):
 
         """
 
-        inactivity = self.inactivity_options
-
         if self.room.route.state == RouteState.INPUT:
             _variable = self.variable
             if not evt or not _variable or evt.content.msgtype != "m.form_response":
-                self.log.warning(
-                    f"[{self.room.room_id}] A problem occurred getting user response, message type is not m.form_response"
-                )
-                o_connection = await self.check_fail_attempts()
+                _msg = "A problem occurred getting message event"
 
-                if inactivity.get("active") and not o_connection:
-                    await self.timeout_active_chats(inactivity)
+                if not _variable:
+                    _msg = "The variable is not set"
+                elif evt.content.msgtype != "m.form_response":
+                    _msg = "A problem occurred getting user response, the message type is not m.form_response"
+                    await self.check_fail_attempts()
+
+                self.log.warning(f"[{self.room.room_id}] {_msg}")
                 return
 
-            await self.room.set_variable(_variable, evt.content.get("form_data"))
+            content = evt.content.get("form_data")
+
+            await self.room.set_variable(_variable, content)
+            self.room.set_node_var(
+                content=content.serialize() if isinstance(content, Obj) else content
+            )
             o_connection = await self.__update_menu("submitted")
 
-            await send_node_event(
-                config=self.room.config,
-                send_event=self.content.get("send_event"),
-                event_type=MenuflowNodeEvents.NodeInputData,
-                room_id=self.room.room_id,
-                sender=self.room.matrix_client.mxid,
-                node_id=self.id,
-                o_connection=o_connection,
-                variables=self.room.all_variables | self.default_variables,
-                conversation_uuid=self.room.conversation_uuid,
+            await self._send_node_event(
+                event_type=MenuflowNodeEvents.NodeInputData, o_connection=o_connection
             )
+        elif self.room.route.state == RouteState.TIMEOUT:
+            await self._handle_input_timeout()
         else:
             # This is the case where the room is not in the input state
             # and the node is an input node.
@@ -133,22 +132,11 @@ class FormInput(Input):
                 event_type="m.room.message",
                 content=self.form_message_content,
             )
-            await self.room.update_menu(node_id=self.id, state=RouteState.INPUT)
-
-            await send_node_event(
-                config=self.room.config,
-                send_event=self.content.get("send_event"),
-                event_type=MenuflowNodeEvents.NodeEntry,
-                room_id=self.room.room_id,
-                sender=self.room.matrix_client.mxid,
-                node_type=Nodes.media,
-                node_id=self.id,
-                o_connection=None,
-                variables=None,
-                conversation_uuid=self.room.conversation_uuid,
+            self.room.set_node_var(content="")
+            await self.room.update_menu(
+                node_id=self.id, state=RouteState.INPUT, update_node_vars=False
             )
 
-            if inactivity.get("active") and not Util.get_tasks_by_name(
-                task_name=self.room.room_id
-            ):
-                await self.timeout_active_chats(inactivity)
+            await self._send_node_event(
+                event_type=MenuflowNodeEvents.NodeEntry, node_type=Nodes.media, o_connection=None
+            )
