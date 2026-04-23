@@ -150,7 +150,7 @@ class HTTPRequest(Switch):
             return status, exception, o_connection
 
         self.log.debug(
-            f"[{_room_id}] node: {self.id} method: {self.method} url: {self.url} status: {response.status}"
+            f"[{_room_id}] node: {self.id} method: {self.method} url: {self.url} status: {response.status} body: {request_body}"
         )
 
         if response.status >= 400:

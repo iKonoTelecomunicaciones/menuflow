@@ -24,7 +24,7 @@ from mautrix.types import (
 from .config import Config
 from .db.room import Room as DBRoom
 from .db.route import RouteState
-from .nodes import Base, FormInput, GPTAssistant, Input, InteractiveInput, Webhook
+from .nodes import Base, FormInput, GPTAssistant, Input, InteractiveInput, Message, Webhook
 from .repository.room_events import RoomEvents
 from .room import Room
 from .user import User
@@ -484,6 +484,13 @@ class MatrixHandler(MatrixClient):
 
                         self.log.info(f"[{room.room_id}] {_msg}")
                 else:
+                    if (
+                        isinstance(node, Message)
+                        and node.id == RouteState.START.value
+                        and room.route.state == RouteState.START
+                    ):
+                        await self.load_room_constants(room_id=room.room_id)
+
                     await node.run()
                     if room.route.state == RouteState.INVITE:
                         self.log.debug(
