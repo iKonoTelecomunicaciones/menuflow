@@ -17,7 +17,7 @@ class Room:
 
     id: int | None
     room_id: RoomID
-    variables: dict | None
+    variables: str = ib(default="{}")
     events: dict = ib(factory=dict)
 
     @classmethod
@@ -36,7 +36,13 @@ class Room:
 
     @property
     def _variables(self) -> dict:
-        return json.loads(self.variables) if self.variables else {}
+        if not hasattr(self, "_vars_cache"):
+            self._vars_cache: dict = json.loads(self.variables or "{}")
+        return self._vars_cache
+
+    def flush_vars(self):
+        if hasattr(self, "_vars_cache"):
+            self.variables = json.dumps(self._vars_cache)
 
     @property
     def _events(self) -> dict:
@@ -50,6 +56,7 @@ class Room:
         await self.db.execute(q, *self.values)
 
     async def update(self) -> None:
+        self.flush_vars()
         q = "UPDATE room SET variables = $2, events = $3 WHERE room_id = $1"
         await self.db.execute(q, *self.values)
 
@@ -81,3 +88,8 @@ class Room:
                 rt.client = $3
         """
         return await cls.db.fetch(q, state, variable_name, menuflow_bot_mxid)
+
+    async def update_variables(self) -> None:
+        self.flush_vars()
+        q = "UPDATE room SET variables = $2 WHERE room_id = $1"
+        await self.db.execute(q, self.room_id, self.variables)

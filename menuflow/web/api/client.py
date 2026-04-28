@@ -252,7 +252,7 @@ async def get_variables(request: web.Request) -> web.Response:
             return resp.not_found(f"room_id '{room_id}' not found", uuid)
 
         if not bot_mxid:
-            bot_mxid = room._variables.get("current_bot_mxid")
+            bot_mxid = room._variables.get("room", {}).get("current_bot_mxid")
             if not bot_mxid:
                 return resp.not_found("current_bot_mxid not found in the room variables", uuid)
 
@@ -263,7 +263,7 @@ async def get_variables(request: web.Request) -> web.Response:
         for scope in scopes:
             match scope:
                 case "room":
-                    response[scope] = room._variables
+                    response[scope] = room._variables.get("room", {})
                 case "route":
                     response[scope] = route._variables
                 case "node":
