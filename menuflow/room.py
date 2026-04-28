@@ -187,7 +187,7 @@ class Room(DBRoom):
     @property
     def all_variables(self) -> Dict:
         return {
-            "room": self._variables,
+            "room": self._variables.get("room", {}),
             "route": self.route._variables,
             "node": self.route._node_vars,
             "external": self.route._external_vars,
@@ -349,7 +349,7 @@ class Room(DBRoom):
             self.log.error(f"[VAR][SET] {scope.value}.{key} => {e}")
             return
 
-        entry.set_vars(new_variables)
+        entry.set_vars(new_variables)  # TODO: Delete when unifying scope columns
         await entry.update_func()
 
         # It's necessary to update the room cache with the new variable information in the different bot_mxids.
@@ -419,7 +419,7 @@ class Room(DBRoom):
             self.log.error(f"[VAR][DEL] {scope.value}.{key} => {e}")
             return
 
-        entry.set_vars(variables)
+        entry.set_vars(variables)  # TODO: Delete when unifying scope columns
         await entry.update_func()
 
         # It's necessary to update the room cache with the new variable information in the different bot_mxids.

@@ -165,7 +165,7 @@ async def render_data(request: web.Request) -> web.Response:
         if not room_obj:
             return resp.not_found(f"Room '{room_id}' not found")
         else:
-            bot_mxid = room_obj._variables.get("current_bot_mxid")
+            bot_mxid = room_obj._variables.get("room", {}).get("current_bot_mxid")
 
             if room_obj and bot_mxid:
                 route_obj = await DBRoute.get_by_room_and_client(
@@ -173,8 +173,8 @@ async def render_data(request: web.Request) -> web.Response:
                 )
                 flow_obj = await DBFlow.get_by_mxid(bot_mxid)
 
-                if room_obj._variables:
-                    dict_variables |= {"room": room_obj._variables}
+                if room_obj._variables.get("room", {}):
+                    dict_variables |= {"room": room_obj._variables.get("room", {})}
 
                 if route_obj.variables:
                     dict_variables |= {"route": route_obj._variables}
