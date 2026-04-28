@@ -24,7 +24,7 @@ from mautrix.types import (
 from .config import Config
 from .db.room import Room as DBRoom
 from .db.route import RouteState
-from .nodes import Base, FormInput, GPTAssistant, Input, InteractiveInput, Webhook
+from .nodes import Base, FormInput, GPTAssistant, Input, InteractiveInput, Message, Webhook
 from .repository.room_events import RoomEvents
 from .room import Room
 from .user import User
@@ -170,7 +170,7 @@ class MatrixHandler(MatrixClient):
         for joined_room in joined_room:
             await self.load_room_constants(room_id=joined_room)
 
-    async def load_room_constants(self, room_id: RoomID):
+    async def load_room_constants(self, room_id: RoomID, room: Room | None = None):
         """This function loads constants for a given room and sets variables if they do not exist.
 
         Parameters
@@ -179,13 +179,12 @@ class MatrixHandler(MatrixClient):
             The ID of the Matrix room that the constants are being loaded for.
 
         """
+        if not room:
+            room: Room = await Room.get_by_room_id(room_id=room_id, bot_mxid=self.mxid)
+            room.config = self.config
+            room.matrix_client = self
 
-        room: Room = await Room.get_by_room_id(room_id=room_id, bot_mxid=self.mxid)
-
-        room.config = self.config
-        room.matrix_client = self
-
-        await room.set_variable("room.current_bot_mxid", self.mxid)
+            await room.set_variable("room.current_bot_mxid", self.mxid)
 
         if not await room.get_variable(variable_id="customer_room_id"):
             await room.set_variable("customer_room_id", room_id)
@@ -484,6 +483,15 @@ class MatrixHandler(MatrixClient):
 
                         self.log.info(f"[{room.room_id}] {_msg}")
                 else:
+                    # TODO: This is to fix the problem where path constants are not stored. Possible removal.
+                    if (
+                        isinstance(node, Message)
+                        and node.id == RouteState.START.value
+                        and room.route.state == RouteState.START
+                    ):
+                        self.log.info(f"[{room.room_id}] Checking if room constants are loaded...")
+                        await self.load_room_constants(room_id=room.room_id, room=room)
+
                     await node.run()
                     if room.route.state == RouteState.INVITE:
                         self.log.debug(
