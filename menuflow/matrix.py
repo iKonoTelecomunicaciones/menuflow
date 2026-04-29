@@ -24,7 +24,7 @@ from mautrix.types import (
 from .config import Config
 from .db.room import Room as DBRoom
 from .db.route import RouteState
-from .nodes import Base, FormInput, GPTAssistant, Input, InteractiveInput, Webhook
+from .nodes import Base, FormInput, GPTAssistant, Input, InteractiveInput, Message, Webhook
 from .repository.room_events import RoomEvents
 from .room import Room
 from .user import User
@@ -117,11 +117,13 @@ class MatrixHandler(MatrixClient):
             self.log.warning(f"[{evt.room_id}] Room not found. Ignoring leave event")
             return
         room.room_events = RoomEvents.deserialize(room._events)
+        last_join_ts = room.room_events.last_join_ts
 
-        if getattr(evt, "timestamp", 0) < room.room_events.last_join_ts:
+        if getattr(evt, "timestamp", 0) < last_join_ts:
             self.log.warning(
                 f"[{evt.room_id}] Ignoring {evt.content.get('membership')} event ({evt.event_id}) "
-                f"is older than last join event ({room.room_events.last_join_event.get('event_id')})"
+                f"is older than last join event ({room.room_events.last_join_event.get('event_id')}) "
+                f"({last_join_ts})"
             )
         else:
             self.log.info(
@@ -170,7 +172,7 @@ class MatrixHandler(MatrixClient):
         for joined_room in joined_room:
             await self.load_room_constants(room_id=joined_room)
 
-    async def load_room_constants(self, room_id: RoomID):
+    async def load_room_constants(self, room_id: RoomID, room: Room | None = None):
         """This function loads constants for a given room and sets variables if they do not exist.
 
         Parameters
@@ -179,13 +181,12 @@ class MatrixHandler(MatrixClient):
             The ID of the Matrix room that the constants are being loaded for.
 
         """
+        if not room:
+            room: Room = await Room.get_by_room_id(room_id=room_id, bot_mxid=self.mxid)
+            room.config = self.config
+            room.matrix_client = self
 
-        room: Room = await Room.get_by_room_id(room_id=room_id, bot_mxid=self.mxid)
-
-        room.config = self.config
-        room.matrix_client = self
-
-        await room.set_variable("room.current_bot_mxid", self.mxid)
+            await room.set_variable("room.current_bot_mxid", self.mxid)
 
         if not await room.get_variable(variable_id="customer_room_id"):
             await room.set_variable("customer_room_id", room_id)
@@ -251,14 +252,17 @@ class MatrixHandler(MatrixClient):
         room: Room = await Room.get_by_room_id(room_id=evt.room_id, bot_mxid=self.mxid)
         room.room_events = RoomEvents.deserialize(room._events)
         last_join_evt = room.room_events.last_join_event
+        last_join_ts = room.room_events.last_join_ts
 
-        if getattr(evt, "timestamp", 0) < room.room_events.last_join_ts:
+        if getattr(evt, "timestamp", 0) < last_join_ts:
             self.log.warning(
-                f"{base_msg} Is older than last join event ({last_join_evt.event_id})"
+                f"{base_msg} Is older than last join event ({last_join_evt.event_id}) ({last_join_ts})"
             )
             return
 
-        if last_join_evt and evt.event_id == last_join_evt.get("event_id"):
+        if not last_join_evt:
+            self.log.warning(f"[{evt.room_id}] No last join event found in the database")
+        elif last_join_evt and evt.event_id == last_join_evt.get("event_id"):
             self.log.warning(f"{base_msg} Already processed.")
             return
 
@@ -299,19 +303,28 @@ class MatrixHandler(MatrixClient):
             or message.content.msgtype == MessageType.NOTICE
         ):
             self.log.warning(
-                f"[{message.room_id}] The incoming message ({message.event_id}) from {message.sender} will be ignored by the bot"
+                f"[{message.room_id}] The incoming message ({message.event_id}) "
+                f"from {message.sender} will be ignored by the bot"
             )
             return
 
         room: Room = await Room.get_by_room_id(room_id=message.room_id, bot_mxid=self.mxid)
         room.room_events = RoomEvents.deserialize(room._events)
+        last_message_evt = room.room_events.last_processed_message
 
         last_message_time = datetime.fromtimestamp(room.room_events.last_message_ts / 1000)
         current_message_time = datetime.fromtimestamp(message.timestamp / 1000)
 
+        if not last_message_evt:
+            self.log.warning(
+                f"[{message.room_id}] No last processed message found in the database"
+            )
+
         if last_message_time > current_message_time:
             self.log.warning(
-                f"[{message.room_id}] Ignoring message because it's older than the last processed message"
+                f"[{message.room_id}] Ignoring message ({message.event_id}) "
+                f"because it's older than the last processed message ({last_message_evt.event_id}) "
+                f"({last_message_time})"
             )
             return
 
@@ -484,6 +497,15 @@ class MatrixHandler(MatrixClient):
 
                         self.log.info(f"[{room.room_id}] {_msg}")
                 else:
+                    # TODO: This is to fix the problem where path constants are not stored. Possible removal.
+                    if (
+                        isinstance(node, Message)
+                        and node.id == RouteState.START.value
+                        and room.route.state == RouteState.START
+                    ):
+                        self.log.info(f"[{room.room_id}] Checking if room constants are loaded...")
+                        await self.load_room_constants(room_id=room.room_id, room=room)
+
                     await node.run()
                     if room.route.state == RouteState.INVITE:
                         self.log.debug(
