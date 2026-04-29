@@ -117,11 +117,13 @@ class MatrixHandler(MatrixClient):
             self.log.warning(f"[{evt.room_id}] Room not found. Ignoring leave event")
             return
         room.room_events = RoomEvents.deserialize(room._events)
+        last_join_ts = room.room_events.last_join_ts
 
-        if getattr(evt, "timestamp", 0) < room.room_events.last_join_ts:
+        if getattr(evt, "timestamp", 0) < last_join_ts:
             self.log.warning(
                 f"[{evt.room_id}] Ignoring {evt.content.get('membership')} event ({evt.event_id}) "
-                f"is older than last join event ({room.room_events.last_join_event.get('event_id')})"
+                f"is older than last join event ({room.room_events.last_join_event.get('event_id')}) "
+                f"({last_join_ts})"
             )
         else:
             self.log.info(
@@ -250,14 +252,17 @@ class MatrixHandler(MatrixClient):
         room: Room = await Room.get_by_room_id(room_id=evt.room_id, bot_mxid=self.mxid)
         room.room_events = RoomEvents.deserialize(room._events)
         last_join_evt = room.room_events.last_join_event
+        last_join_ts = room.room_events.last_join_ts
 
-        if getattr(evt, "timestamp", 0) < room.room_events.last_join_ts:
+        if getattr(evt, "timestamp", 0) < last_join_ts:
             self.log.warning(
-                f"{base_msg} Is older than last join event ({last_join_evt.event_id})"
+                f"{base_msg} Is older than last join event ({last_join_evt.event_id}) ({last_join_ts})"
             )
             return
 
-        if last_join_evt and evt.event_id == last_join_evt.get("event_id"):
+        if not last_join_evt:
+            self.log.warning(f"[{evt.room_id}] No last join event found in the database")
+        elif last_join_evt and evt.event_id == last_join_evt.get("event_id"):
             self.log.warning(f"{base_msg} Already processed.")
             return
 
@@ -298,19 +303,28 @@ class MatrixHandler(MatrixClient):
             or message.content.msgtype == MessageType.NOTICE
         ):
             self.log.warning(
-                f"[{message.room_id}] The incoming message ({message.event_id}) from {message.sender} will be ignored by the bot"
+                f"[{message.room_id}] The incoming message ({message.event_id}) "
+                f"from {message.sender} will be ignored by the bot"
             )
             return
 
         room: Room = await Room.get_by_room_id(room_id=message.room_id, bot_mxid=self.mxid)
         room.room_events = RoomEvents.deserialize(room._events)
+        last_message_evt = room.room_events.last_processed_message
 
         last_message_time = datetime.fromtimestamp(room.room_events.last_message_ts / 1000)
         current_message_time = datetime.fromtimestamp(message.timestamp / 1000)
 
+        if not last_message_evt:
+            self.log.warning(
+                f"[{message.room_id}] No last processed message found in the database"
+            )
+
         if last_message_time > current_message_time:
             self.log.warning(
-                f"[{message.room_id}] Ignoring message because it's older than the last processed message"
+                f"[{message.room_id}] Ignoring message ({message.event_id}) "
+                f"because it's older than the last processed message ({last_message_evt.event_id}) "
+                f"({last_message_time})"
             )
             return
 
