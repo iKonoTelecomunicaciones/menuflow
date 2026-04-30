@@ -1,6 +1,6 @@
 from typing import Any
 
-from mautrix.types import MessageEvent
+from mautrix.types import MessageEvent, Obj
 
 from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
@@ -58,7 +58,14 @@ class InteractiveInput(Input):
                 await self.room.update_menu(node_id=self.id)
                 return
 
-            self.room.set_node_var(content=evt.content.body)
+            if evt.content.msgtype == "m.form_response":
+                content = evt.content.get("form_data")
+                content = content.serialize() if isinstance(content, Obj) else content
+                self.room.set_node_var(content=content)
+                await self.room.set_variables(content)
+            else:
+                self.room.set_node_var(content=evt.content.body)
+
             o_connection = await self.input_text(text=evt.content.body)
 
             event_type = MenuflowNodeEvents.NodeInputData
