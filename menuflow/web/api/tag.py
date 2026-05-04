@@ -6,9 +6,9 @@ from logging import Logger, getLogger
 from aiohttp import web
 
 from ...config import Config
-from ...db.flow import Flow as DBFlow
 from ...db.module import Module as DBModule
 from ...db.tag import Tag as DBTag
+from ...flow_sync import FlowSync
 from ..base import get_config, routes
 from ..docs.tag import delete_tag_doc, get_tags_by_flow_doc, publish_tag_doc, restore_tag_doc
 from ..responses import resp
@@ -221,11 +221,10 @@ async def publish_tag(request: web.Request) -> web.Response:
         # Restart flow
         config: Config = get_config()
         if config["menuflow.load_flow_from"] == "database":
-            modules = await DBModule.get_tag_modules(tag_id)
-            nodes = [node for module in modules for node in module.nodes]
-            await Util.update_flow_db_clients(
-                flow_id, {"flow_variables": tag.flow_vars, "nodes": nodes}, config
-            )
+
+            flow_sync = FlowSync(config)
+            content = await flow_sync.build_active_tag_content(tag_id)
+            await flow_sync.update_flow_db_clients(flow_id, content, uuid)
 
         log.info(f"({uuid}) -> Tag {tag_id} published successfully for flow {flow_id}")
         return resp.ok({"message": "Tag published successfully"}, uuid)

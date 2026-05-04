@@ -10,6 +10,7 @@ from ...db.flow import Flow as DBFlow
 from ...db.flow_backup import FlowBackup
 from ...db.module import Module as DBModule
 from ...db.tag import Tag as DBTag
+from ...flow_sync import FlowSync
 from ...repository.flow import Flow
 from ..base import get_config, routes
 from ..docs.flow import (
@@ -76,13 +77,6 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
         if flow.flow and incoming_flow:
             await flow.backup_flow(config)
 
-        if config["menuflow.load_flow_from"] == "database":
-            modules = await DBModule.all(int(flow_id))
-            nodes = [node for module in modules for node in module.get("nodes", [])]
-            await Util.update_flow_db_clients(
-                flow_id, {"flow_variables": variables, "nodes": nodes}, config
-            )
-
         message = "Flow updated successfully"
     else:
         new_flow = DBFlow(flow=incoming_flow, flow_vars=variables)
@@ -107,7 +101,7 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
 
         message = "Flow created successfully"
 
-    return resp.ok({"detail": {"message": message, "data": {"flow_id": flow_id}}}, uuid)
+    return resp.success(message=message, data={"flow_id": flow_id}, uuid=uuid)
 
 
 @routes.get("/v1/flow", allow_head=False)
@@ -321,21 +315,11 @@ async def publish_flow(request: web.Request) -> web.Response:
 
     config: Config = get_config()
     if config["menuflow.load_flow_from"] == "database":
-        modules = await DBModule.get_tag_modules(int(tag_id))
-        flow_vars = await DBTag.get_by_id(tag_id)
-        nodes = [node for module in modules for node in module.get("nodes", [])]
-        await Util.update_flow_db_clients(
-            flow_id, {"flow_variables": flow_vars.flow_vars, "nodes": nodes}, config
-        )
+        flow_sync = FlowSync(config)
+        content = await flow_sync.build_active_tag_content(int(tag_id))
+        await flow_sync.update_flow_db_clients(flow_id, content, uuid)
 
-    return resp.ok(
-        {
-            "detail": {
-                "message": f"Flow published successfully with tag '{name}'",
-            }
-        },
-        uuid,
-    )
+    return resp.success(message=f"Flow published successfully with tag '{name}'", uuid=uuid)
 
 
 # Import flow
@@ -379,6 +363,4 @@ async def import_flow(request: web.Request) -> web.Response:
 
     await Flow.update_flow(flow, incoming_flow, variables, nodes, positions, current_tag)
 
-    return resp.ok(
-        {"detail": {"message": "Flow imported successfully", "data": {"flow_id": flow_id}}}, uuid
-    )
+    return resp.success(message="Flow imported successfully", data={"flow_id": flow_id}, uuid=uuid)

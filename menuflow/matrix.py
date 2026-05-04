@@ -24,6 +24,7 @@ from mautrix.types import (
 from .config import Config
 from .db.room import Room as DBRoom
 from .db.route import RouteState
+from .flow_sync import FlowSync
 from .nodes import Base, FormInput, GPTAssistant, Input, InteractiveInput, Message, Webhook
 from .repository.room_events import RoomEvents
 from .room import Room
@@ -48,6 +49,7 @@ class MatrixHandler(MatrixClient):
         self.LOCKED_ROOMS = set()
         self.LAST_JOIN_EVENT: dict[RoomID, StrippedStateEvent] = {}
         self.QUEUE_MESSAGE: dict[RoomID, asyncio.Queue] = {}
+        self.flow_sync = FlowSync(config=self.config)
         Base.init_cls(config=self.config, session=self.api.session)
 
     def handle_sync(self, data: dict) -> list[asyncio.Task]:
@@ -454,6 +456,9 @@ class MatrixHandler(MatrixClient):
             return
 
         self.lock_room(room_id=room.room_id, evt=evt)
+        await self.flow_sync.check_active_tag(
+            room_id=room.room_id, mxid=self.mxid, loaded_metadata=self.flow.data.loaded_metadata
+        )
 
         while (
             (node := self.flow.node(room=room))
