@@ -27,7 +27,6 @@ from ..docs.client import (
     reload_client_flow_doc,
     set_variables_doc,
     status_doc,
-    update_client_doc,
 )
 from ..responses import resp
 from ..util import Util
@@ -152,44 +151,6 @@ async def set_variables(request: web.Request) -> web.Response:
         return resp.server_error(str(e), uuid)
 
     return resp.success(message="Variables set successfully", uuid=uuid)
-
-
-@routes.patch("/v1/client/{mxid}/flow")
-@Util.docstring(update_client_doc)
-async def update_client(request: web.Request) -> web.Response:
-    uuid = Util.generate_uuid()
-    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Updating client")
-
-    mxid = request.match_info["mxid"]
-    client: Optional[MenuClient] = await MenuClient.get(mxid)
-    if not client:
-        return resp.client_not_found(mxid, uuid)
-
-    try:
-        data: Dict = await request.json()
-    except JSONDecodeError:
-        return resp.body_not_json(uuid)
-
-    flow_id = data.get("flow_id", None)
-    if not flow_id:
-        return resp.bad_request("Flow ID is required", uuid)
-
-    flow_db = await DBFlow.get_by_id(flow_id)
-    if not flow_db:
-        return resp.not_found("Flow not found", uuid)
-
-    client.flow = flow_id
-    modules = await DBModule.all(flow_db.id)
-    nodes = [node for module in modules for node in module.get("nodes", [])]
-    config: Config = get_config()
-    await client.flow_cls.load_flow(
-        flow_mxid=client.id,
-        content={"flow_variables": flow_db.flow_vars, "nodes": nodes},
-        config=config,
-    )
-
-    await client.update()
-    return resp.success(data=client.to_dict(), uuid=uuid)
 
 
 @routes.post("/v1/client/{mxid}/flow/reload")

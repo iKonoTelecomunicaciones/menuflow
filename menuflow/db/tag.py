@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from logging import Logger, getLogger
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from asyncpg import Record

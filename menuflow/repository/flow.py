@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import yaml
 from attr import dataclass, ib
@@ -20,8 +20,9 @@ log: TraceLogger = logging.getLogger("menuflow.repository.flow")
 
 @dataclass
 class Flow(SerializableAttrs):
-    nodes: List[Dict] = ib(factory=list)
-    flow_variables: Dict[str, Any] = ib(default={})
+    nodes: list[dict] = ib(factory=list)
+    flow_variables: dict[str, Any] = ib(default={})
+    loaded_metadata: dict[str, Any] = ib(default={})
 
     @classmethod
     async def load_from_db(cls, flow_mxid: str, config: Config) -> tuple[dict, list[dict]]:
@@ -42,7 +43,12 @@ class Flow(SerializableAttrs):
             raise ValueError(f"No active tag found for flow {flow_mxid}")
 
         modules = await DBModule.get_tag_modules(tag_db.id)
-        return tag_db.flow_vars, [node for module in modules for node in module.get("nodes", [])]
+        list_nodes = [node for module in modules for node in module.get("nodes", [])]
+        loaded_metadata = {
+            "tag_info": {"name": tag_db.name, "id": tag_db.id},
+            "loaded_modules_ids": [module.id for module in modules],
+        }
+        return tag_db.flow_vars, list_nodes, loaded_metadata
 
     @classmethod
     def load_from_yaml(cls, flow_mxid: str) -> tuple[dict, list[dict]]:
@@ -66,7 +72,7 @@ class Flow(SerializableAttrs):
             )
 
         try:
-            flow: Dict = yaml.safe_load(path.read_text())
+            flow: dict = yaml.safe_load(path.read_text())
             flow_data = flow["menu"]
         except Exception as e:
             log.exception(f"Error loading flow {flow_mxid}.yaml: {e}")
@@ -78,7 +84,7 @@ class Flow(SerializableAttrs):
     async def load_flow(
         cls,
         flow_mxid: Optional[str] = None,
-        content: Optional[Dict] = None,
+        content: Optional[dict] = None,
         config: Optional[Config] = None,
     ) -> Flow:
         """
@@ -94,13 +100,15 @@ class Flow(SerializableAttrs):
         if content:
             flow_vars = content["flow_variables"]
             nodes = content["nodes"]
+            loaded_metadata = content["loaded_metadata"]
         elif flow_mxid:
             if config["menuflow.load_flow_from"] == "database":
-                flow_vars, nodes = await cls.load_from_db(flow_mxid, config)
+                flow_vars, nodes, loaded_metadata = await cls.load_from_db(flow_mxid, config)
             else:
                 flow_vars, nodes = cls.load_from_yaml(flow_mxid)
+                loaded_metadata = None
 
-        return cls(flow_variables=flow_vars, nodes=nodes)
+        return cls(flow_variables=flow_vars, nodes=nodes, loaded_metadata=loaded_metadata)
 
     async def update_flow(
         flow_db: FlowDB,
