@@ -28,7 +28,9 @@ async def sample_flow_1(config: Config) -> Flow:
     flow_example = Util.flow_example(flow_index=0).get("menu")
     flow_vars = flow_example.get("flow_variables", {})
     nodes = flow_example.get("nodes", [])
-    await flow.load_flow(content={"flow_variables": flow_vars, "nodes": nodes}, config=config)
+    await flow.load_flow(
+        content={"flow_variables": flow_vars, "nodes": nodes, "loaded_metadata": {}}, config=config
+    )
     for node in [Input, Location, Message, Switch]:
         node.config = config
 
@@ -41,7 +43,9 @@ async def sample_flow_2(config: Config) -> Flow:
     flow_example = Util.flow_example(flow_index=1).get("menu")
     flow_vars = flow_example.get("flow_variables", {})
     nodes = flow_example.get("nodes", [])
-    await flow.load_flow(content={"flow_variables": flow_vars, "nodes": nodes}, config=config)
+    await flow.load_flow(
+        content={"flow_variables": flow_vars, "nodes": nodes, "loaded_metadata": {}}, config=config
+    )
     for node in [Input, Location, Message, Switch]:
         node.config = config
 

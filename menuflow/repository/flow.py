@@ -106,7 +106,7 @@ class Flow(SerializableAttrs):
                 flow_vars, nodes, loaded_metadata = await cls.load_from_db(flow_mxid, config)
             else:
                 flow_vars, nodes = cls.load_from_yaml(flow_mxid)
-                loaded_metadata = None
+                loaded_metadata = {}
 
         return cls(flow_variables=flow_vars, nodes=nodes, loaded_metadata=loaded_metadata)
 
