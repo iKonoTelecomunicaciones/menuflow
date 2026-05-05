@@ -380,29 +380,6 @@ components:
         detail:
           message: Variables set successfully.
 
-    UpdateFlowOk:
-      type: object
-      properties:
-        id:
-          type: integer
-        homeserver:
-          type: string
-        access_token:
-          type: string
-        device_id:
-          type: string
-        autojoin:
-          type: boolean
-        flow:
-          type: integer
-      example:
-        id: 1
-        homeserver: https://matrix.darknet.com
-        access_token: sk_lcksahye1ds2a5s6d2c3a5d4verf2
-        device_id: DHFGY545
-        autojoin: true
-        flow: 1
-
     ClientNotFound:
       type: object
       properties:
@@ -1036,49 +1013,6 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/VariablesSetOk"
-
-    ClientFlowUpdated:
-      description: Client flow updated.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/UpdateFlowOk"
-
-    ClientUpdateFlowBadRequest:
-      description: Client update flow bad request.
-      content:
-        application/json:
-          schema:
-            oneOf:
-              - $ref: "#/components/schemas/BodyNotJson"
-              - $ref: "#/components/schemas/FlowIsRequired"
-          examples:
-            BodyNotJson:
-              value:
-                detail:
-                  message: Request body is not JSON.
-            FlowIsRequired:
-              value:
-                detail:
-                  message: Parameter flow is required.
-
-    ClientUpdateFlowNotFound:
-      description: Client update flow not found.
-      content:
-        application/json:
-          schema:
-            oneOf:
-              - $ref: "#/components/schemas/ClientNotFound"
-              - $ref: "#/components/schemas/FlowNotFound"
-          examples:
-            ClientNotFound:
-              value:
-                detail:
-                  message: Client with given user ID @bot:example.com not found.
-            FlowNotFound:
-              value:
-                detail:
-                  message: Flow not found.
 
     ClientFlowReloaded:
       description: Client flow reloaded.

@@ -85,46 +85,6 @@ set_variables_doc = """
             $ref: '#/components/responses/InternalServerError'
 """
 
-update_client_doc = """
-    ---
-    summary: Update a client's flow
-    description: Update the flow of a client
-
-    tags:
-        - Client
-
-    parameters:
-        - name: mxid
-          in: path
-          required: true
-          description: The Matrix user ID of the client
-          schema:
-            type: string
-          example: "@client:example.com"
-
-    requestBody:
-        required: true
-        content:
-            application/json:
-                schema:
-                    type: object
-                    properties:
-                        flow_id:
-                            type: integer
-                    required:
-                        - flow_id
-                example:
-                    flow_id: 1
-
-    responses:
-        '200':
-            $ref: '#/components/responses/ClientFlowUpdated'
-        '400':
-            $ref: '#/components/responses/ClientUpdateFlowBadRequest'
-        '404':
-            $ref: '#/components/responses/ClientUpdateFlowNotFound'
-"""
-
 reload_client_flow_doc = """
     ---
     summary: Reload a client's flow
