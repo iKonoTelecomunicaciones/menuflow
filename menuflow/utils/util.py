@@ -1,10 +1,9 @@
 import ast
-import asyncio
 import json
 import traceback
 from asyncio import Task, all_tasks
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime
 from logging import getLogger
 from re import compile, match, sub
 
@@ -220,9 +219,13 @@ class Util:
             for open, close in zip(cls._jinja_open_delims, cls._jinja_close_delims)
         )
         if has_jinja_delims:
+            # TODO: Remove when external variables are fully supported
+            _variables = deepcopy(variables)
+            _variables["route"]["external"] = _variables["external"]
+            # TODO: End of TODO
             try:
                 template = jinja_env.from_string(template)
-                temp_rendered = template.render(variables)
+                temp_rendered = template.render(_variables)
             except TemplateSyntaxError as e:
                 txt_error = f"func_name: {e.name}, \nline: {e.lineno}, \nerror: {e.message}"
                 log.warning(txt_error)
@@ -275,7 +278,11 @@ class Util:
 
     @classmethod
     def recursive_render(
-        cls, data: dict | list | str, variables: dict = {}, flags: RenderFlags = RenderFlags.NONE
+        cls,
+        data: dict | list | str,
+        variables: dict = {},
+        flags: RenderFlags = RenderFlags.NONE,
+        room_id: RoomID = None,  # TODO: Remove when external variables are fully supported
     ) -> dict | list | str:
         """It takes a dictionary or list, converts it to a string,
         and then uses Jinja to render the string.
@@ -306,6 +313,12 @@ class Util:
             return [cls.recursive_render(item, variables, flags) for item in _data]
 
         elif isinstance(_data, str):
+            # TODO: Remove when external variables are fully supported
+            if "route.external" in _data:
+                log.error(
+                    f"[{room_id}] route.external is deprecated. Use external.key to render variables."
+                )
+            # TODO: End of TODO
             return_errors = RenderFlags.RETURN_ERRORS in flags
             rendered = cls.jinja_render(_data, variables, return_errors)
 

@@ -152,20 +152,14 @@ class Base:
 
         variables = self.default_variables | self.room.all_variables
 
-        # TODO: Remove when external variables are fully supported
-        if "route.external" in data:
-            self.log.error(
-                f"[{self.room.room_id}] route.external is deprecated. Use external.key to render variables."
-            )
-            data = data.replace("route.external", "external")
-        # TODO: End of TODO
-
         if RenderFlags.CUSTOM_ESCAPE in flags:
             variables, changed = Util.custom_escape(variables, escape=True)
             if changed:
                 flags |= RenderFlags.CUSTOM_UNESCAPE
 
-        return Util.recursive_render(data=data, variables=variables, flags=flags)
+        return Util.recursive_render(
+            data=data, variables=variables, flags=flags, room_id=self.room.room_id
+        )
 
     async def get_o_connection(self) -> str:
         """It returns the ID of the next node to be executed.
