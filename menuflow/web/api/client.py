@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from json import JSONDecodeError
 from logging import Logger, getLogger
-from typing import Dict, Optional
 
 from aiohttp import web
 from mautrix.client import Client as MatrixClient
 from mautrix.errors import MatrixConnectionError, MatrixInvalidToken, MatrixRequestError
 from mautrix.types import UserID
+
+from menuflow.utils.types import Scopes
 
 from ...config import Config
 from ...db.flow import Flow as DBFlow
@@ -22,6 +22,7 @@ from ...room import Room
 from ..base import get_config, routes
 from ..docs.client import (
     create_client_doc,
+    delete_scope_doc,
     enable_disable_client_doc,
     get_variables_doc,
     reload_client_flow_doc,
@@ -35,11 +36,11 @@ log: Logger = getLogger("menuflow.api.client")
 
 
 async def _create_client(
-    data: Dict,
+    data: dict,
     *,
-    user_id: Optional[UserID] = None,
-    flow_id: Optional[int] = None,
-    uuid: Optional[str] = None,
+    user_id: UserID | None = None,
+    flow_id: int | None = None,
+    uuid: str | None = None,
 ) -> MenuClient | web.Response:
     homeserver = data.get("homeserver", None)
     access_token = data.get("access_token", None)
@@ -133,20 +134,38 @@ async def set_variables(request: web.Request) -> web.Response:
     log.info(f"({uuid}) -> '{request.method}' '{request.path}' Setting variables")
 
     try:
-        data: Dict = await request.json()
+        data: dict = await request.json()
     except JSONDecodeError:
         return resp.body_not_json(uuid)
 
     room_id = request.match_info["room_id"]
-    variables = data.get("variables", {})
+    variables: dict = data.get("variables", {})
     bot_mxid = data.get("bot_mxid", None)
-    conversation_uuid = data.get("conversation_uuid", None)
+    custom_scope = data.get("custom_scope", False)
 
     try:
         room: Room = await Room.get_by_room_id(room_id, bot_mxid)
-        await room.set_external_variables(variables=variables)
-        if conversation_uuid:
-            await room.set_variable(variable_id="room.conversation_uuid", value=conversation_uuid)
+
+        if not custom_scope:
+            await room.set_external_variables(variables=variables)
+            if conversation_uuid := data.get("conversation_uuid", None):
+                await room.set_variable(
+                    variable_id="room.conversation_uuid", value=conversation_uuid
+                )
+        else:
+            all_scopes = room.all_variables.keys()
+            for scope, values in variables.items():
+                if not isinstance(values, dict):
+                    log.warning(f"({uuid}) -> Scope ({scope}) is not a dictionary, skipping...")
+                elif not values:
+                    log.warning(f"({uuid}) -> Scope ({scope}) is empty, skipping...")
+                else:
+                    if scope not in all_scopes:
+                        log.info(
+                            f"({uuid}) -> Detecting new custom scope ({scope}), will be created"
+                        )
+                    for key, value in values.items():
+                        await room.set_variable(variable_id=key, value=value, scope=scope)
     except Exception as e:
         return resp.server_error(str(e), uuid)
 
@@ -160,7 +179,7 @@ async def reload_client_flow(request: web.Request) -> web.Response:
     log.info(f"({uuid}) -> '{request.method}' '{request.path}' Reloading client flow")
 
     mxid = request.match_info["mxid"]
-    client: Optional[MenuClient] = MenuClient.cache.get(mxid)
+    client: MenuClient | None = MenuClient.cache.get(mxid)
     if not client:
         return resp.client_not_found(mxid, uuid)
 
@@ -178,7 +197,7 @@ async def enable_disable_client(request: web.Request) -> web.Response:
 
     mxid = request.match_info["mxid"]
     action = request.match_info["action"]
-    client: Optional[MenuClient] = await MenuClient.get(mxid)
+    client: MenuClient | None = await MenuClient.get(mxid)
     if not client:
         return resp.client_not_found(mxid, uuid)
 
@@ -205,6 +224,7 @@ async def get_variables(request: web.Request) -> web.Response:
     room_id = request.match_info["room_id"]
     bot_mxid = request.query.get("bot_mxid", None)
     scopes = request.query.getall("scopes", ["room", "route", "node", "external"])
+    all_custom_scopes = request.query.get("all_custom_scopes", False)
     response = {}
 
     try:
@@ -221,18 +241,26 @@ async def get_variables(request: web.Request) -> web.Response:
         if not route:
             return resp.not_found(f"Client '{bot_mxid}' not found in room", uuid)
 
-        for scope in scopes:
-            match scope:
-                case "room":
-                    response[scope] = room._variables.get("room", {})
-                case "route":
-                    response[scope] = route._variables
-                case "node":
-                    response[scope] = route._node_vars
-                case "external":
-                    response[scope] = route._external_vars
-                case _:
-                    log.warning(f"({uuid}) -> Invalid scope: {scope}, skipping")
+        room_vars = room._variables
+        all_variables = {
+            Scopes.ROOM.value: room_vars.get(Scopes.ROOM.value, {}),
+            Scopes.ROUTE.value: route._variables,
+            Scopes.NODE.value: route._node_vars,
+            Scopes.EXTERNAL.value: route._external_vars,
+        }
+        custom_scopes = room_vars.keys() - all_variables.keys()
+        requested_scopes = set(scopes)
+
+        if all_custom_scopes and custom_scopes:
+            requested_scopes.update(custom_scopes)
+
+        for scope in requested_scopes:
+            if scope in all_variables:
+                response[scope] = all_variables[scope]
+            elif scope in custom_scopes:
+                response[scope] = room_vars.get(scope, {})
+            else:
+                log.warning(f"({uuid}) -> Invalid scope: {scope}, skipping")
 
     except Exception as e:
         return resp.server_error(str(e), uuid)
@@ -276,3 +304,31 @@ async def status(request: web.Request) -> web.Response:
         return resp.server_error(str(e), uuid)
 
     return resp.success(data=response, uuid=uuid)
+
+
+@routes.delete("/v1/room/{room_id}/scope/{scope}")
+@Util.docstring(delete_scope_doc)
+async def delete_scope(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Deleting scope")
+
+    room_id = request.match_info["room_id"]
+    scope = request.match_info["scope"]
+
+    try:
+        room = await DBRoom.get_by_room_id(room_id)
+        if not room:
+            return resp.not_found(f"room_id '{room_id}' not found", uuid)
+
+        if scope in Scopes._value2member_map_:
+            return resp.bad_request(f"Cannot delete private scope '{scope}'", uuid)
+        elif scope not in room._variables:
+            return resp.not_found(f"Scope '{scope}' not found", uuid)
+
+        room._variables.pop(scope, None)
+        await room.update_variables()
+        Room.sync_room_vars_cache(room_id=room_id, variables=room.variables)
+    except Exception as e:
+        return resp.server_error(str(e), uuid)
+
+    return resp.success(message="Scope deleted successfully", uuid=uuid)

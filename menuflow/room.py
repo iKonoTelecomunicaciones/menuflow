@@ -4,7 +4,7 @@ from asyncio import Future, Lock
 from collections import defaultdict
 from logging import getLogger
 from re import match
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, cast
 
 from glom import Delete, PathAccessError, assign, glom
 from mautrix.client import Client as MatrixClient
@@ -24,8 +24,8 @@ from .utils.types import Scopes
 
 
 class Room(DBRoom):
-    by_room_id: Dict[(RoomID, UserID), "Room"] = {}
-    pending_invites: Dict[RoomID, Future] = {}
+    by_room_id: dict[(RoomID, UserID), "Room"] = {}
+    pending_invites: dict[RoomID, Future] = {}
     _async_get_locks: dict[Any, Lock] = defaultdict(lambda: Lock())
     # Pattern to match the customer's Mxid
     _customer_pattern: str = r"^@.+_(?P<customer_phone>[0-9]{8,}):.+$"
@@ -35,6 +35,7 @@ class Room(DBRoom):
     _puppet_pattern: str = r"^@acd[0-9]+:.+$"
     # JQ2Glom instance
     _jq2glom: JQ2Glom = JQ2Glom()
+    _private_scopes: set[str] = set(Scopes._value2member_map_)
 
     config: Config
     log: TraceLogger = getLogger("menuflow.room")
@@ -185,12 +186,12 @@ class Room(DBRoom):
         return
 
     @property
-    def all_variables(self) -> Dict:
+    def all_variables(self) -> dict:
         return {
-            "room": self._variables.get("room", {}),
-            "route": self.route._variables,
-            "node": self.route._node_vars,
-            "external": self.route._external_vars,
+            **self._variables,
+            Scopes.ROUTE.value: self.route._variables,
+            Scopes.NODE.value: self.route._node_vars,
+            Scopes.EXTERNAL.value: self.route._external_vars,
         }
 
     @classmethod
@@ -244,17 +245,25 @@ class Room(DBRoom):
         if self.room_id:
             self.by_room_id[(bot_mxid, self.room_id)] = self
 
-    def _update_cache(self, room_id: RoomID) -> None:
-        """This function updates the cache for the room with the new variables in the different bot_mxids.
+    @classmethod
+    def sync_room_vars_cache(
+        cls, room_id: RoomID, variables: str, bot_mxid: UserID | None = None
+    ) -> None:
+        """This function updates the room variables cache for all bot mxids.
 
         Parameters
         ----------
         room_id : RoomID
             The room's ID.
+        variables : dict
+            The variables to update.
+        bot_mxid : UserID|None
+            The bot's Mxid. If None, all bot mxids will be updated.
         """
-        for (_bot_mxid, _room_id), room in self.by_room_id.items():
-            if _room_id == room_id:
-                room.variables = self.variables
+        for (_bot_mxid, _room_id), room in cls.by_room_id.items():
+            if _room_id == room_id and _bot_mxid != bot_mxid:
+                room.variables = variables
+                room.clear_vars_cache()
 
     async def clean_up(self):
         await Util.cancel_task(task_name=self.room_id)
@@ -273,39 +282,33 @@ class Room(DBRoom):
             The value of the variable with the given id.
 
         """
-        scope, key = Util.get_scope_and_key(variable_id)
+        scope, key = Util.get_scope_and_key(
+            variable_id=variable_id,
+            custom_scopes=self.all_variables.keys() - self._private_scopes,
+            private_scopes=self._private_scopes,
+        )
 
         # TODO: Remove when external variables are fully supported
-        if scope == Scopes.ROUTE and key.startswith("external."):
+        if scope == Scopes.ROUTE.value and key.startswith("external."):
             self.log.error(
-                f"[{self.room_id}] [VAR][GET] route.external is deprecated. Use external.key to get variables."
+                f"[{self.room_id}] [VAR][GET] route.external is deprecated. Use external.{key} to get variable."
             )
-            scope = Scopes.EXTERNAL
+            scope = Scopes.EXTERNAL.value
             key = key.replace("external.", "", 1)
 
+        _msg = f"[VAR][GET] {scope}.{key}"
         try:
-            _value = glom(self.all_variables, self._jq2glom.to_glom_path(f"{scope.value}.{key}"))
-            self.log.debug(f"[VAR][GET] {scope.value}.{key} => {repr(_value)}")
+            _value = glom(self.all_variables, self._jq2glom.to_glom_path(f"{scope}.{key}"))
+            self.log.debug(f"{_msg} => {repr(_value)}")
             return _value
         except PathAccessError as e:
-            # TODO: Compatibility with old variables format
-            old_value = self.all_variables.get(scope.value, {}).get(key, None)
-
-            if old_value:
-                self.log.warning(
-                    f"[VAR][GET][OLD_FORMAT] {scope.value}.{key} => {repr(old_value)}"
-                )
-                await self.del_variable(variable_id)
-                await self.set_variable(variable_id, old_value)
-                return old_value
-
-            self.log.debug(f"[VAR][GET] {scope.value}.{key} => Not found")
+            self.log.debug(f"{_msg} => Not found")
             return None
         except Exception as e:
-            self.log.error(f"[VAR][GET] {scope.value}.{key} => {e}")
+            self.log.error(f"{_msg} => {e}")
             return
 
-    async def set_variable(self, variable_id: str, value: Any) -> None:
+    async def set_variable(self, variable_id: str, value: Any, scope: str | None = None) -> None:
         """The function sets a variable value in either the room or route scope
         and updates the corresponding JSON data.
 
@@ -323,15 +326,24 @@ class Room(DBRoom):
         if not variable_id:
             return
 
-        scope, key = Util.get_scope_and_key(variable_id)
-
-        # TODO: Remove when external variables are fully supported
-        if scope == Scopes.ROUTE and key.startswith("external."):
-            self.log.error(
-                f"[{self.room_id}] [VAR][SET] route.external is deprecated. Use external.key to set variables."
+        if scope:
+            key = variable_id
+            custom_scopes = {scope}
+        else:
+            custom_scopes = self.all_variables.keys() - self._private_scopes
+            scope, key = Util.get_scope_and_key(
+                variable_id=variable_id,
+                custom_scopes=custom_scopes,
+                private_scopes=self._private_scopes,
             )
-            scope = Scopes.EXTERNAL
-            key = key.replace("external.", "", 1)
+
+            # TODO: Remove when external variables are fully supported
+            if scope == Scopes.ROUTE.value and key.startswith("external."):
+                self.log.error(
+                    f"[{self.room_id}] [VAR][SET] route.external is deprecated. Use external.key to set variables."
+                )
+                scope = Scopes.EXTERNAL.value
+                key = key.replace("external.", "", 1)
 
         try:
             entry = Scope(room=self, route=self.route).resolve(scope)
@@ -342,11 +354,12 @@ class Room(DBRoom):
         new_variables = entry.get_vars()
         new_value = value.serialize() if isinstance(value, Obj) else value
 
+        _msg = f"[VAR][SET] {scope}.{key}"
         try:
             assign(new_variables, self._jq2glom.to_glom_path(key), new_value, missing=dict)
-            self.log.debug(f"[VAR][SET] {scope.value}.{key} = {repr(new_value)}")
+            self.log.debug(f"{_msg} = {repr(new_value)}")
         except Exception as e:
-            self.log.error(f"[VAR][SET] {scope.value}.{key} => {e}")
+            self.log.error(f"{_msg} => {e}")
             return
 
         entry.set_vars(new_variables)  # TODO: Delete when unifying scope columns
@@ -354,15 +367,17 @@ class Room(DBRoom):
 
         # It's necessary to update the room cache with the new variable information in the different bot_mxids.
         # Otherwise, the room variables may vary from one bot_mxid to another.
-        if scope == Scopes.ROOM:
-            self._update_cache(room_id=self.room_id)
+        if scope == Scopes.ROOM.value or scope in custom_scopes:
+            self.sync_room_vars_cache(
+                room_id=self.room_id, variables=self.variables, bot_mxid=self.bot_mxid
+            )
 
-    async def set_variables(self, variables: Dict) -> None:
+    async def set_variables(self, variables: dict) -> None:
         """It takes a dictionary of variable IDs and values, and sets the variables to the values
 
         Parameters
         ----------
-        variables : Dict
+        variables : dict
             A dictionary of variable names and values.
 
         """
@@ -383,14 +398,19 @@ class Room(DBRoom):
         if not variable_id:
             return
 
-        scope, key = Util.get_scope_and_key(variable_id)
+        custom_scopes = self.all_variables.keys() - self._private_scopes
+        scope, key = Util.get_scope_and_key(
+            variable_id=variable_id,
+            custom_scopes=custom_scopes,
+            private_scopes=self._private_scopes,
+        )
 
         # TODO: Remove when external variables are fully supported
-        if scope == Scopes.ROUTE and key.startswith("external."):
+        if scope == Scopes.ROUTE.value and key.startswith("external."):
             self.log.error(
                 f"[{self.room_id}] [VAR][DEL] route.external is deprecated. Use external.key to delete variables."
             )
-            scope = Scopes.EXTERNAL
+            scope = Scopes.EXTERNAL.value
             key = key.replace("external.", "", 1)
 
         try:
@@ -401,22 +421,18 @@ class Room(DBRoom):
 
         variables = entry.get_vars()
         if not variables:
-            self.log.debug(f"Variables in scope {scope.value} are empty")
+            self.log.debug(f"Variables in scope {scope} are empty")
             return
 
+        _msg = f"[VAR][DEL] {scope}.{key}"
         try:
             glom(variables, Delete(self._jq2glom.to_glom_path(key)))
-            self.log.debug(f"[VAR][DEL] {scope.value}.{key} => Deleted")
+            self.log.debug(f"{_msg} => Deleted")
         except PathAccessError as e:
-            # TODO: Remove with old variables format
-            if not variables.get(key):
-                self.log.debug(f"[VAR][DEL] {scope.value}.{key} => Not found")
-                return
-
-            variables.pop(key, None)
-            self.log.debug(f"[VAR][DEL][OLD_FORMAT] {scope.value}.{key} => Deleted")
+            self.log.debug(f"{_msg} => Not found")
+            return
         except Exception as e:
-            self.log.error(f"[VAR][DEL] {scope.value}.{key} => {e}")
+            self.log.error(f"{_msg} => {e}")
             return
 
         entry.set_vars(variables)  # TODO: Delete when unifying scope columns
@@ -424,22 +440,24 @@ class Room(DBRoom):
 
         # It's necessary to update the room cache with the new variable information in the different bot_mxids.
         # Otherwise, the room variables may vary from one bot_mxid to another.
-        if scope == Scopes.ROOM:
-            self._update_cache(room_id=self.room_id)
+        if scope == Scopes.ROOM.value or scope in custom_scopes:
+            self.sync_room_vars_cache(
+                room_id=self.room_id, variables=self.variables, bot_mxid=self.bot_mxid
+            )
 
-    async def del_variables(self, variables: List = []) -> None:
+    async def del_variables(self, variables: list = []) -> None:
         """This function delete the variables in the room.
 
         Parameters
         ----------
-            variables: List
+            variables: list
                 The variables to delete.
         """
         for variable in variables:
             await self.del_variable(variable_id=variable)
 
     async def update_menu(
-        self, node_id: str, state: Optional[RouteState] = None, update_node_vars: bool = True
+        self, node_id: str, state: RouteState | None = None, update_node_vars: bool = True
     ):
         """Updates the menu's node_id and state.
 
@@ -447,7 +465,7 @@ class Room(DBRoom):
         ----------
         node_id : str
             The node_id of the menu. This is used to determine which node display.
-        state : Optional[RouteState]
+        state : RouteState | None
             The state of the menu.
         """
         self.log.debug(
@@ -482,12 +500,12 @@ class Room(DBRoom):
         """
         return self.all_variables.get("room", {}).get("conversation_uuid")
 
-    async def set_external_variables(self, variables: Dict) -> None:
+    async def set_external_variables(self, variables: dict) -> None:
         """Deletes the external variables and sets the new ones.
 
         Parameters
         ----------
-        variables : Dict
+        variables : dict
             A dictionary of variable names and values.
 
         """

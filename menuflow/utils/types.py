@@ -32,7 +32,6 @@ class Middlewares(SerializableEnum):
 
 
 class Scopes(SerializableEnum):
-    UNKNOWN = "unknown"
     ROOM = "room"
     ROUTE = "route"
     NODE = "node"
