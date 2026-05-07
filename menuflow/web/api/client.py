@@ -243,7 +243,7 @@ async def get_variables(request: web.Request) -> web.Response:
 
         room_vars = room._variables
         all_variables = {
-            Scopes.ROOM.value: room_vars.get(Scopes.ROOM.value),
+            Scopes.ROOM.value: room_vars.get(Scopes.ROOM.value, {}),
             Scopes.ROUTE.value: route._variables,
             Scopes.NODE.value: route._node_vars,
             Scopes.EXTERNAL.value: route._external_vars,
@@ -251,7 +251,7 @@ async def get_variables(request: web.Request) -> web.Response:
         custom_scopes = room_vars.keys() - all_variables.keys()
         requested_scopes = set(scopes)
 
-        if all_custom_scopes:
+        if all_custom_scopes and custom_scopes:
             requested_scopes.update(custom_scopes)
 
         for scope in requested_scopes:
