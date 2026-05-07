@@ -10,16 +10,16 @@ from .utils.types import Scopes
 @dataclass
 class ScopeHandler:
     model: Room | Route
-    scope: Scopes
+    scope: str
 
     def get_vars(self) -> dict:
         vars: dict = self.model._variables
-        return vars.get(self.scope.value, {})
+        return vars.get(self.scope, {})
 
     # TODO: Delete when unifying scope columns
     def set_vars(self, vars: dict | None = None) -> None:
         if vars is not None:
-            self.model._variables[self.scope.value] = vars
+            self.model._variables[self.scope] = vars
 
     async def update_func(self) -> None:
         await self.model.update_variables()
@@ -37,27 +37,27 @@ class Scope:
         self.room = room
         self.route = route
 
-    def resolve(self, scope: Scopes) -> ScopeHandler | ScopeHandlerCallback:
+    def resolve(self, scope: str) -> ScopeHandler | ScopeHandlerCallback:
         match scope:
-            case Scopes.ROOM:
+            case Scopes.ROOM.value:
                 return ScopeHandler(model=self.room, scope=scope)
-            case Scopes.ROUTE:
+            case Scopes.ROUTE.value:
                 return ScopeHandlerCallback(
                     set_vars=lambda vars: setattr(self.route, "variables", json.dumps(vars)),
                     get_vars=lambda: self.route._variables,
                     update_func=self.route.update,
                 )
-            case Scopes.NODE:
+            case Scopes.NODE.value:
                 return ScopeHandlerCallback(
                     set_vars=lambda vars: setattr(self.route, "node_vars", json.dumps(vars)),
                     get_vars=lambda: self.route._node_vars,
                     update_func=self.route.update_node_vars,
                 )
-            case Scopes.EXTERNAL:
+            case Scopes.EXTERNAL.value:
                 return ScopeHandlerCallback(
                     set_vars=lambda vars: setattr(self.route, "external_vars", json.dumps(vars)),
                     get_vars=lambda: self.route._external_vars,
                     update_func=self.route.update_external_vars,
                 )
             case _:
-                raise ValueError(f"Unknown scope: {scope}")
+                return ScopeHandler(model=self.room, scope=scope)

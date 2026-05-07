@@ -1543,6 +1543,9 @@ components:
           example:
             detail:
               message: Flow with ID 1 not found in the database
+
+
+    # /v1/room/{room_id}/status
     GetStatusSuccess:
       description: Get status success.
       content:
@@ -1572,6 +1575,9 @@ components:
               value:
                 detail:
                   message: room_id '1' not found
+
+
+    # /v1/mis/get_task
     GetTaskNotFound:
       description: Get task not found.
       content:
@@ -1596,6 +1602,9 @@ components:
                 coro: task_1
                 repr: <Task pending name='task_1' coro=<_TaskWakeupWakeupPollingTaskWakeupWakeup() running at 0x7f5b58000000>>
                 bot_mxid: "@bot:example.com"
+
+
+    # /v1/{flow_id}/module/node
     GetModuleNodeDataSuccess:
       description: Get node data by path success.
       content:
@@ -1644,7 +1653,9 @@ components:
               value:
                 detail:
                   message: "No data found for path 'inactivity_options.message' and node_type 'message'"
-    # Tag responses
+
+
+    # /v1/{flow_id}/tag
     GetTagsSuccess:
       description: Get tags success.
       content:
@@ -1685,7 +1696,6 @@ components:
                     active: false
                     flow_vars:
                       variable1: "value2"
-
     GetTagsBadRequest:
       description: Get tags bad request.
       content:
@@ -1695,7 +1705,6 @@ components:
           example:
             detail:
               message: "flow_id must be a valid integer"
-
     GetTagsNotFound:
       description: Get tags not found.
       content:
@@ -1716,13 +1725,14 @@ components:
                 detail:
                   message: "No tags found for flow_id 123"
 
+
+    # /v1/tag/{tag_id}
     DeleteTagSuccess:
       description: Delete tag success.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/DeleteTagOk"
-
     DeleteTagBadRequest:
       description: Delete tag bad request.
       content:
@@ -1732,7 +1742,6 @@ components:
           example:
             detail:
               message: "tag_id must be a valid integer"
-
     DeleteTagNotFound:
       description: Delete tag not found.
       content:
@@ -1742,7 +1751,6 @@ components:
           example:
             detail:
               message: "Tag with ID 1 not found"
-
     DeleteTagConflict:
       description: Delete tag conflict - Tag is active.
       content:
@@ -1753,14 +1761,14 @@ components:
             detail:
               message: "Tag with ID 1 is active and cannot be deleted"
 
-    # Flow publish/import responses
+
+    # /v1/flow/{flow_id}/publish
     PublishFlowSuccess:
       description: Publish flow success.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/PublishFlowOk"
-
     PublishFlowBadRequest:
       description: Publish flow bad request.
       content:
@@ -1776,7 +1784,6 @@ components:
               value:
                 detail:
                   message: "Parameters 'name' and 'author' are required"
-
     PublishFlowNotFound:
       description: Publish flow not found.
       content:
@@ -1792,7 +1799,6 @@ components:
               value:
                 detail:
                   message: "No current tag found for flow ID 1"
-
     PublishFlowInternalError:
       description: Publish flow internal error.
       content:
@@ -1803,13 +1809,14 @@ components:
             detail:
               message: "Error copying modules: database error"
 
+
+    # /v1/flow/import
     ImportFlowSuccess:
       description: Import flow success.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ImportFlowOk"
-
     ImportFlowBadRequest:
       description: Import flow bad request.
       content:
@@ -1829,7 +1836,6 @@ components:
               value:
                 detail:
                   message: "Body is not a valid JSON"
-
     ImportFlowNotFound:
       description: Import flow not found.
       content:
@@ -1845,6 +1851,9 @@ components:
               value:
                 detail:
                   message: "Current tag not found for flow 1"
+
+
+    # /v1/{flow_id}/tag_restore
     RestoreTagSuccess:
       description: Tag restored successfully.
       content:
@@ -1854,7 +1863,6 @@ components:
           example:
             detail:
               message: "Tag restored successfully"
-
     RestoreTagBadRequest:
       description: Bad request.
       content:
@@ -1864,7 +1872,6 @@ components:
           example:
             detail:
               message: "tag_id is required"
-
     RestoreTagNotFound:
       description: Tag not found.
       content:
@@ -1875,6 +1882,8 @@ components:
             detail:
               message: "Tag with ID 1 not found"
 
+
+    # /v1/{flow_id}/publish/{tag_id}
     PublishTagSuccess:
       description: Tag published successfully.
       content:
@@ -1884,7 +1893,6 @@ components:
           example:
             detail:
               message: "Tag published successfully"
-
     PublishTagBadRequest:
       description: Bad request.
       content:
@@ -1894,7 +1902,6 @@ components:
           example:
             detail:
               message: "flow_id and tag_id must be valid integers"
-
     PublishTagNotFound:
       description: Tag not found.
       content:
@@ -1904,4 +1911,40 @@ components:
           example:
             detail:
               message: "Tag with ID 1 not found"
+
+
+    # /v1/room/{room_id}/scope/{scope}
+    DeleteScopeSuccess:
+      description: Scope deleted successfully.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "Scope deleted successfully"
+    DeleteScopeBadRequest:
+      description: Delete scope bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "Cannot delete private scope 'custom_scope'"
+    DeleteScopeNotFound:
+      description: Delete scope not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            ScopeNotFound:
+              value:
+                detail:
+                  message: "Scope 'custom_scope' not found"
+            RoomNotFound:
+              value:
+                detail:
+                  message: "room_id '1' not found"
   # End of responses

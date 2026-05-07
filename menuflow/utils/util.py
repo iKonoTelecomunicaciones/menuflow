@@ -615,6 +615,8 @@ class Util:
     def get_scope_and_key(
         variable_id: str,
         default_scope: Scopes = Scopes.ROUTE,
+        custom_scopes: set[str] | None = None,
+        private_scopes: set[str] | None = None,
     ) -> tuple[Scopes, str]:
         """Get the scope and key from a variable id
 
@@ -629,17 +631,19 @@ class Util:
         -------
             A tuple containing the scope and key.
         """
-        if isinstance(variable_id, int):
-            variable_id = str(variable_id)
+        variable_id = str(variable_id)
+        custom_scopes = custom_scopes or set()
+        private_scopes = private_scopes or Scopes._value2member_map_
+        scope, key = default_scope.value, variable_id
 
-        parts = variable_id.split(".", maxsplit=1)
+        prefix, sep, suffix = variable_id.partition(".")
 
-        if len(parts) == 2 and parts[0] in Scopes._value2member_map_:
-            scope: Scopes = Scopes._value2member_map_.get(parts[0], Scopes.UNKNOWN)
-            key = parts[1]
-        else:
-            scope: Scopes = default_scope
-            key = variable_id
+        if not sep:
+            return scope, key
+
+        if prefix in private_scopes or prefix in custom_scopes:
+            scope = prefix
+            key = suffix
 
         return scope, key
 

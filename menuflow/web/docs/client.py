@@ -176,6 +176,14 @@ get_variables_doc = """
             items:
               type: string
 
+        - name: all_custom_scopes
+          in: query
+          required: false
+          description: If true, all custom scopes will be returned.
+          schema:
+            type: boolean
+            default: false
+
     responses:
         '200':
             $ref: '#/components/responses/GetVariablesSuccess'
@@ -214,6 +222,41 @@ status_doc = """
             $ref: '#/components/responses/GetStatusSuccess'
         '404':
             $ref: '#/components/responses/GetStatusNotFound'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
+"""
+
+delete_scope_doc = """
+    ---
+    summary: Delete a custom scope
+    description: Delete a custom scope
+    tags:
+        - Room
+
+    parameters:
+        - name: room_id
+          in: path
+          required: true
+          description: The room ID to delete the scope from
+          schema:
+            type: string
+          example: "!vOmHZZMQibXsynuNFm:example.com"
+
+        - name: scope
+          in: path
+          required: true
+          description: The scope to delete
+          schema:
+            type: string
+          example: "custom_scope"
+
+    responses:
+        '200':
+            $ref: '#/components/responses/DeleteScopeSuccess'
+        '400':
+            $ref: '#/components/responses/DeleteScopeBadRequest'
+        '404':
+            $ref: '#/components/responses/DeleteScopeNotFound'
         '500':
             $ref: '#/components/responses/InternalServerError'
 """
