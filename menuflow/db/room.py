@@ -44,6 +44,10 @@ class Room:
         if hasattr(self, "_vars_cache"):
             self.variables = json.dumps(self._vars_cache)
 
+    def clear_vars_cache(self) -> None:
+        if hasattr(self, "_vars_cache"):
+            delattr(self, "_vars_cache")
+
     @property
     def _events(self) -> dict:
         if isinstance(self.events, dict):

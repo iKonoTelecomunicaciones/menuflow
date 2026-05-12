@@ -255,6 +255,7 @@ class Room(DBRoom):
         for (_bot_mxid, _room_id), room in self.by_room_id.items():
             if _room_id == room_id:
                 room.variables = self.variables
+                room.clear_vars_cache()
 
     async def clean_up(self):
         await Util.cancel_task(task_name=self.room_id)
