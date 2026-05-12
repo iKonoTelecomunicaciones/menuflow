@@ -173,14 +173,11 @@ async def render_data(request: web.Request) -> web.Response:
                 )
                 flow_obj = await DBFlow.get_by_mxid(bot_mxid)
 
-                if room_obj._variables.get("room", {}):
-                    dict_variables |= {"room": room_obj._variables.get("room", {})}
+                if room_vars := room_obj._variables:
+                    dict_variables |= room_vars
 
-                if route_obj.variables:
-                    dict_variables |= {"route": route_obj._variables}
-
-                if route_obj.node_vars:
-                    dict_variables |= {"node": route_obj._node_vars}
+                if route_vars := route_obj._variables:
+                    dict_variables |= route_vars
 
                 if route_obj.external_vars:
                     dict_variables |= {"external": route_obj._external_vars}

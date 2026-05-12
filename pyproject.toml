@@ -1,3 +1,7 @@
+[tool.pytest.ini_options]
+testpaths = ["test"]
+asyncio_mode = "strict"
+
 [tool.isort]
 profile = "black"
 line_length = 99
