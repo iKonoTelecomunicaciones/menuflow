@@ -5,7 +5,11 @@ from aiohttp import web
 from ..config import Config
 from ..flow_utils import FlowUtils
 from ..utils import Util
-from ..version import version
+
+try:
+    from ..version import version
+except ModuleNotFoundError:
+    from .. import __version__ as version
 
 _config: Config | None = None
 _util: Util | None = None
