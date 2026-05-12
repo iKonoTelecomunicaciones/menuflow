@@ -9,7 +9,7 @@ from ..utils import Util
 try:
     from ..version import version
 except ModuleNotFoundError:
-    from .. import __version__ as version
+    version = "unknown"
 
 _config: Config | None = None
 _util: Util | None = None
