@@ -8,6 +8,15 @@ from menuflow.utils.types import Scopes
 
 
 @pytest.fixture
+def patched_get_by_room_id(mocker):
+    """Patches ``Room.get_by_room_id`` used by the client API handlers."""
+    return mocker.patch(
+        "menuflow.web.api.client.Room.get_by_room_id",
+        new_callable=AsyncMock,
+    )
+
+
+@pytest.fixture
 def mock_room(patched_get_by_room_id):
     """Returns a MagicMock room pre-wired to satisfy ``set_variables``.
 
