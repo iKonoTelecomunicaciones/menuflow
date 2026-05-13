@@ -5,6 +5,7 @@ from ..events.event_generator import send_node_event
 from ..repository import Switch as SwitchModel
 from ..room import Room
 from ..utils import Nodes, NodeStatus
+from ..utils.types import Scopes
 from .base import Base, safe_data_convertion
 
 
@@ -263,7 +264,7 @@ class Switch(Base):
         return case_to_be_used, default_o_connection
 
     async def manage_attempts(self) -> str:
-        node_vars = self.room.route._node_vars
+        node_vars = self.room.scope.get(Scopes.NODE)
         room_validation_attempts = node_vars.get("attempt", 0) + 1
         config_attempts = self.validation_attempts
         case_to_be_used = NodeStatus.DEFAULT

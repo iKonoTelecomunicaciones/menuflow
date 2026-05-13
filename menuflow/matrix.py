@@ -30,7 +30,7 @@ from .repository.room_events import RoomEvents
 from .room import Room
 from .user import User
 from .utils import Util
-from .utils.types import QueueSignal
+from .utils.types import QueueSignal, Scopes
 
 if TYPE_CHECKING:
     from .flow import Flow, Node
@@ -134,7 +134,7 @@ class MatrixHandler(MatrixClient):
             await Util.cancel_task(task_name=room.room_id)
             room.room_events.leave = True
             await self.enqueue_message(message=QueueSignal.LEAVE, room=room)
-            room.route._node_vars = {}
+            room.scope.clear(Scopes.NODE)
             await room.route.update()
             self.unlock_room(room_id=evt.room_id, evt=evt)
 
@@ -206,9 +206,7 @@ class MatrixHandler(MatrixClient):
             await room.set_variable(variable_id="puppet_mxid", value=puppet_mxid)
 
         # TODO: Remove when external variables are fully supported
-        if external_vars := room.route._variables.get("external"):
-            from menuflow.utils.types import Scopes
-
+        if external_vars := room.scope.get(Scopes.ROUTE).get(Scopes.EXTERNAL.value, {}):
             self.log.error(
                 f"[{room.room_id}] Detected external variables in route.external. Migrating to Scope {Scopes.EXTERNAL.value}."
             )
@@ -248,7 +246,7 @@ class MatrixHandler(MatrixClient):
 
         locked = evt.room_id in self.LOCKED_ROOMS
         if locked or not evt.state_key == self.mxid:
-            self.log.warning(f"{base_msg} {"Menu locked." if locked else "Not from the bot"}")
+            self.log.warning(f"{base_msg} {'Menu locked.' if locked else 'Not from the bot'}")
             return
 
         room: Room = await Room.get_by_room_id(room_id=evt.room_id, bot_mxid=self.mxid)
@@ -621,7 +619,7 @@ class MatrixHandler(MatrixClient):
         warning_message = inactivity.get("warning_message", "")
         time_between_attempts = inactivity.get("time_between_attempts", 0)
 
-        inactivity_db: dict = room.route._node_vars.setdefault("inactivity", {})
+        inactivity_db: dict = room.scope.get(Scopes.NODE).setdefault("inactivity", {})
         for key in ("attempt", "start_ttl", "attempt_ttl"):
             inactivity_db.setdefault(key, 0)
 
@@ -630,7 +628,7 @@ class MatrixHandler(MatrixClient):
             if inactivity_db.get("start_ttl") == 0:
                 inactivity_db["start_ttl"] = now + chat_timeout
                 room.set_node_var(inactivity=inactivity_db)
-                await room.route.update_node_vars()
+                await room.scope.persist(Scopes.NODE)
 
             start_sleep = inactivity_db["start_ttl"] - now
             if start_sleep > 0:
@@ -672,7 +670,7 @@ class MatrixHandler(MatrixClient):
                 inactivity_db["attempt_ttl"] = now + time_between_attempts
                 inactivity_db["attempt"] += 1
                 room.set_node_var(inactivity=inactivity_db)
-                await room.route.update_node_vars()
+                await room.scope.persist(Scopes.NODE)
 
                 if warning_message:
                     await room.matrix_client.send_text(room_id=room.room_id, text=warning_message)
