@@ -3,18 +3,36 @@ from __future__ import annotations
 import json
 import logging
 from http import HTTPStatus
-from unittest.mock import call
+from json import JSONDecodeError
+from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
 
 from menuflow.utils.types import Scopes
 from menuflow.web.api.client import set_variables
 
-from .conftest import make_mock_request
-
 ROOM_ID = "!room:example.com"
 BOT_MXID = "@bot:example.com"
 HANDLER_LOGGER = "menuflow.api.client"
+
+
+def make_mock_request(
+    payload: dict | None,
+    *,
+    room_id: str = ROOM_ID,
+    path: str | None = None,
+    method: str = "POST",
+) -> MagicMock:
+    """Build a MagicMock that quacks like an aiohttp.web.Request."""
+    req = MagicMock()
+    req.method = method
+    req.path = path or f"/v1/room/{room_id}/set_variables"
+    req.match_info = {"room_id": room_id}
+    if payload is None:
+        req.json = AsyncMock(side_effect=JSONDecodeError("Expecting value", "x", 0))
+    else:
+        req.json = AsyncMock(return_value=payload)
+    return req
 
 
 # ---------- Body / dispatch ----------------------------------------------------

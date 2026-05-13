@@ -23,18 +23,6 @@ async def _update_variables_no_db(self) -> None:
     self.clear_vars_cache()
 
 
-async def _route_update_variables_no_db(self) -> None:
-    """Persist route variables to the JSON string without touching the DB."""
-    self.flush_vars()
-    self.clear_vars_cache()
-
-
-async def _room_update_variables_no_db(self) -> None:
-    """Persist room variables to the JSON string without touching the DB."""
-    self.flush_vars()
-    self.clear_vars_cache()
-
-
 @pytest_asyncio.fixture
 async def config() -> Config:
     _config = Config(
