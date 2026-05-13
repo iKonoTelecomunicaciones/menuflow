@@ -78,11 +78,7 @@ async def sample_flow_2(config: Config) -> Flow:
 @pytest_asyncio.fixture
 async def route(mocker: MockerFixture) -> Route:
     mocker.patch.object(Route, "update")
-<<<<<<< 557-fix-401-response-with-no-cases-in-the-http-node
-    mocker.patch.object(Route, "update_variables", _route_update_variables_no_db)
-=======
     mocker.patch.object(Route, "update_variables", _update_variables_no_db)
->>>>>>> main
     return Route(
         room=1,
         node_id="start",
@@ -93,11 +89,7 @@ async def route(mocker: MockerFixture) -> Route:
 @pytest_asyncio.fixture
 async def room(mocker: MockerFixture, config: Config, route: Route) -> Room:
     mocker.patch.object(Room, "update")
-<<<<<<< 557-fix-401-response-with-no-cases-in-the-http-node
-    mocker.patch.object(Room, "update_variables", _room_update_variables_no_db)
-=======
     mocker.patch.object(Room, "update_variables", _update_variables_no_db)
->>>>>>> main
     room = Room(room_id="!foo:foo.com")
     room.matrix_client = MagicMock()
     room.bot_mxid = "@foo:foo.com"
