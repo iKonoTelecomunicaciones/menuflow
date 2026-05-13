@@ -5,11 +5,7 @@ from aiohttp import web
 from ..config import Config
 from ..flow_utils import FlowUtils
 from ..utils import Util
-
-try:
-    from ..version import version
-except ModuleNotFoundError:
-    version = "unknown"
+from ..version import version
 
 _config: Config | None = None
 _util: Util | None = None
