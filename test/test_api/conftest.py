@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+<<<<<<< 557-fix-401-response-with-no-cases-in-the-http-node
 from json import JSONDecodeError
+=======
+>>>>>>> main
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -8,6 +11,7 @@ import pytest
 from menuflow.utils.types import Scopes
 
 
+<<<<<<< 557-fix-401-response-with-no-cases-in-the-http-node
 def make_mock_request(
     payload: dict | None,
     *,
@@ -39,6 +43,8 @@ def make_mock_request(
     return req
 
 
+=======
+>>>>>>> main
 @pytest.fixture
 def patched_get_by_room_id(mocker):
     """Patches ``Room.get_by_room_id`` used by the client API handlers."""

@@ -246,7 +246,7 @@ class MatrixHandler(MatrixClient):
 
         locked = evt.room_id in self.LOCKED_ROOMS
         if locked or not evt.state_key == self.mxid:
-            self.log.warning(f"{base_msg} {"Menu locked." if locked else "Not from the bot"}")
+            self.log.warning(f"{base_msg} {'Menu locked.' if locked else 'Not from the bot'}")
             return
 
         room: Room = await Room.get_by_room_id(room_id=evt.room_id, bot_mxid=self.mxid)

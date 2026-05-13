@@ -3,20 +3,50 @@ from __future__ import annotations
 import json
 import logging
 from http import HTTPStatus
+<<<<<<< 557-fix-401-response-with-no-cases-in-the-http-node
 from unittest.mock import call
+=======
+from json import JSONDecodeError
+from unittest.mock import AsyncMock, MagicMock, call
+>>>>>>> main
 
 import pytest
 
 from menuflow.utils.types import Scopes
 from menuflow.web.api.client import set_variables
 
+<<<<<<< 557-fix-401-response-with-no-cases-in-the-http-node
 from .conftest import make_mock_request
 
+=======
+>>>>>>> main
 ROOM_ID = "!room:example.com"
 BOT_MXID = "@bot:example.com"
 HANDLER_LOGGER = "menuflow.api.client"
 
 
+<<<<<<< 557-fix-401-response-with-no-cases-in-the-http-node
+=======
+def make_mock_request(
+    payload: dict | None,
+    *,
+    room_id: str = ROOM_ID,
+    path: str | None = None,
+    method: str = "POST",
+) -> MagicMock:
+    """Build a MagicMock that quacks like an aiohttp.web.Request."""
+    req = MagicMock()
+    req.method = method
+    req.path = path or f"/v1/room/{room_id}/set_variables"
+    req.match_info = {"room_id": room_id}
+    if payload is None:
+        req.json = AsyncMock(side_effect=JSONDecodeError("Expecting value", "x", 0))
+    else:
+        req.json = AsyncMock(return_value=payload)
+    return req
+
+
+>>>>>>> main
 # ---------- Body / dispatch ----------------------------------------------------
 
 
@@ -240,6 +270,7 @@ async def test_custom_scope_skips_empty_dict(mock_room, caplog):
         variable_id="k", value="v", scope=Scopes.ROUTE.value
     )
     assert any("Scope (empty) is empty" in r.message for r in caplog.records)
+<<<<<<< 557-fix-401-response-with-no-cases-in-the-http-node
 
 
 # ---------- Failure paths ------------------------------------------------------
@@ -288,3 +319,5 @@ async def test_get_by_room_id_returns_none_is_mapped_to_500(patched_get_by_room_
     resp = await set_variables(make_mock_request({"variables": {"k": "v"}, "bot_mxid": BOT_MXID}))
 
     assert resp.status == HTTPStatus.INTERNAL_SERVER_ERROR
+=======
+>>>>>>> main
