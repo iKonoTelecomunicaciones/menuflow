@@ -1,8 +1,7 @@
-import sys
-import types
 from unittest.mock import MagicMock
 
 import pytest_asyncio
+from mautrix.client import Client
 from pytest_mock import MockerFixture
 
 from menuflow.config import Config
@@ -11,16 +10,6 @@ from menuflow.flow import Flow
 from menuflow.nodes import Base, Input, Location, Message, Switch
 from menuflow.room import Room
 from menuflow.utils import Util
-
-fake_version = types.ModuleType("menuflow.version")
-fake_version.version = "test"
-sys.modules.setdefault("menuflow.version", fake_version)
-
-
-async def _update_variables_no_db(self) -> None:
-    """Persist room variables to the JSON string without touching the DB."""
-    self.flush_vars()
-    self.clear_vars_cache()
 
 
 @pytest_asyncio.fixture
@@ -65,8 +54,10 @@ async def sample_flow_2(config: Config) -> Flow:
 
 @pytest_asyncio.fixture
 async def route(mocker: MockerFixture) -> Route:
-    mocker.patch.object(Route, "update")
-    mocker.patch.object(Route, "update_variables", _update_variables_no_db)
+    mocker.patch.object(
+        Route,
+        "update",
+    )
     return Route(
         room=1,
         node_id="start",
@@ -76,8 +67,10 @@ async def route(mocker: MockerFixture) -> Route:
 
 @pytest_asyncio.fixture
 async def room(mocker: MockerFixture, config: Config, route: Route) -> Room:
-    mocker.patch.object(Room, "update")
-    mocker.patch.object(Room, "update_variables", _update_variables_no_db)
+    mocker.patch.object(
+        Room,
+        "update",
+    )
     room = Room(room_id="!foo:foo.com")
     room.matrix_client = MagicMock()
     room.bot_mxid = "@foo:foo.com"
