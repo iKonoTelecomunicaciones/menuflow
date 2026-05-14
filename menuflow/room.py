@@ -35,7 +35,7 @@ class Room(DBRoom):
     _puppet_pattern: str = r"^@acd[0-9]+:.+$"
     # JQ2Glom instance
     _jq2glom: JQ2Glom = JQ2Glom()
-    _private_scopes: set[str] = set(Scopes._value2member_map_)
+    _reserved_scopes: set[str] = set(Scopes._value2member_map_)
 
     config: Config
     log: TraceLogger = getLogger("menuflow.room")
@@ -284,8 +284,8 @@ class Room(DBRoom):
         """
         scope, key = Util.get_scope_and_key(
             variable_id=variable_id,
-            custom_scopes=self.all_variables.keys() - self._private_scopes,
-            private_scopes=self._private_scopes,
+            custom_scopes=self.all_variables.keys() - self._reserved_scopes,
+            reserved_scopes=self._reserved_scopes,
         )
 
         # TODO: Remove when external variables are fully supported
@@ -330,11 +330,11 @@ class Room(DBRoom):
             key = variable_id
             custom_scopes = {scope}
         else:
-            custom_scopes = self.all_variables.keys() - self._private_scopes
+            custom_scopes = self.all_variables.keys() - self._reserved_scopes
             scope, key = Util.get_scope_and_key(
                 variable_id=variable_id,
                 custom_scopes=custom_scopes,
-                private_scopes=self._private_scopes,
+                reserved_scopes=self._reserved_scopes,
             )
 
             # TODO: Remove when external variables are fully supported
@@ -367,7 +367,7 @@ class Room(DBRoom):
 
         # It's necessary to update the room cache with the new variable information in the different bot_mxids.
         # Otherwise, the room variables may vary from one bot_mxid to another.
-        if scope == Scopes.ROOM.value or scope in custom_scopes:
+        if scope in self._variables:
             self.sync_room_vars_cache(
                 room_id=self.room_id, variables=self.variables, bot_mxid=self.bot_mxid
             )
@@ -398,11 +398,11 @@ class Room(DBRoom):
         if not variable_id:
             return
 
-        custom_scopes = self.all_variables.keys() - self._private_scopes
+        custom_scopes = self.all_variables.keys() - self._reserved_scopes
         scope, key = Util.get_scope_and_key(
             variable_id=variable_id,
             custom_scopes=custom_scopes,
-            private_scopes=self._private_scopes,
+            reserved_scopes=self._reserved_scopes,
         )
 
         # TODO: Remove when external variables are fully supported
@@ -440,7 +440,7 @@ class Room(DBRoom):
 
         # It's necessary to update the room cache with the new variable information in the different bot_mxids.
         # Otherwise, the room variables may vary from one bot_mxid to another.
-        if scope == Scopes.ROOM.value or scope in custom_scopes:
+        if scope in self._variables:
             self.sync_room_vars_cache(
                 room_id=self.room_id, variables=self.variables, bot_mxid=self.bot_mxid
             )
@@ -509,7 +509,7 @@ class Room(DBRoom):
             A dictionary of variable names and values.
 
         """
-        scope = Scopes.EXTERNAL
+        scope = Scopes.EXTERNAL.value
         try:
             entry = Scope(room=self, route=self.route).resolve(scope)
         except Exception as e:
@@ -522,6 +522,4 @@ class Room(DBRoom):
             await entry.update_func()
 
         for variable in variables:
-            await self.set_variable(
-                variable_id=f"{scope.value}.{variable}", value=variables[variable]
-            )
+            await self.set_variable(variable_id=f"{scope}.{variable}", value=variables[variable])
