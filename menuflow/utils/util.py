@@ -221,7 +221,11 @@ class Util:
         if has_jinja_delims:
             # TODO: Remove when external variables are fully supported
             _variables = deepcopy(variables)
-            _variables["route"]["external"] = _variables["external"]
+            _route = _variables.setdefault("route", {})
+            if not isinstance(_route, dict):
+                _route = {}
+                _variables["route"] = _route
+            _route["external"] = _variables.get("external", {})
             # TODO: End of TODO
             try:
                 template = jinja_env.from_string(template)
