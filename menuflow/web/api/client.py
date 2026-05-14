@@ -90,7 +90,7 @@ async def create_client(request: web.Request) -> web.Response:
     try:
         data = await request.json()
     except JSONDecodeError:
-        return resp.body_not_json(uuid)
+        return resp.body_not_json
 
     new_flow_id = None
     if MenuClient.menuflow.config["menuflow.load_flow_from"] == "database":
@@ -243,8 +243,9 @@ async def get_variables(request: web.Request) -> web.Response:
 
         room_vars = room._variables
         all_variables = {
-            **route._variables,
             Scopes.ROOM.value: room_vars.get(Scopes.ROOM.value, {}),
+            Scopes.ROUTE.value: route._variables,
+            Scopes.NODE.value: route._node_vars,
             Scopes.EXTERNAL.value: route._external_vars,
         }
         custom_scopes = room_vars.keys() - all_variables.keys()

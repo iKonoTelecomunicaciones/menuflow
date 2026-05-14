@@ -89,10 +89,6 @@ render_data_doc = """
                             type: boolean
                             description: If true, the new render data will be returned as a string
                             example: true
-                        flags:
-                            type: string
-                            description: The flags to be used in the template, in `yaml` or `json` format
-                            example: "{'REMOVE_QUOTES': true, 'LITERAL_EVAL': true, 'CONVERT_TO_TYPE': true, 'CUSTOM_ESCAPE': false}"
                     required:
                         - template
     responses:

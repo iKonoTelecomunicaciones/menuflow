@@ -56,7 +56,6 @@ class Room:
         return json.loads(self.events) if self.events else {}
 
     async def insert(self) -> str:
-        self.flush_vars()
         q = f"INSERT INTO room ({self._columns}) VALUES ($1, $2, $3)"
         await self.db.execute(q, *self.values)
 
@@ -83,22 +82,15 @@ class Room:
     async def get_node_var_by_state(
         cls, state: str, variable_name: str, menuflow_bot_mxid: UserID
     ) -> dict:
-        fields = (
-            "ro.room_id",
-            f"rt.variables->'node'->'{variable_name}' AS {variable_name}",
-            "rt.node_id",
-            "rt.state",
-            "rt.client",
-        )
+        fields = ("room_id", "node_vars", "node_id", "state", "client")
         q = f"""
             SELECT {", ".join(fields)}
             FROM route as rt
             JOIN room as ro ON rt.room = ro.id
-            WHERE rt.state=$1
-                AND COALESCE(rt.variables->'node'->$2,'{{}}'::jsonb) <> '{{}}'::jsonb
-                AND rt.client = $3
+            WHERE rt.state=$1 AND
+                rt.node_vars->$2 <> '{{}}' AND
+                rt.client = $3
         """
-
         return await cls.db.fetch(q, state, variable_name, menuflow_bot_mxid)
 
     async def update_variables(self) -> None:

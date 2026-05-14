@@ -296,18 +296,3 @@ async def upgrade_v15(conn: Connection) -> None:
     await conn.execute(
         "UPDATE room SET variables=jsonb_build_object('room', variables) WHERE variables IS NOT NULL"
     )
-
-
-@upgrade_table.register(description="Add scope to route table in variables column")
-async def upgrade_v16(conn: Connection) -> None:
-    await conn.execute(
-        "ALTER TABLE route ALTER COLUMN variables SET DATA TYPE JSONB USING variables::jsonb"
-    )
-    await conn.execute("ALTER TABLE route ALTER COLUMN variables SET DEFAULT '{}'::jsonb")
-    await conn.execute(
-        "UPDATE route SET variables=jsonb_build_object('route', variables) WHERE variables IS NOT NULL"
-    )
-    await conn.execute(
-        "UPDATE route SET variables = variables || jsonb_build_object('node', node_vars) WHERE node_vars IS NOT NULL"
-    )
-    await conn.execute("ALTER TABLE route DROP COLUMN IF EXISTS node_vars")
