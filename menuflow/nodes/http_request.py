@@ -160,13 +160,18 @@ class HTTPRequest(Switch):
         if response.status == 401:
             o_connection = None
             if not self.middleware:
-                if self.cases:
+                _cases = self.cases
+                if _cases:
                     o_connection = await self.get_case_by_id(id=response.status)
-
-                if o_connection:
-                    await self.room.update_menu(
-                        node_id=o_connection, state=RouteState.END if not self.cases else None
+                else:
+                    self.log.error(
+                        f"[{_room_id}] No cases found in http_request node ({self.id}) "
+                        f"with status {response.status} returning to start node"
                     )
+
+                await self.room.update_menu(
+                    node_id=o_connection, state=RouteState.END if not _cases else None
+                )
             return response.status, None, o_connection
 
         variables = {}
