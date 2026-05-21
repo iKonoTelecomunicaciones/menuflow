@@ -292,7 +292,7 @@ async def publish_flow(request: web.Request) -> web.Response:
     if not current_tag:
         return resp.not_found(f"No current tag found for flow ID {flow_id}", uuid)
 
-    log.debug(f"({uuid}) -> Found current tag with ID for flow {flow_id}: {current_tag['id']}")
+    log.debug(f"({uuid}) -> Found current tag with ID for flow {flow_id}: {current_tag["id"]}")
 
     new_tag = DBTag(
         flow_id=flow_id,
