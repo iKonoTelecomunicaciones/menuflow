@@ -481,6 +481,7 @@ class MatrixHandler(MatrixClient):
                     run_input_node = True  # one-time reset to True
                     if room.route.state == RouteState.INPUT:
                         evt = await self.get_input_response(room=room, node=node)
+                        _msg = "Message received in algorithm"
 
                         if not evt or evt is QueueSignal.CANCELLED:
                             self.log.info(
@@ -490,15 +491,16 @@ class MatrixHandler(MatrixClient):
 
                         if evt is QueueSignal.LEAVE:
                             _msg = "Leave detected in algorithm."
-                        elif isinstance(node, GPTAssistant) and (
-                            timeout := getattr(node, "group_messages_timeout", 0)
-                        ):
-                            # TODO: Review this logic when all input nodes can receive a list of messages.
-                            grouped_messages = await self.group_message(room=room, timeout=timeout)
-                            _msg = f"{len(grouped_messages)} message(s) received in algorithm"
-                            evt = [evt, *grouped_messages]
-                        else:
-                            _msg = "Message received in algorithm"
+                        elif isinstance(node, GPTAssistant):
+                            if timeout := getattr(node, "group_messages_timeout", 0):
+                                # TODO: Review this logic when all input nodes can receive a list of messages.
+                                grouped_messages = await self.group_message(
+                                    room=room, timeout=timeout
+                                )
+                                _msg = f"{len(grouped_messages)} message(s) received in algorithm"
+                                evt = [evt, *grouped_messages]
+                            else:
+                                evt = [evt]
 
                         self.log.info(f"[{room.room_id}] {_msg}")
                 else:
