@@ -118,7 +118,7 @@ async def create_client(request: web.Request) -> web.Response:
                     "o_connection": "",
                 }
             ],
-            position={},
+            position={"scale": 1, "x": 800, "y": 100},
             tag_id=tag_id,
         )
         await main_module.insert()
