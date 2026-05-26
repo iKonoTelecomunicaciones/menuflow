@@ -221,7 +221,11 @@ class Util:
         if has_jinja_delims:
             # TODO: Remove when external variables are fully supported
             _variables = deepcopy(variables)
-            _variables["route"]["external"] = _variables["external"]
+            _route = _variables.setdefault("route", {})
+            if not isinstance(_route, dict):
+                _route = {}
+                _variables["route"] = _route
+            _route["external"] = _variables.get("external", {})
             # TODO: End of TODO
             try:
                 template = jinja_env.from_string(template)
@@ -616,8 +620,8 @@ class Util:
         variable_id: str,
         default_scope: Scopes = Scopes.ROUTE,
         custom_scopes: set[str] | None = None,
-        private_scopes: set[str] | None = None,
-    ) -> tuple[Scopes, str]:
+        reserved_scopes: set[str] | None = None,
+    ) -> tuple[str, str]:
         """Get the scope and key from a variable id
 
         Parameters
@@ -629,11 +633,11 @@ class Util:
 
         Returns
         -------
-            A tuple containing the scope and key.
+            A tuple containing the scope name and the key.
         """
         variable_id = str(variable_id)
         custom_scopes = custom_scopes or set()
-        private_scopes = private_scopes or Scopes._value2member_map_
+        reserved_scopes = reserved_scopes or Scopes._value2member_map_
         scope, key = default_scope.value, variable_id
 
         prefix, sep, suffix = variable_id.partition(".")
@@ -641,7 +645,7 @@ class Util:
         if not sep:
             return scope, key
 
-        if prefix in private_scopes or prefix in custom_scopes:
+        if prefix in reserved_scopes or prefix in custom_scopes:
             scope = prefix
             key = suffix
 

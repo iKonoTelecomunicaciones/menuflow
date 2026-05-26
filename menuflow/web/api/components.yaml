@@ -1912,39 +1912,4 @@ components:
             detail:
               message: "Tag with ID 1 not found"
 
-
-    # /v1/room/{room_id}/scope/{scope}
-    DeleteScopeSuccess:
-      description: Scope deleted successfully.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/BaseResponseDetailMessage"
-          example:
-            detail:
-              message: "Scope deleted successfully"
-    DeleteScopeBadRequest:
-      description: Delete scope bad request.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/BaseResponseDetailMessage"
-          example:
-            detail:
-              message: "Cannot delete private scope 'custom_scope'"
-    DeleteScopeNotFound:
-      description: Delete scope not found.
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/BaseResponseDetailMessage"
-          examples:
-            ScopeNotFound:
-              value:
-                detail:
-                  message: "Scope 'custom_scope' not found"
-            RoomNotFound:
-              value:
-                detail:
-                  message: "room_id '1' not found"
   # End of responses
