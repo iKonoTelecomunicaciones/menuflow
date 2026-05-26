@@ -43,7 +43,6 @@ class _Response:
             status=HTTPStatus.OK, message=message, uuid=uuid, data=data, log_msg=log_msg
         )
 
-    @property
     def body_not_json(self, uuid: str = "") -> web.Response:
         log.debug(f"({uuid}) -> Request body is not JSON")
         return web.json_response(
