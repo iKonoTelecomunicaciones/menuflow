@@ -28,6 +28,7 @@ from .flow_sync import FlowSync
 from .nodes import Base, FormInput, GPTAssistant, Input, InteractiveInput, Message, Webhook
 from .repository.room_events import RoomEvents
 from .room import Room
+from .room_sync_primitives import PrimitiveType, RoomSyncPrimitives
 from .user import User
 from .utils import Util
 from .utils.types import QueueSignal
@@ -111,32 +112,44 @@ class MatrixHandler(MatrixClient):
             if prev_membership == Membership.INVITE:
                 await self.handle_reject_invite(evt)
 
-    async def handle_leave(self, evt: StrippedStateEvent):
+    async def handle_leave(self, evt: StrippedStateEvent) -> None:
+        _event_id, _room_id = evt.event_id, evt.room_id
+
         room: Room = await Room.get_by_room_id(
             room_id=evt.room_id, bot_mxid=self.mxid, create=False
         )
+
         if not room:
-            self.log.warning(f"[{evt.room_id}] Room not found. Ignoring leave event")
+            self.log.warning(f"[{_room_id}] Room not found. Ignoring leave event")
             return
-        room.room_events = RoomEvents.deserialize(room._events)
+
+        room_events = RoomEvents.deserialize(room._events)
+        room.room_events = room_events
         last_join_ts = room.room_events.last_join_ts
 
         if getattr(evt, "timestamp", 0) < last_join_ts:
+            last_join_id = getattr(room_events.last_join_event, "event_id", None)
             self.log.warning(
-                f"[{evt.room_id}] Ignoring {evt.content.get('membership')} event ({evt.event_id}) "
-                f"is older than last join event ({room.room_events.last_join_event.get('event_id')}) "
-                f"({last_join_ts})"
+                f"[{_room_id}] Ignoring {evt.content.get('membership')} event ({_event_id}) "
+                f"is older than last join event ({last_join_id}) ({last_join_ts})"
             )
-        else:
-            self.log.info(
-                f"[{evt.room_id}] Handling leave event ({evt.event_id}) for bot ({evt.state_key})"
-            )
-            await Util.cancel_task(task_name=room.room_id)
-            room.room_events.leave = True
-            await self.enqueue_message(message=QueueSignal.LEAVE, room=room)
-            room.route._node_vars = {}
-            await room.route.update()
-            self.unlock_room(room_id=evt.room_id, evt=evt)
+            return
+
+        self.log.info(f"[{_room_id}] Handling leave event ({_event_id}) for bot ({evt.state_key})")
+
+        await Util.cancel_task(task_name=room.room_id)
+
+        room_events.leave = True
+        room_events.join = False
+        room.events = room_events.serialize()
+        await room.update_events()
+
+        await self.enqueue_message(message=QueueSignal.LEAVE, room=room)
+
+        room.route._node_vars = {}
+        await room.route.update()
+
+        self.unlock_room(room_id=evt.room_id, evt=evt)
 
     async def handle_invite(self, evt: StrippedStateEvent):
         self.log.info(f"[{evt.room_id}] Handling invite event ({evt.event_id})")
@@ -188,7 +201,7 @@ class MatrixHandler(MatrixClient):
             room.config = self.config
             room.matrix_client = self
 
-            await room.set_variable("room.current_bot_mxid", self.mxid)
+        await room.set_variable("room.current_bot_mxid", self.mxid)
 
         if not await room.get_variable(variable_id="customer_room_id"):
             await room.set_variable("customer_room_id", room_id)
@@ -240,21 +253,22 @@ class MatrixHandler(MatrixClient):
         self.log.info(f"[{room.room_id}] {msg}")
 
     async def handle_join(self, evt: StateEvent):
+        _event_id, _room_id = evt.event_id, evt.room_id
         membership_evt = evt.content.get("membership")
-        base_msg = f"[{evt.room_id}] Ignoring {membership_evt} event ({evt.event_id})."
+        base_msg = f"[{_room_id}] Ignoring {membership_evt} event ({_event_id})."
 
-        if evt.room_id in Room.pending_invites and not Room.pending_invites[evt.room_id].done():
-            Room.pending_invites[evt.room_id].set_result(True)
+        if _room_id in Room.pending_invites and not Room.pending_invites[_room_id].done():
+            Room.pending_invites[_room_id].set_result(True)
 
         locked = evt.room_id in self.LOCKED_ROOMS
         if locked or not evt.state_key == self.mxid:
             self.log.warning(f"{base_msg} {"Menu locked." if locked else "Not from the bot"}")
             return
 
-        room: Room = await Room.get_by_room_id(room_id=evt.room_id, bot_mxid=self.mxid)
-        room.room_events = RoomEvents.deserialize(room._events)
-        last_join_evt = room.room_events.last_join_event
-        last_join_ts = room.room_events.last_join_ts
+        room_events_db: dict = await DBRoom.get_events_by_room_id(room_id=evt.room_id)
+        room_events = RoomEvents.deserialize(room_events_db)
+        last_join_evt = room_events.last_join_event
+        last_join_ts = room_events.last_join_ts
 
         if getattr(evt, "timestamp", 0) < last_join_ts:
             self.log.warning(
@@ -263,27 +277,45 @@ class MatrixHandler(MatrixClient):
             return
 
         if not last_join_evt:
-            self.log.warning(f"[{evt.room_id}] No last join event found in the database")
-        elif last_join_evt and evt.event_id == last_join_evt.get("event_id"):
+            self.log.warning(f"[{_room_id}] No last join event found in the database")
+        elif last_join_evt and _event_id == last_join_evt.get("event_id"):
             self.log.warning(f"{base_msg} Already processed.")
             return
 
-        self.log.info(f"[{evt.room_id}] Join event ({evt.event_id}) from {evt.state_key} accepted")
+        try:
+            async with RoomSyncPrimitives(
+                room_id=_room_id, primitive=PrimitiveType.JOIN_READY
+            ) as room_sync:
+                self.log.info(
+                    f"[{_room_id}] Join event ({_event_id}) from {evt.state_key} accepted"
+                )
 
-        room.config = self.config
-        room.matrix_client = self
+                room: Room = await Room.get_by_room_id(room_id=_room_id, bot_mxid=self.mxid)
+                room.room_events = room_events
+                room.config = self.config
+                room.matrix_client = self
 
-        # Clean up the actions
-        await room.clean_up()
-        if (room.room_id, room.route.id) in GPTAssistant.assistant_cache:
-            del GPTAssistant.assistant_cache[(room.room_id, room.route.id)]
+                # Clean up the actions
+                await room.clean_up()
+                if (room.room_id, room.route.id) in GPTAssistant.assistant_cache:
+                    del GPTAssistant.assistant_cache[(room.room_id, room.route.id)]
 
-        await self.load_room_constants(evt.room_id)
-        await self.update_room_events(room=room, evt=evt)
-        await self.algorithm(room=room)
+                room.room_events.join = True
+                await self.update_room_events(room=room, evt=evt)
+                await self.load_room_constants(room_id=evt.room_id, room=room)
+
+                # Signal the join event to the message handler
+                room_sync.set()
+
+        except Exception as e:
+            self.log.exception(f"[{_room_id}] Exception has occurred in the handle_join: {e}")
+            return
+
+        await self.algorithm(room=room, join_event=evt)
 
     async def handle_message(self, message: MessageEvent) -> None:
-        base = f"[{message.room_id}] Incoming message ({message.event_id}) from {message.sender}"
+        _event_id, _room_id = message.event_id, message.room_id
+        base = f"[{_room_id}] Incoming message ({_event_id}) from {message.sender}"
 
         if self.log.getEffectiveLevel() <= logging.DEBUG:
             self.log.debug(f"{base}. Content: {repr(message.content.body)}")
@@ -305,26 +337,25 @@ class MatrixHandler(MatrixClient):
             or message.content.msgtype == MessageType.NOTICE
         ):
             self.log.warning(
-                f"[{message.room_id}] The incoming message ({message.event_id}) "
+                f"[{_room_id}] The incoming message ({_event_id}) "
                 f"from {message.sender} will be ignored by the bot"
             )
             return
 
-        room: Room = await Room.get_by_room_id(room_id=message.room_id, bot_mxid=self.mxid)
-        room.room_events = RoomEvents.deserialize(room._events)
+        room: Room = await Room.get_by_room_id(room_id=_room_id, bot_mxid=self.mxid)
+        room_events_db: dict = room._events
+        room.room_events = RoomEvents.deserialize(room_events_db)
         last_message_evt = room.room_events.last_processed_message
 
         last_message_time = datetime.fromtimestamp(room.room_events.last_message_ts / 1000)
         current_message_time = datetime.fromtimestamp(message.timestamp / 1000)
 
         if not last_message_evt:
-            self.log.warning(
-                f"[{message.room_id}] No last processed message found in the database"
-            )
+            self.log.warning(f"[{_room_id}] No last processed message found in the database")
 
         if last_message_time > current_message_time:
             self.log.warning(
-                f"[{message.room_id}] Ignoring message ({message.event_id}) "
+                f"[{_room_id}] Ignoring message ({_event_id}) "
                 f"because it's older than the last processed message ({last_message_evt.event_id}) "
                 f"({last_message_time})"
             )
@@ -337,17 +368,38 @@ class MatrixHandler(MatrixClient):
             and not self.flow.get_node_by_id(node_id=room.route.node_id).get("type")
             == "gpt_assistant"
         ):
-            self.log.warning(f"[{message.room_id}] Message ignored due to rate limit")
+            self.log.warning(f"[{_room_id}] Message ({_event_id}) ignored due to rate limit")
             return
+
+        # TODO: Review this logic to ignore messages in pending invites.
+        if _room_id in Room.pending_invites:
+            self.log.warning(f"[{_room_id}] Ignoring message ({_event_id}) in pending invite")
+            return
+
+        if not room_events_db.get("join"):
+            timeout = self.config["menuflow.join_wait_timeout"]
+
+            async with RoomSyncPrimitives(
+                room_id=_room_id, primitive=PrimitiveType.JOIN_READY
+            ) as room_sync:
+                try:
+                    self.log.info(
+                        f"[{_room_id}] The message ({_event_id}) is waiting for JOIN event ({timeout}s)"
+                    )
+                    await asyncio.wait_for(room_sync.wait(), timeout=timeout)
+                    self.log.critical(
+                        f"[{_room_id}] The message ({_event_id}) JOIN event detected, proceeding"
+                    )
+                except asyncio.TimeoutError:
+                    self.log.warning(
+                        f"[{_room_id}] The message ({_event_id}) Timeout waiting for JOIN event, "
+                        "proceeding anyway"
+                    )
+
+            room.room_events.join = True
 
         room.config = self.config = self.config
         room.matrix_client = self
-
-        # TODO: Review this logic to ignore messages in pending invites.
-        if room.room_id in Room.pending_invites:
-            self.log.warning(f"[{room.room_id}] Ignoring message in pending invite")
-            return
-
         queue = None
 
         if self.config["menuflow.enqueue_messages"] or room.route.state == RouteState.INPUT:
@@ -355,6 +407,7 @@ class MatrixHandler(MatrixClient):
 
         # TODO: Review this logic
         if not queue:
+            await self.update_room_events(room=room, evt=message)
             await self.algorithm(room=room, evt=message)
 
     async def enqueue_message(
@@ -432,7 +485,11 @@ class MatrixHandler(MatrixClient):
         return msg
 
     async def algorithm(
-        self, room: Room, evt: MessageEvent | None = None, run_input_node: bool = True
+        self,
+        room: Room,
+        evt: MessageEvent | None = None,
+        run_input_node: bool = True,
+        join_event: StateEvent | None = None,
     ) -> None:
         """The algorithm function is the main function that runs the flow.
         It takes a room and an event as parameters
@@ -452,7 +509,10 @@ class MatrixHandler(MatrixClient):
 
         """
         if room.room_id in self.LOCKED_ROOMS:
-            self.log.warning(f"[{room.room_id}] Algorithm already running skipping...")
+            _event_id = evt.event_id if getattr(evt, "event_id", None) else "unknown"
+            self.log.warning(
+                f"[{room.room_id}] Algorithm already running skipping event ({_event_id})."
+            )
             return
 
         self.lock_room(room_id=room.room_id, evt=evt)
@@ -465,14 +525,15 @@ class MatrixHandler(MatrixClient):
             and room.route.state != RouteState.END
             and not room.room_events.leave
         ):
-            self.log.debug(
-                f"[{room.room_id}] Executing node: [{node.id}]. "
-                f"State: ({room.route.state}). "
-                f"Triggered by: ({evt.event_id if getattr(evt, 'event_id', None) else 'unknown'}). "
-                f"Sender: ({evt.sender if getattr(evt, 'sender', None) else 'unknown'}). "
-                f"Timestamp: ({evt.timestamp if getattr(evt, 'timestamp', None) else 'unknown'}). "
-                f"Type evt: ({type(evt)}). "
-            )
+            if self.log.isEnabledFor(logging.DEBUG):
+                trigger_evt = evt if evt is not None else join_event
+                event_id, sender, timestamp, event_type = self._get_event_info(evt=trigger_evt)
+
+                self.log.debug(
+                    f"[{room.room_id}] Executing node: [{node.id}]. State: ({room.route.state}). "
+                    f"Triggered by: ({event_id}). Sender: ({sender}). Timestamp: ({timestamp}). "
+                    f"Type evt: ({event_type}). "
+                )
 
             try:
                 if type(node) in (Input, InteractiveInput, FormInput, GPTAssistant, Webhook):
@@ -491,6 +552,8 @@ class MatrixHandler(MatrixClient):
 
                         if evt is QueueSignal.LEAVE:
                             _msg = "Leave detected in algorithm."
+                        elif evt is QueueSignal.TIMEOUT:
+                            _msg = "Timeout detected in algorithm."
                         elif isinstance(node, GPTAssistant):
                             if timeout := getattr(node, "group_messages_timeout", 0):
                                 # TODO: Review this logic when all input nodes can receive a list of messages.
@@ -752,3 +815,16 @@ class MatrixHandler(MatrixClient):
 
         self.log.info(f"[{room.room_id}] Grouping messages completed.")
         return message_list
+
+    def _get_event_info(self, evt: MessageEvent | StateEvent | None) -> tuple[str, str, str, type]:
+        if isinstance(evt, MessageEvent) or isinstance(evt, StateEvent):
+            return (
+                getattr(evt, "event_id", "unknown"),
+                getattr(
+                    evt, "sender" if isinstance(evt, MessageEvent) else "state_key", "unknown"
+                ),
+                getattr(evt, "timestamp", "unknown"),
+                type(evt),
+            )
+        else:
+            return "unknown", "unknown", "unknown", "unknown"

@@ -97,3 +97,11 @@ class Room:
         self.flush_vars()
         q = "UPDATE room SET variables = $2 WHERE room_id = $1"
         await self.db.execute(q, self.room_id, self.variables)
+
+    @classmethod
+    async def get_events_by_room_id(cls, room_id: RoomID) -> dict:
+        q = "SELECT events FROM room WHERE room_id = $1"
+        row = await cls.db.fetchrow(q, room_id)
+        if not row:
+            return {}
+        return json.loads(row["events"]) if row["events"] else {}

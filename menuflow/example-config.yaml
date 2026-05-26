@@ -72,6 +72,9 @@ menuflow:
     # Otherwise, the messages will be processed immediately.
     enqueue_messages: false
 
+    # Timeout for processing client messages indicating the join event
+    join_wait_timeout: 5.0
+
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0

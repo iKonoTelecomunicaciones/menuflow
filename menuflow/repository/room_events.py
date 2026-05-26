@@ -9,6 +9,7 @@ from mautrix.types import MessageEvent, StateEvent
 class RoomEvents:
     last_join_event: StateEvent | None = None
     last_processed_message: MessageEvent | None = None
+    join: bool = False
     leave: bool = False
 
     def serialize(self) -> dict:
@@ -23,6 +24,7 @@ class RoomEvents:
                 if isinstance(self.last_processed_message, MessageEvent)
                 else None
             ),
+            "join": self.join,
         }
 
     @classmethod
@@ -37,6 +39,7 @@ class RoomEvents:
             last_processed_message=(
                 MessageEvent.deserialize(msg) if isinstance(msg, dict) else None
             ),
+            join=data.get("join", False),
         )
 
     @property
