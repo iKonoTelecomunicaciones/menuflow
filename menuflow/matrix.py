@@ -228,7 +228,7 @@ class MatrixHandler(MatrixClient):
             await room.set_external_variables(external_vars)
             await room.del_variable(variable_id=f"{Scopes.ROUTE.value}.external")
 
-    async def update_room_events(self, room: Room, evt: StateEvent | MessageEvent):
+    async def update_room_events(self, room: Room, evt: StateEvent | MessageEvent | None = None):
         """This function updates the room events in the database.
 
         Parameters
@@ -238,7 +238,9 @@ class MatrixHandler(MatrixClient):
         evt : StateEvent | MessageEvent
             The event that triggered the update.
         """
-        if evt.type == EventType.ROOM_MEMBER:
+        if evt is None:
+            msg = "Updating room events in db from cache"
+        elif evt.type == EventType.ROOM_MEMBER:
             room.room_events.last_join_event = evt
             msg = f"Updating join event ({evt.event_id}) in db from cache"
         elif evt.type == EventType.ROOM_MESSAGE:
@@ -388,9 +390,8 @@ class MatrixHandler(MatrixClient):
                         "proceeding anyway"
                     )
 
-            room.room_events.join = True
-            await self.update_room_events(room=room, evt=message)
-
+                    room.room_events.join = True
+                    await self.update_room_events(room=room)
         room.config = self.config = self.config
         room.matrix_client = self
         queue = None
@@ -508,6 +509,10 @@ class MatrixHandler(MatrixClient):
             return
 
         self.lock_room(room_id=room.room_id, evt=evt)
+
+        if evt and run_input_node:
+            await self.update_room_events(room=room, evt=evt)
+
         await self.flow_sync.check_active_tag(
             room_id=room.room_id, mxid=self.mxid, loaded_metadata=self.flow.data.loaded_metadata
         )
