@@ -286,7 +286,7 @@ class Util:
         data: dict | list | str,
         variables: dict = {},
         flags: RenderFlags = RenderFlags.NONE,
-        room_id: RoomID = None,  # TODO: Remove when external variables are fully supported
+        room_id: RoomID = None,  # TODO: Remove when conversation variables are fully supported
     ) -> dict | list | str:
         """It takes a dictionary or list, converts it to a string,
         and then uses Jinja to render the string.

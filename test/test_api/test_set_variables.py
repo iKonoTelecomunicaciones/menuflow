@@ -64,7 +64,7 @@ async def test_get_by_room_id_called_with_none_when_bot_mxid_missing(
     patched_get_by_room_id.assert_awaited_once_with(ROOM_ID, None)
 
 
-# ---------- External (scope == "external") ----------------------------------
+# ---------- Conversation (scope == "conversation") ----------------------------------
 
 
 @pytest.mark.asyncio
@@ -191,7 +191,7 @@ async def test_custom_scope_new_scope_emits_info_log(mock_room, caplog):
 
 @pytest.mark.asyncio
 async def test_custom_scope_ignores_conversation_uuid(mock_room):
-    """conversation_uuid is only meaningful for the external branch."""
+    """conversation_uuid is only meaningful for the conversation branch."""
     await set_variables(
         make_mock_request(
             {

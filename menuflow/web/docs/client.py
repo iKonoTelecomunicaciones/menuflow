@@ -172,7 +172,7 @@ get_variables_doc = """
           description: The scopes of the variables to get. If not provided, all variables will be returned.
           schema:
             type: array
-            example: ["room", "route", "node", "external"]
+            example: ["room", "route", "node"]
             items:
               type: string
 
