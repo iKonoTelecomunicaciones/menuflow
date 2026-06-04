@@ -25,13 +25,12 @@ def mock_room(patched_get_by_room_id):
     scope branches in the handler.
     """
     room = MagicMock()
-    room.set_external_variables = AsyncMock()
+    room.set_conversation_variables = AsyncMock()
     room.set_variable = AsyncMock()
     room.all_variables = {
         Scopes.ROOM.value: {},
         Scopes.ROUTE.value: {},
         Scopes.NODE.value: {},
-        Scopes.EXTERNAL.value: {},
         "catalog": {},
     }
     patched_get_by_room_id.return_value = room

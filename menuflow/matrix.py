@@ -219,13 +219,13 @@ class MatrixHandler(MatrixClient):
             await room.set_variable(variable_id="puppet_mxid", value=puppet_mxid)
 
         # TODO: Remove when external variables are fully supported
-        if external_vars := room.route._variables.get("external"):
+        if conv_vars := room.route._variables.get("external"):
             from menuflow.utils.types import Scopes
 
             self.log.error(
-                f"[{room.room_id}] Detected external variables in route.external. Migrating to Scope {Scopes.EXTERNAL.value}."
+                f"[{room.room_id}] Detected conversation variables in route.external. Migrating to Scope external."
             )
-            await room.set_external_variables(external_vars)
+            await room.set_conversation_variables(conv_vars)
             await room.del_variable(variable_id=f"{Scopes.ROUTE.value}.external")
 
     async def update_room_events(self, room: Room, evt: StateEvent | MessageEvent | None = None):

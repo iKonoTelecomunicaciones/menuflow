@@ -35,7 +35,6 @@ class Scopes(SerializableEnum):
     ROOM = "room"
     ROUTE = "route"
     NODE = "node"
-    EXTERNAL = "external"
 
 
 class NodeStatus(SerializableEnum):

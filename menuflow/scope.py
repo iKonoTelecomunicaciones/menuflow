@@ -1,63 +1,50 @@
 import json
-from dataclasses import dataclass
-from typing import Any, Callable
 
 from .db.room import Room
 from .db.route import Route
 from .utils.types import Scopes
 
 
-@dataclass
-class ScopeHandler:
-    model: Room | Route
-    scope: str
-
-    def get_vars(self) -> dict:
-        vars: dict = self.model._variables
-        return vars.get(self.scope, {})
-
-    # TODO: Delete when unifying scope columns
-    def set_vars(self, vars: dict | None = None) -> None:
-        if vars is not None:
-            self.model._variables[self.scope] = vars
-
-    async def update_func(self) -> None:
-        await self.model.update_variables()
-
-
-@dataclass
-class ScopeHandlerCallback:
-    set_vars: Callable[[dict], None]
-    get_vars: Callable[[], dict]
-    update_func: Callable[[], Any]
-
-
 class Scope:
-    def __init__(self, room: Room, route: Route):
-        self.room = room
-        self.route = route
+    ROUTE_SCOPES = (Scopes.ROUTE.value, Scopes.NODE.value)
 
-    def resolve(self, scope: str) -> ScopeHandler | ScopeHandlerCallback:
-        match scope:
-            case Scopes.ROOM.value:
-                return ScopeHandler(model=self.room, scope=scope)
-            case Scopes.ROUTE.value:
-                return ScopeHandlerCallback(
-                    set_vars=lambda vars: setattr(self.route, "variables", json.dumps(vars)),
-                    get_vars=lambda: self.route._variables,
-                    update_func=self.route.update,
-                )
-            case Scopes.NODE.value:
-                return ScopeHandlerCallback(
-                    set_vars=lambda vars: setattr(self.route, "node_vars", json.dumps(vars)),
-                    get_vars=lambda: self.route._node_vars,
-                    update_func=self.route.update_node_vars,
-                )
-            case Scopes.EXTERNAL.value:
-                return ScopeHandlerCallback(
-                    set_vars=lambda vars: setattr(self.route, "external_vars", json.dumps(vars)),
-                    get_vars=lambda: self.route._external_vars,
-                    update_func=self.route.update_external_vars,
-                )
-            case _:
-                return ScopeHandler(model=self.room, scope=scope)
+    def __init__(self, room: Room):
+        self.room: Room = room
+
+    @property
+    def route(self) -> Route:
+        return self.room.route
+
+    def _key(self, scope: Scopes | str) -> str:
+        return scope.value if isinstance(scope, Scopes) else scope
+
+    def _model(self, scope: str):
+        return self.route if scope in self.ROUTE_SCOPES else self.room
+
+    def get(self, scope: Scopes | str) -> dict:
+        if scope in self.ROUTE_SCOPES:
+            return self.route._variables if scope == Scopes.ROUTE.value else self.route._node_vars
+        s = self._key(scope)
+        return self._model(s)._variables.setdefault(s, {})
+
+    def set(self, scope: Scopes | str, data: dict) -> None:
+        if scope in self.ROUTE_SCOPES:
+            if scope == Scopes.ROUTE.value:
+                self.route.variables = json.dumps(data or {})
+            elif scope == Scopes.NODE.value:
+                self.route._node_vars = json.dumps(data or {})
+            return
+        s = self._key(scope)
+        self._model(s)._variables[s] = data or {}
+
+    def clear(self, scope: Scopes | str) -> None:
+        self.set(scope, {})
+
+    async def update(self, scope: Scopes | str) -> None:
+        if scope in self.ROUTE_SCOPES:
+            if scope == Scopes.ROUTE.value:
+                await self.route.update()
+            elif scope == Scopes.NODE.value:
+                await self.route.update_node_vars()
+            return
+        await self._model(self._key(scope)).update_variables()
