@@ -4,10 +4,9 @@ from asyncio import Future, Lock
 from collections import defaultdict
 from logging import getLogger
 from re import match
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from glom import Delete, PathAccessError, assign, glom
-from mautrix.client import Client as MatrixClient
 from mautrix.errors.request import MNotFound
 from mautrix.types import EventType, Member, RoomID, StateEvent, StateEventContent, UserID
 from mautrix.types.util.obj import Obj
@@ -21,6 +20,9 @@ from .repository.room_events import RoomEvents
 from .scope import Scope
 from .utils import JQ2Glom, Util
 from .utils.types import Scopes
+
+if TYPE_CHECKING:
+    from .matrix import MatrixHandler
 
 
 class Room(DBRoom):
@@ -51,8 +53,9 @@ class Room(DBRoom):
         self.log = self.log.getChild(self.room_id)
         self.bot_mxid: UserID = None
         self.route: Route = None
-        self.matrix_client: MatrixClient = None
+        self.matrix_client: MatrixHandler | None = None
         self.room_events: RoomEvents = None
+        self.scope: Scope = Scope(room=self)
 
     @property
     async def get_ghost_number(self) -> str | None:
@@ -191,7 +194,6 @@ class Room(DBRoom):
             **self._variables,
             Scopes.ROUTE.value: self.route._variables,
             Scopes.NODE.value: self.route._node_vars,
-            Scopes.EXTERNAL.value: self.route._external_vars,
         }
 
     @classmethod
@@ -288,13 +290,12 @@ class Room(DBRoom):
             reserved_scopes=self._reserved_scopes,
         )
 
-        # TODO: Remove when external variables are fully supported
+        # TODO: Remove when conversation variables are fully supported
         if scope == Scopes.ROUTE.value and key.startswith("external."):
             self.log.error(
-                f"[{self.room_id}] [VAR][GET] route.external is deprecated. Use external.{key} to get variable."
+                f"[{self.room_id}] [VAR][GET] route.external is deprecated. Use conversation.{key} to get variable."
             )
-            scope = Scopes.EXTERNAL.value
-            key = key.replace("external.", "", 1)
+            scope, key = "conversation", key.replace("external.", "", 1)
 
         _msg = f"[VAR][GET] {scope}.{key}"
         try:
@@ -328,42 +329,35 @@ class Room(DBRoom):
 
         if scope:
             key = variable_id
-            custom_scopes = {scope}
         else:
-            custom_scopes = self.all_variables.keys() - self._reserved_scopes
             scope, key = Util.get_scope_and_key(
                 variable_id=variable_id,
-                custom_scopes=custom_scopes,
+                custom_scopes=self.all_variables.keys() - self._reserved_scopes,
                 reserved_scopes=self._reserved_scopes,
             )
 
-            # TODO: Remove when external variables are fully supported
+            # TODO: Remove when conversation variables are fully supported
             if scope == Scopes.ROUTE.value and key.startswith("external."):
                 self.log.error(
-                    f"[{self.room_id}] [VAR][SET] route.external is deprecated. Use external.key to set variables."
+                    f"[{self.room_id}] [VAR][SET] route.external is deprecated. Use conversation.key to set variables."
                 )
-                scope = Scopes.EXTERNAL.value
-                key = key.replace("external.", "", 1)
+                scope, key = "conversation", key.replace("external.", "", 1)
 
-        try:
-            entry = Scope(room=self, route=self.route).resolve(scope)
-        except Exception as e:
-            self.log.error(str(e))
-            return
-
-        new_variables = entry.get_vars()
+        new_variables = self.scope.get(scope)
         new_value = value.serialize() if isinstance(value, Obj) else value
 
         _msg = f"[VAR][SET] {scope}.{key}"
         try:
             assign(new_variables, self._jq2glom.to_glom_path(key), new_value, missing=dict)
-            self.log.debug(f"{_msg} = {repr(new_value)}")
+            self.log.debug("%s = %r", _msg, new_value)
         except Exception as e:
-            self.log.error(f"{_msg} => {e}")
+            self.log.error("%s => %s", _msg, e)
             return
 
-        entry.set_vars(new_variables)  # TODO: Delete when unifying scope columns
-        await entry.update_func()
+        if scope in (Scopes.ROUTE.value, Scopes.NODE.value):
+            self.scope.set(scope, new_variables)
+
+        await self.scope.update(scope)
 
         # It's necessary to update the room cache with the new variable information in the different bot_mxids.
         # Otherwise, the room variables may vary from one bot_mxid to another.
@@ -398,28 +392,20 @@ class Room(DBRoom):
         if not variable_id:
             return
 
-        custom_scopes = self.all_variables.keys() - self._reserved_scopes
         scope, key = Util.get_scope_and_key(
             variable_id=variable_id,
-            custom_scopes=custom_scopes,
+            custom_scopes=self.all_variables.keys() - self._reserved_scopes,
             reserved_scopes=self._reserved_scopes,
         )
 
-        # TODO: Remove when external variables are fully supported
+        # TODO: Remove when conversation variables are fully supported
         if scope == Scopes.ROUTE.value and key.startswith("external."):
             self.log.error(
-                f"[{self.room_id}] [VAR][DEL] route.external is deprecated. Use external.key to delete variables."
+                f"[{self.room_id}] [VAR][DEL] route.external is deprecated. Use conversation.key to delete variables."
             )
-            scope = Scopes.EXTERNAL.value
-            key = key.replace("external.", "", 1)
+            scope, key = "conversation", key.replace("external.", "", 1)
 
-        try:
-            entry = Scope(room=self, route=self.route).resolve(scope)
-        except Exception as e:
-            self.log.error(str(e))
-            return
-
-        variables = entry.get_vars()
+        variables = self.scope.get(scope)
         if not variables:
             self.log.debug(f"Variables in scope {scope} are empty")
             return
@@ -435,8 +421,10 @@ class Room(DBRoom):
             self.log.error(f"{_msg} => {e}")
             return
 
-        entry.set_vars(variables)  # TODO: Delete when unifying scope columns
-        await entry.update_func()
+        if scope in (Scopes.ROUTE.value, Scopes.NODE.value):
+            self.scope.set(scope, variables)
+
+        await self.scope.update(scope)
 
         # It's necessary to update the room cache with the new variable information in the different bot_mxids.
         # Otherwise, the room variables may vary from one bot_mxid to another.
@@ -500,8 +488,8 @@ class Room(DBRoom):
         """
         return self.all_variables.get("room", {}).get("conversation_uuid")
 
-    async def set_external_variables(self, variables: dict) -> None:
-        """Deletes the external variables and sets the new ones.
+    async def set_conversation_variables(self, variables: dict) -> None:
+        """Deletes the conversation variables and sets the new ones.
 
         Parameters
         ----------
@@ -509,17 +497,11 @@ class Room(DBRoom):
             A dictionary of variable names and values.
 
         """
-        scope = Scopes.EXTERNAL.value
-        try:
-            entry = Scope(room=self, route=self.route).resolve(scope)
-        except Exception as e:
-            self.log.error(str(e))
-            return
-
-        if entry.get_vars():
-            self.log.debug(f"[{self.room_id}] Cleaning external variables")
-            entry.set_vars({})
-            await entry.update_func()
+        scope = "conversation"
+        if self.scope.get(scope):
+            self.log.debug(f"[{self.room_id}] Cleaning conversation variables")
+            self.scope.clear(scope)
+            await self.scope.update(scope)
 
         for variable in variables:
             await self.set_variable(variable_id=f"{scope}.{variable}", value=variables[variable])

@@ -45,7 +45,7 @@ async def test_body_not_json_returns_400(mock_room):
     assert resp.status == HTTPStatus.BAD_REQUEST
     body = json.loads(resp.text)
     assert body["detail"]["message"] == "Request body is not JSON"
-    mock_room.set_external_variables.assert_not_awaited()
+    mock_room.set_conversation_variables.assert_not_awaited()
     mock_room.set_variable.assert_not_awaited()
 
 
@@ -68,31 +68,31 @@ async def test_get_by_room_id_called_with_none_when_bot_mxid_missing(
 
 
 @pytest.mark.asyncio
-async def test_external_default_scope(mock_room):
-    """custom_scope omitted -> variables go through set_external_variables."""
+async def test_conversation_default_scope(mock_room):
+    """custom_scope omitted -> variables go through set_conversation_variables."""
     resp = await set_variables(
         make_mock_request({"variables": {"token": "abc", "source": "api"}, "bot_mxid": BOT_MXID})
     )
 
     assert resp.status == HTTPStatus.OK
-    mock_room.set_external_variables.assert_awaited_once_with(
+    mock_room.set_conversation_variables.assert_awaited_once_with(
         variables={"token": "abc", "source": "api"}
     )
     mock_room.set_variable.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_external_missing_variables_calls_with_empty_dict(mock_room):
-    """Body without ``variables`` still triggers set_external_variables({})."""
+async def test_conversation_missing_variables_calls_with_empty_dict(mock_room):
+    """Body without ``variables`` still triggers set_conversation_variables({})."""
     resp = await set_variables(make_mock_request({"bot_mxid": BOT_MXID}))
 
     assert resp.status == HTTPStatus.OK
-    mock_room.set_external_variables.assert_awaited_once_with(variables={})
+    mock_room.set_conversation_variables.assert_awaited_once_with(variables={})
     mock_room.set_variable.assert_not_awaited()
 
 
 @pytest.mark.asyncio
-async def test_external_with_conversation_uuid(mock_room):
+async def test_conversation_with_conversation_uuid(mock_room):
     resp = await set_variables(
         make_mock_request(
             {"variables": {"k": "v"}, "bot_mxid": BOT_MXID, "conversation_uuid": "uuid-123"}
@@ -100,7 +100,7 @@ async def test_external_with_conversation_uuid(mock_room):
     )
 
     assert resp.status == HTTPStatus.OK
-    mock_room.set_external_variables.assert_awaited_once_with(variables={"k": "v"})
+    mock_room.set_conversation_variables.assert_awaited_once_with(variables={"k": "v"})
     mock_room.set_variable.assert_awaited_once_with(
         variable_id="room.conversation_uuid", value="uuid-123"
     )
@@ -127,7 +127,7 @@ async def test_custom_scope_reserved_scopes(mock_room):
     )
 
     assert resp.status == HTTPStatus.OK
-    mock_room.set_external_variables.assert_not_awaited()
+    mock_room.set_conversation_variables.assert_not_awaited()
     mock_room.set_variable.assert_has_awaits(
         [
             call(variable_id="trace_id", value="t1", scope=Scopes.ROUTE.value),
@@ -202,7 +202,7 @@ async def test_custom_scope_ignores_conversation_uuid(mock_room):
         )
     )
 
-    mock_room.set_external_variables.assert_not_awaited()
+    mock_room.set_conversation_variables.assert_not_awaited()
     for awaited in mock_room.set_variable.await_args_list:
         assert awaited.kwargs.get("variable_id") != "room.conversation_uuid"
 
@@ -212,7 +212,7 @@ async def test_custom_scope_empty_variables_is_noop(mock_room):
     resp = await set_variables(make_mock_request({"scope": None, "variables": {}}))
 
     assert resp.status == HTTPStatus.OK
-    mock_room.set_external_variables.assert_not_awaited()
+    mock_room.set_conversation_variables.assert_not_awaited()
     mock_room.set_variable.assert_not_awaited()
 
 

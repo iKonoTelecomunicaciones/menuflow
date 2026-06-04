@@ -14,7 +14,7 @@ from menuflow.room import Room
 from menuflow.utils.types import Scopes
 
 SYNCED_PREFIX = [Scopes.ROOM.value]
-NOT_SYNCED = [Scopes.ROUTE.value, Scopes.NODE.value, Scopes.EXTERNAL.value]
+NOT_SYNCED = [Scopes.ROUTE.value, Scopes.NODE.value]
 
 
 @pytest_asyncio.fixture
@@ -44,7 +44,6 @@ async def other_room(mocker: MockerFixture, config: Config) -> Room:
 @pytest.fixture(autouse=True)
 def _sync_cache_fixture(mocker: MockerFixture, room: Room, second_room: Room, other_room: Room):
     Room.by_room_id.clear()
-    mocker.patch.object(Route, "update_external_vars", new_callable=AsyncMock)
     room._add_to_cache(bot_mxid=room.bot_mxid)
     second_room._add_to_cache(bot_mxid=second_room.bot_mxid)
     other_room._add_to_cache(bot_mxid=other_room.bot_mxid)

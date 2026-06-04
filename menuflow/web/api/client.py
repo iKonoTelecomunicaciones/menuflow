@@ -140,13 +140,13 @@ async def set_variables(request: web.Request) -> web.Response:
     room_id = request.match_info["room_id"]
     variables: dict = data.get("variables", {})
     bot_mxid = data.get("bot_mxid", None)
-    scope = data.get("scope", "external")
+    scope = data.get("scope", "conversation")
 
     try:
         room: Room = await Room.get_by_room_id(room_id, bot_mxid)
 
-        if scope == "external":
-            await room.set_external_variables(variables=variables)
+        if scope == "conversation":
+            await room.set_conversation_variables(variables=variables)
             if conversation_uuid := data.get("conversation_uuid", None):
                 await room.set_variable(
                     variable_id="room.conversation_uuid", value=conversation_uuid
@@ -241,7 +241,6 @@ async def get_variables(request: web.Request) -> web.Response:
             **room._variables,
             Scopes.ROUTE.value: route._variables,
             Scopes.NODE.value: route._node_vars,
-            Scopes.EXTERNAL.value: route._external_vars,
         }
 
         if scopes:

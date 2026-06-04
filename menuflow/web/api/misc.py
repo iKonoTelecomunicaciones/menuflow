@@ -182,9 +182,6 @@ async def render_data(request: web.Request) -> web.Response:
                 if node_vars := route_obj._node_vars:
                     dict_variables |= {"node": node_vars}
 
-                if external_vars := route_obj._external_vars:
-                    dict_variables |= {"external": external_vars}
-
                 if flow_vars := flow_obj.flow_vars:
                     dict_variables |= {"flow": flow_vars}
 

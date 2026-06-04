@@ -219,13 +219,13 @@ class Util:
             for open, close in zip(cls._jinja_open_delims, cls._jinja_close_delims)
         )
         if has_jinja_delims:
-            # TODO: Remove when external variables are fully supported
+            # TODO: Remove when conversation variables are fully supported
             _variables = deepcopy(variables)
             _route = _variables.setdefault("route", {})
             if not isinstance(_route, dict):
                 _route = {}
                 _variables["route"] = _route
-            _route["external"] = _variables.get("external", {})
+            _route["external"] = _variables.get("conversation", {})
             # TODO: End of TODO
             try:
                 template = jinja_env.from_string(template)
@@ -317,10 +317,10 @@ class Util:
             return [cls.recursive_render(item, variables, flags) for item in _data]
 
         elif isinstance(_data, str):
-            # TODO: Remove when external variables are fully supported
+            # TODO: Remove when conversation variables are fully supported
             if "route.external" in _data:
                 log.error(
-                    f"[{room_id}] route.external is deprecated. Use external.key to render variables."
+                    f"[{room_id}] route.external is deprecated. Use conversation.key to render variables."
                 )
             # TODO: End of TODO
             return_errors = RenderFlags.RETURN_ERRORS in flags
