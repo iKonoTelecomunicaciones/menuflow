@@ -1,3 +1,4 @@
+import json
 import sys
 import types
 from unittest.mock import MagicMock
@@ -21,6 +22,11 @@ async def _update_variables_no_db(self) -> None:
     """Persist room variables to the JSON string without touching the DB."""
     self.flush_vars()
     self.clear_vars_cache()
+
+
+async def _update_route_variables_no_db(self) -> None:
+    """Simulates JSONB: normalizes keys and types like in the DB."""
+    self.variables = json.loads(json.dumps(self.variables))
 
 
 @pytest_asyncio.fixture
@@ -65,15 +71,9 @@ async def sample_flow_2(config: Config) -> Flow:
 
 @pytest_asyncio.fixture
 async def route(mocker: MockerFixture) -> Route:
-    mocker.patch.object(
-        Route,
-        "update",
-    )
-    return Route(
-        room=1,
-        node_id="start",
-        client="@foo:foo.com",
-    )
+    mocker.patch.object(Route, "update")
+    mocker.patch.object(Route, "update_variables", _update_route_variables_no_db)
+    return Route(room=1, node_id="start", client="@foo:foo.com", variables={"route": {}})
 
 
 @pytest_asyncio.fixture

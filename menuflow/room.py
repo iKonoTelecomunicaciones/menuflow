@@ -192,7 +192,7 @@ class Room(DBRoom):
     def all_variables(self) -> dict:
         return {
             **self._variables,
-            Scopes.ROUTE.value: self.route._variables,
+            **self.route.variables,
             Scopes.NODE.value: self.route._node_vars,
         }
 
@@ -257,7 +257,7 @@ class Room(DBRoom):
         ----------
         room_id : RoomID
             The room's ID.
-        variables : dict
+        variables : str
             The variables to update.
         bot_mxid : UserID|None
             The bot's Mxid. If None, all bot mxids will be updated.
@@ -354,7 +354,7 @@ class Room(DBRoom):
             self.log.error("%s => %s", _msg, e)
             return
 
-        if scope in (Scopes.ROUTE.value, Scopes.NODE.value):
+        if scope == Scopes.NODE.value:
             self.scope.set(scope, new_variables)
 
         await self.scope.update(scope)
@@ -421,7 +421,7 @@ class Room(DBRoom):
             self.log.error(f"{_msg} => {e}")
             return
 
-        if scope in (Scopes.ROUTE.value, Scopes.NODE.value):
+        if scope == Scopes.NODE.value:
             self.scope.set(scope, variables)
 
         await self.scope.update(scope)

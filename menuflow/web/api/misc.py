@@ -176,8 +176,8 @@ async def render_data(request: web.Request) -> web.Response:
                 if room_vars := room_obj._variables:
                     dict_variables |= room_vars
 
-                if route_vars := route_obj._variables:
-                    dict_variables |= {"route": route_vars}
+                if route_vars := route_obj.variables:
+                    dict_variables |= route_vars
 
                 if node_vars := route_obj._node_vars:
                     dict_variables |= {"node": node_vars}
