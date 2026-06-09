@@ -237,11 +237,7 @@ async def get_variables(request: web.Request) -> web.Response:
         if not route:
             return resp.not_found(f"Client '{bot_mxid}' not found in room", uuid)
 
-        all_variables = {
-            **room._variables,
-            **route.variables,
-            Scopes.NODE.value: route._node_vars,
-        }
+        all_variables = {**room._variables, **route.variables}
 
         if scopes:
             for scope in scopes:

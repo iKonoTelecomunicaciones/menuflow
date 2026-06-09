@@ -190,11 +190,7 @@ class Room(DBRoom):
 
     @property
     def all_variables(self) -> dict:
-        return {
-            **self._variables,
-            **self.route.variables,
-            Scopes.NODE.value: self.route._node_vars,
-        }
+        return {**self._variables, **self.route.variables}
 
     @classmethod
     @async_getter_lock
@@ -354,9 +350,6 @@ class Room(DBRoom):
             self.log.error("%s => %s", _msg, e)
             return
 
-        if scope == Scopes.NODE.value:
-            self.scope.set(scope, new_variables)
-
         await self.scope.update(scope)
 
         # It's necessary to update the room cache with the new variable information in the different bot_mxids.
@@ -421,9 +414,6 @@ class Room(DBRoom):
             self.log.error(f"{_msg} => {e}")
             return
 
-        if scope == Scopes.NODE.value:
-            self.scope.set(scope, variables)
-
         await self.scope.update(scope)
 
         # It's necessary to update the room cache with the new variable information in the different bot_mxids.
@@ -462,7 +452,7 @@ class Room(DBRoom):
             f"State: ([{self.route.state}] => [{state}])"
         )
         if update_node_vars and self.route.node_id != node_id:
-            self.route._node_vars = {}
+            self.scope.clear(Scopes.NODE)
 
         self.route.node_id = node_id.value if isinstance(node_id, RouteState) else node_id
         self.route.state = state
@@ -476,7 +466,7 @@ class Room(DBRoom):
         **kwargs : dict
             The node variables to update.
         """
-        self.route._node_vars = {**self.route._node_vars, **kwargs}
+        self.scope.get(Scopes.NODE).update(kwargs)
 
     @property
     def conversation_uuid(self) -> str | None:

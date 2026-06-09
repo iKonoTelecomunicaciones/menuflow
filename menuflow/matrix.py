@@ -31,7 +31,7 @@ from .room import Room
 from .room_sync_primitives import PrimitiveType, RoomSyncPrimitives
 from .user import User
 from .utils import Util
-from .utils.types import QueueSignal
+from .utils.types import QueueSignal, Scopes
 
 if TYPE_CHECKING:
     from .flow import Flow, Node
@@ -146,7 +146,7 @@ class MatrixHandler(MatrixClient):
 
         await self.enqueue_message(message=QueueSignal.LEAVE, room=room)
 
-        room.route._node_vars = {}
+        room.scope.clear(Scopes.NODE)
         await room.route.update()
 
         self.unlock_room(room_id=evt.room_id, evt=evt)
@@ -219,9 +219,7 @@ class MatrixHandler(MatrixClient):
             await room.set_variable(variable_id="puppet_mxid", value=puppet_mxid)
 
         # TODO: Remove when external variables are fully supported
-        if conv_vars := room.route.variables.get("route", {}).get("external"):
-            from menuflow.utils.types import Scopes
-
+        if conv_vars := room.route.variables.get(Scopes.ROUTE.value, {}).get("external"):
             self.log.error(
                 f"[{room.room_id}] Detected conversation variables in route.external. Migrating to Scope external."
             )
@@ -683,7 +681,7 @@ class MatrixHandler(MatrixClient):
         warning_message = inactivity.get("warning_message", "")
         time_between_attempts = inactivity.get("time_between_attempts", 0)
 
-        inactivity_db: dict = room.route._node_vars.setdefault("inactivity", {})
+        inactivity_db: dict = room.scope.get(Scopes.NODE).setdefault("inactivity", {})
         for key in ("attempt", "start_ttl", "attempt_ttl"):
             inactivity_db.setdefault(key, 0)
 
@@ -692,7 +690,7 @@ class MatrixHandler(MatrixClient):
             if inactivity_db.get("start_ttl") == 0:
                 inactivity_db["start_ttl"] = now + chat_timeout
                 room.set_node_var(inactivity=inactivity_db)
-                await room.route.update_node_vars()
+                await room.scope.update(Scopes.NODE)
 
             start_sleep = inactivity_db["start_ttl"] - now
             if start_sleep > 0:
@@ -734,7 +732,7 @@ class MatrixHandler(MatrixClient):
                 inactivity_db["attempt_ttl"] = now + time_between_attempts
                 inactivity_db["attempt"] += 1
                 room.set_node_var(inactivity=inactivity_db)
-                await room.route.update_node_vars()
+                await room.scope.update(Scopes.NODE)
 
                 if warning_message:
                     await room.matrix_client.send_text(room_id=room.room_id, text=warning_message)
