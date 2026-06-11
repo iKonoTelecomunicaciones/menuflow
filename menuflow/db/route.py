@@ -35,9 +35,19 @@ class Route:
     client: int = ib(factory=int)
     node_id: int = ib(default="start")
     state: RouteState = ib(default=RouteState.START)
-    variables: str = ib(default="{}")
+    variables: dict = ib(factory=lambda: {"route": {}})
     stack: str = ib(default="{}")
     node_vars: str = ib(default="{}")
+
+    @staticmethod
+    def _parse_jsonb(value: str | dict | None) -> dict:
+        if value is None:
+            data = {}
+        elif isinstance(value, dict):
+            data = value
+        else:
+            data = json.loads(value)
+        return data
 
     @classmethod
     def _from_row(cls, row: Record) -> Route | None:
@@ -46,6 +56,10 @@ class Route:
             state = RouteState(data.pop("state"))
         except ValueError:
             state = ""
+
+        variables = cls._parse_jsonb(data["variables"])
+        variables.setdefault("route", {})
+        data["variables"] = variables
 
         return cls(state=state, **data)
 
@@ -56,7 +70,7 @@ class Route:
             self.client,
             self.node_id,
             self.state.value if self.state else None,
-            self.variables,
+            json.dumps(self.variables),
             self.stack,
             self.node_vars,
         )
@@ -64,8 +78,8 @@ class Route:
     _columns = "room, client, node_id, state, variables, stack, node_vars"
 
     @property
-    def _variables(self) -> Dict:
-        return json.loads(self.variables)
+    def _variables(self) -> dict:
+        return self.variables
 
     @property
     def _node_vars(self) -> Dict:
@@ -142,17 +156,15 @@ class Route:
         if update_state:
             self.state = RouteState.START
         self.node_id = "start"
-        _vars = self._variables
-        self.variables = {}
+        _vars: dict = self.variables.get("route", {})
+        self.variables["route"] = {}
 
         log.info(
             f"[{_vars.get('customer_room_id')}] Cleaning up route for client '{self.client}', preserving constants: {constants}"
         )
 
         if constants:
-            self.variables = {c: _vars.get(c, "") for c in constants}
-
-        self.variables = json.dumps(self.variables)
+            self.variables["route"] = {c: _vars.get(c, "") for c in constants}
 
         self.stack = json.dumps({self.client: []})
         await self.update()
@@ -163,3 +175,7 @@ class Route:
             WHERE room = $2 and client = $3
         """
         await self.db.execute(q, self.node_vars, self.room, self.client)
+
+    async def update_variables(self) -> None:
+        q = "UPDATE route SET variables = $3 WHERE room = $1 and client = $2"
+        await self.db.execute(q, self.room, self.client, json.dumps(self.variables))

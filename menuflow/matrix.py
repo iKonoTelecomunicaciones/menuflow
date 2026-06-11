@@ -219,7 +219,7 @@ class MatrixHandler(MatrixClient):
             await room.set_variable(variable_id="puppet_mxid", value=puppet_mxid)
 
         # TODO: Remove when external variables are fully supported
-        if conv_vars := room.route._variables.get("external"):
+        if conv_vars := room.route.variables.get("route", {}).get("external"):
             from menuflow.utils.types import Scopes
 
             self.log.error(

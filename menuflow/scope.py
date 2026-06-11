@@ -1,5 +1,3 @@
-import json
-
 from .db.room import Room
 from .db.route import Route
 from .utils.types import Scopes
@@ -22,17 +20,14 @@ class Scope:
         return self.route if scope in self.ROUTE_SCOPES else self.room
 
     def get(self, scope: Scopes | str) -> dict:
-        if scope in self.ROUTE_SCOPES:
-            return self.route._variables if scope == Scopes.ROUTE.value else self.route._node_vars
+        if scope == Scopes.NODE.value:
+            return self.route._node_vars
         s = self._key(scope)
         return self._model(s)._variables.setdefault(s, {})
 
     def set(self, scope: Scopes | str, data: dict) -> None:
-        if scope in self.ROUTE_SCOPES:
-            if scope == Scopes.ROUTE.value:
-                self.route.variables = json.dumps(data or {})
-            elif scope == Scopes.NODE.value:
-                self.route._node_vars = json.dumps(data or {})
+        if scope == Scopes.NODE.value:
+            self.route._node_vars = data or {}
             return
         s = self._key(scope)
         self._model(s)._variables[s] = data or {}
@@ -41,10 +36,7 @@ class Scope:
         self.set(scope, {})
 
     async def update(self, scope: Scopes | str) -> None:
-        if scope in self.ROUTE_SCOPES:
-            if scope == Scopes.ROUTE.value:
-                await self.route.update()
-            elif scope == Scopes.NODE.value:
-                await self.route.update_node_vars()
+        if scope == Scopes.NODE.value:
+            await self.route.update_node_vars()
             return
         await self._model(self._key(scope)).update_variables()
