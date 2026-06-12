@@ -55,7 +55,7 @@ menu:
       url: "{{ flow.acd.endpoints.transfer }}"
       middleware: "acd"
       json:
-        customer_room_id: "{{ route.customer_room_id }}"
+        customer_room_id: "{{ room.customer_room_id }}"
         destination: "{{ conversation.last_selected_queue }}"
       cases:
         - id: 200
@@ -103,7 +103,7 @@ menu:
       url: "{{ flow.acd.endpoints.remove_user }}"
       middleware: "acd"
       json:
-        room_id: "{{ route.customer_room_id }}"
+        room_id: "{{ room.customer_room_id }}"
         user_id: "{{ conversation.current_agent }}"
         reason: "Removed by menu, user is offline"
       cases:

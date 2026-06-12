@@ -141,12 +141,20 @@ class MatrixHandler(MatrixClient):
 
         room_events.leave = True
         room_events.join = False
+
+        if self.config.get("menuflow.clean_up_route_on_leave", True):
+            await room.route.clean_up()
+
         room.events = room_events.serialize()
         await room.update_events()
 
         await self.enqueue_message(message=QueueSignal.LEAVE, room=room)
 
         room.scope.clear(Scopes.NODE)
+
+        self.log.debug(f"[{evt.room_id}] Clearing {Scopes.MENU.value} scope")
+        room.scope.clear(Scopes.MENU)
+        await room.scope.update(Scopes.MENU)
         await room.route.update()
 
         self.unlock_room(room_id=evt.room_id, evt=evt)
@@ -196,35 +204,49 @@ class MatrixHandler(MatrixClient):
             The ID of the Matrix room that the constants are being loaded for.
 
         """
+        _menu_str = Scopes.MENU.value
+        _route_str = Scopes.ROUTE.value
+        _room_str = Scopes.ROOM.value
+
         if not room:
             room: Room = await Room.get_by_room_id(room_id=room_id, bot_mxid=self.mxid)
             room.config = self.config
             room.matrix_client = self
 
-        await room.set_variable("room.current_bot_mxid", self.mxid)
+            # TODO: Remove when the old variables have been fully migrated to the new scopes.
+            route_vars = room.scope.get(_route_str)
+            if conv_vars := route_vars.get("external"):
+                self.log.error(
+                    f"[{room.room_id}] Detected conversation variables in route.external. Migrating to Scope external."
+                )
+                await room.set_conversation_variables(conv_vars)
 
-        if not await room.get_variable(variable_id="customer_room_id"):
-            await room.set_variable("customer_room_id", room_id)
+            for _var in self.config.get("menuflow.route_keep_vars", []):
+                if (_val := route_vars.get(_var)) is not None and _var not in room.scope.get(
+                    _menu_str
+                ):
+                    self.log.critical(
+                        f"[{room.room_id}] migrating {_var} from {_route_str} to {_menu_str}"
+                    )
+                    await room.set_variable(variable_id=f"{_menu_str}.{_var}", value=_val)
+            # TODO: End of TODO
 
-        if not await room.get_variable(variable_id="bot_mxid"):
-            await room.set_variable("bot_mxid", self.mxid)
+        await room.set_variable(f"{_room_str}.current_bot_mxid", self.mxid)
 
-        if not await room.get_variable(variable_id="customer_mxid"):
+        if not await room.get_variable(variable_id=f"{_room_str}.customer_room_id"):
+            await room.set_variable(f"{_room_str}.customer_room_id", room_id)
+
+        if not await room.get_variable(variable_id=f"{_menu_str}.bot_mxid"):
+            await room.set_variable(variable_id=f"{_menu_str}.bot_mxid", value=self.mxid)
+
+        if not await room.get_variable(variable_id=f"{_room_str}.customer_mxid"):
             user_mxid: UserID | None = await room.customer_mxid
             await User.get_by_mxid(mxid=user_mxid)
-            await room.set_variable(variable_id="customer_mxid", value=user_mxid)
+            await room.set_variable(variable_id=f"{_room_str}.customer_mxid", value=user_mxid)
 
-        if not await room.get_variable(variable_id="puppet_mxid"):
+        if not await room.get_variable(variable_id=f"{_room_str}.puppet_mxid"):
             puppet_mxid: str = await room.get_puppet_mxid
-            await room.set_variable(variable_id="puppet_mxid", value=puppet_mxid)
-
-        # TODO: Remove when external variables are fully supported
-        if conv_vars := room.route.variables.get(Scopes.ROUTE.value, {}).get("external"):
-            self.log.error(
-                f"[{room.room_id}] Detected conversation variables in route.external. Migrating to Scope external."
-            )
-            await room.set_conversation_variables(conv_vars)
-            await room.del_variable(variable_id=f"{Scopes.ROUTE.value}.external")
+            await room.set_variable(variable_id=f"{_room_str}.puppet_mxid", value=puppet_mxid)
 
     async def update_room_events(self, room: Room, evt: StateEvent | MessageEvent | None = None):
         """This function updates the room events in the database.

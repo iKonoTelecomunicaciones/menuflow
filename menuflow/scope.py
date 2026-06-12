@@ -31,4 +31,14 @@ class Scope:
         self.set(self._key(scope), {})
 
     async def update(self, scope: Scopes | str) -> None:
-        await self._model(self._key(scope)).update_variables()
+        s = self._key(scope)
+        await self._model(s).update_variables()
+
+        if s not in self.ROUTE_SCOPES:
+            sync = getattr(self.room, "sync_room_vars_cache", None)
+            if sync and self.room.room_id:
+                sync(
+                    room_id=self.room.room_id,
+                    variables=self.room.variables,
+                    bot_mxid=getattr(self.room, "bot_mxid", None),
+                )
