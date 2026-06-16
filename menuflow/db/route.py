@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from logging import getLogger
 from queue import LifoQueue
-from typing import TYPE_CHECKING, ClassVar, Dict, Tuple
+from typing import TYPE_CHECKING, ClassVar, Tuple
 
 from asyncpg import Record
 from attr import dataclass, ib
@@ -37,7 +37,6 @@ class Route:
     state: RouteState = ib(default=RouteState.START)
     variables: dict = ib(factory=lambda: {"route": {}})
     stack: str = ib(default="{}")
-    node_vars: str = ib(default="{}")
 
     @staticmethod
     def _parse_jsonb(value: str | dict | None) -> dict:
@@ -72,22 +71,13 @@ class Route:
             self.state.value if self.state else None,
             json.dumps(self.variables),
             self.stack,
-            self.node_vars,
         )
 
-    _columns = "room, client, node_id, state, variables, stack, node_vars"
+    _columns = "room, client, node_id, state, variables, stack"
 
     @property
     def _variables(self) -> dict:
         return self.variables
-
-    @property
-    def _node_vars(self) -> Dict:
-        return json.loads(self.node_vars)
-
-    @_node_vars.setter
-    def _node_vars(self, node_vars: dict) -> None:
-        self.node_vars = json.dumps(node_vars)
 
     @property
     def _stack(self) -> LifoQueue | None:
@@ -117,12 +107,12 @@ class Route:
         return cls._from_row(row) if row else route
 
     async def insert(self) -> str:
-        q = f"INSERT INTO route ({self._columns}) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+        q = f"INSERT INTO route ({self._columns}) VALUES ($1, $2, $3, $4, $5, $6)"
         await self.db.execute(q, *self.values)
 
     async def update(self) -> None:
         q = """
-            UPDATE route SET node_id = $3, state = $4, variables = $5, stack = $6, node_vars = $7
+            UPDATE route SET node_id = $3, state = $4, variables = $5, stack = $6
             WHERE room = $1 and client = $2
         """
         await self.db.execute(q, *self.values)
@@ -168,13 +158,6 @@ class Route:
 
         self.stack = json.dumps({self.client: []})
         await self.update()
-
-    async def update_node_vars(self) -> None:
-        q = """
-            UPDATE route SET node_vars = $1
-            WHERE room = $2 and client = $3
-        """
-        await self.db.execute(q, self.node_vars, self.room, self.client)
 
     async def update_variables(self) -> None:
         q = "UPDATE route SET variables = $3 WHERE room = $1 and client = $2"
