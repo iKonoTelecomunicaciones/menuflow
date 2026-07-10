@@ -424,6 +424,25 @@ class Util:
             return False
 
     @staticmethod
+    def _resolve_country(country_code: str) -> tuple[str, dict | None]:
+        """
+        Resolve the country code to the normalized country code and the country data from pycountry.
+
+        Parameters
+        ----------
+        country_code : str
+            The country code to resolve.
+
+        Returns
+        -------
+            A tuple containing the normalized country code and the country data.
+        """
+        country_aliases = {"UK": "GB"}
+        normalized_code = country_aliases.get(country_code, country_code)
+
+        return normalized_code, countries.get(alpha_2=normalized_code)
+
+    @staticmethod
     def parse_countries_data(subdivisions_data, countries_data, translate_to):
         """
         Parse the countries data from the World Bank API and return a list of dictionaries
@@ -449,11 +468,12 @@ class Util:
             return []
 
         locale = Locale(translate_to)
-        countries_code = [country.alpha_2 for country in countries_data if country.alpha_2]
+        countries_code = [c.alpha_2 for c in countries_data if c is not None and c.alpha_2]
         countries_name = [
             {
                 country.alpha_2: locale.territories.get(country.alpha_2)
                 for country in countries_data
+                if country is not None and country.alpha_2
             }
         ]
         subdivisions_dict = [
@@ -493,28 +513,29 @@ class Util:
         -------
             A list of dictionaries with the countries' code, name, languages and subdivisions.
         """
-        holidays_subdivisions: dict[str, list[str]] = holidays.list_supported_countries()
+        holidays_subdivisions: dict[str, list[str]] = holidays.list_supported_countries(
+            include_aliases=False
+        )
 
         # Get the list of countries from the holidays library, in holidays library, the alpha-2
         # code  of United Kingdom  is "UK" but this code is not used in pycountry instead
         # it uses "GB", so we need to convert it to "GB" in pycountry to get the country name
         # and the subdivisions
-        countries_data: list[dict] = [
-            (countries.get(alpha_2=code) if code != "UK" else countries.get(alpha_2="GB"))
-            for code in holidays_subdivisions.keys()
-        ]
+        countries_data: list[dict] = []
 
         subdivisions_data: dict[str, list[str]] = {}
 
         for country_code, country_subdivisions in holidays_subdivisions.items():
+            country_code, alpha2 = self._resolve_country(country_code)
+            if alpha2:
+                countries_data.append(alpha2)
+
             if country_subdivisions:
                 # Convert the country code to the pycountry format
                 # in holidays library, the alpha-2 code of United Kingdom is "UK"
                 # but this code is not used in pycountry instead it uses "GB"
                 # so we need to convert it to "GB" in pycountry to get the country name
                 # and the subdivisions
-                if country_code == "UK":
-                    country_code = "GB"
 
                 country_subdivisions_data = [
                     subdivisions.get(code=f"{country_code}-{subdivision_code}")
