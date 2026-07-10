@@ -498,9 +498,6 @@ class MatrixHandler(MatrixClient):
 
         return msg
 
-    def _should_stop_by_max_attempts(self, room: Room) -> bool:
-        return room.scope.get(Scopes.NODE).get("reentry_node_attempts", 0) > self.MAX_NODE_ATTEMPTS
-
     async def algorithm(
         self,
         room: Room,
@@ -545,7 +542,7 @@ class MatrixHandler(MatrixClient):
             (node := self.flow.node(room=room))
             and room.route.state != RouteState.END
             and not room.room_events.leave
-            and not self._should_stop_by_max_attempts(room=room)
+            and room.reentry_node_attempts <= self.MAX_NODE_ATTEMPTS
         ):
             if self.log.isEnabledFor(logging.DEBUG):
                 trigger_evt = evt if evt is not None else state_event
@@ -619,11 +616,12 @@ class MatrixHandler(MatrixClient):
                 room.route.state = RouteState.ERROR
                 break
 
+        attempts_exceeded = room.reentry_node_attempts > self.MAX_NODE_ATTEMPTS
         if (
             room.route.state in (RouteState.ERROR, RouteState.END)
             or node is None
             or room.room_events.leave
-            or self._should_stop_by_max_attempts(room=room)
+            or attempts_exceeded
         ):
             if node is None:
                 msg = "Does not have a valid node"
@@ -633,7 +631,7 @@ class MatrixHandler(MatrixClient):
                 msg = "Has terminated the flow"
             elif room.room_events.leave:
                 msg = "Interrupted by leave event"
-            elif self._should_stop_by_max_attempts(room=room):
+            elif attempts_exceeded:
                 msg = "Maximum recursion depth exceeded in comparison"
 
             self.log.info(f"[{room.room_id}] {msg}. Updating to start")

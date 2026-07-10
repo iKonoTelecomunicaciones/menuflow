@@ -196,6 +196,4 @@ class Base:
     def reentry_counter(self, room: Room, executed_node_id: str) -> None:
         # If the node id is the same as the executed node id, increment the attempt
         if room.route.node_id == executed_node_id:
-            node_vars = room.scope.get(Scopes.NODE)
-            current_attempt = node_vars.get("reentry_node_attempts", 0)
-            room.set_node_var(reentry_node_attempts=current_attempt + 1)
+            room.set_node_var(reentry_node_attempts=room.reentry_node_attempts + 1)
