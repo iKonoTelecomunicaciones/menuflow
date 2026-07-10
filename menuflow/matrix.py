@@ -51,7 +51,7 @@ class MatrixHandler(MatrixClient):
         self.LAST_JOIN_EVENT: dict[RoomID, StrippedStateEvent] = {}
         self.QUEUE_MESSAGE: dict[RoomID, asyncio.Queue] = {}
         self.flow_sync = FlowSync(config=self.config)
-        self.MAX_NODE_ATTEMPTS = self.config.get("menuflow.max_node_attempts", 0)
+        self.MAX_NODE_ATTEMPTS = self.config.get("menuflow.max_node_attempts", 255)
         Base.init_cls(config=self.config, session=self.api.session)
 
     def handle_sync(self, data: dict) -> list[asyncio.Task]:
