@@ -10,7 +10,7 @@ from re import compile, match, sub
 import holidays
 import jq
 from babel import Locale
-from jinja2 import TemplateSyntaxError, UndefinedError
+from jinja2 import Template, TemplateSyntaxError, UndefinedError
 from mautrix.types import LocationInfo, LocationMessageEventContent, RoomID, UserID
 from mautrix.util.logging import TraceLogger
 from pycountry import countries, subdivisions
@@ -195,7 +195,14 @@ class Util:
             return json.loads(f.read())
 
     @classmethod
-    def jinja_render(cls, template: str, variables: dict = {}, return_errors: bool = False) -> str:
+    def jinja_render(
+        cls,
+        template: str,
+        variables: dict = {},
+        return_errors: bool = False,
+        room_id: RoomID = None,  # TODO: Remove when the old variables have been fully migrated to the new scopes.
+        config: Config = None,  # TODO: Remove when the old variables have been fully migrated to the new scopes.
+    ) -> str:
         """Takes a string, renders it with Jinja, and returns the result.
         safely converting them to their actual characters.
 
@@ -219,16 +226,36 @@ class Util:
             for open, close in zip(cls._jinja_open_delims, cls._jinja_close_delims)
         )
         if has_jinja_delims:
-            # TODO: Remove when conversation variables are fully supported
+            # TODO: Remove when the old variables have been fully migrated to the new scopes.
             _variables = deepcopy(variables)
             _route = _variables.setdefault("route", {})
             if not isinstance(_route, dict):
                 _route = {}
                 _variables["route"] = _route
-            _route["external"] = _variables.get("conversation", {})
+
+            if config:
+                for old_key, new_key_dict in config.get(
+                    "menuflow.legacy_route_var_aliases", {}
+                ).items():
+                    new_scope, new_key = new_key_dict["scope"], new_key_dict["key"]
+
+                    old_str = f"{Scopes.ROUTE.value}.{old_key}"
+                    new_str = f"{new_scope}.{new_key}"
+
+                    if old_str in template:
+                        log.error(
+                            f"[{room_id}] {old_str} is deprecated. Use {new_str} to render variables."
+                        )
+
+                    _route[old_key] = (
+                        _variables.get(new_scope, {}).get(new_key, "")
+                        if new_key
+                        else _variables.get(new_scope, {})
+                    )
             # TODO: End of TODO
+
             try:
-                template = jinja_env.from_string(template)
+                template: Template = jinja_env.from_string(template)
                 temp_rendered = template.render(_variables)
             except TemplateSyntaxError as e:
                 txt_error = f"func_name: {e.name}, \nline: {e.lineno}, \nerror: {e.message}"
@@ -286,7 +313,8 @@ class Util:
         data: dict | list | str,
         variables: dict = {},
         flags: RenderFlags = RenderFlags.NONE,
-        room_id: RoomID = None,  # TODO: Remove when conversation variables are fully supported
+        room_id: RoomID = None,  # TODO: Remove when the old variables have been fully migrated to the new scopes.
+        config: Config = None,  # TODO: Remove when the old variables have been fully migrated to the new scopes.
     ) -> dict | list | str:
         """It takes a dictionary or list, converts it to a string,
         and then uses Jinja to render the string.
@@ -311,20 +339,19 @@ class Util:
             _data = data
 
         if isinstance(_data, dict):
-            return {k: cls.recursive_render(v, variables, flags) for k, v in _data.items()}
+            return {
+                k: cls.recursive_render(v, variables, flags, room_id, config)
+                for k, v in _data.items()
+            }
 
         elif isinstance(_data, list):
-            return [cls.recursive_render(item, variables, flags) for item in _data]
+            return [
+                cls.recursive_render(item, variables, flags, room_id, config) for item in _data
+            ]
 
         elif isinstance(_data, str):
-            # TODO: Remove when conversation variables are fully supported
-            if "route.external" in _data:
-                log.error(
-                    f"[{room_id}] route.external is deprecated. Use conversation.key to render variables."
-                )
-            # TODO: End of TODO
             return_errors = RenderFlags.RETURN_ERRORS in flags
-            rendered = cls.jinja_render(_data, variables, return_errors)
+            rendered = cls.jinja_render(_data, variables, return_errors, room_id, config)
 
             if RenderFlags.LITERAL_EVAL in flags:
                 rendered = cls.parse_literal(rendered)
@@ -424,6 +451,25 @@ class Util:
             return False
 
     @staticmethod
+    def _resolve_country(country_code: str) -> tuple[str, dict | None]:
+        """
+        Resolve the country code to the normalized country code and the country data from pycountry.
+
+        Parameters
+        ----------
+        country_code : str
+            The country code to resolve.
+
+        Returns
+        -------
+            A tuple containing the normalized country code and the country data.
+        """
+        country_aliases = {"UK": "GB"}
+        normalized_code = country_aliases.get(country_code, country_code)
+
+        return normalized_code, countries.get(alpha_2=normalized_code)
+
+    @staticmethod
     def parse_countries_data(subdivisions_data, countries_data, translate_to):
         """
         Parse the countries data from the World Bank API and return a list of dictionaries
@@ -449,11 +495,12 @@ class Util:
             return []
 
         locale = Locale(translate_to)
-        countries_code = [country.alpha_2 for country in countries_data if country.alpha_2]
+        countries_code = [c.alpha_2 for c in countries_data if c is not None and c.alpha_2]
         countries_name = [
             {
                 country.alpha_2: locale.territories.get(country.alpha_2)
                 for country in countries_data
+                if country is not None and country.alpha_2
             }
         ]
         subdivisions_dict = [
@@ -493,28 +540,29 @@ class Util:
         -------
             A list of dictionaries with the countries' code, name, languages and subdivisions.
         """
-        holidays_subdivisions: dict[str, list[str]] = holidays.list_supported_countries()
+        holidays_subdivisions: dict[str, list[str]] = holidays.list_supported_countries(
+            include_aliases=False
+        )
 
         # Get the list of countries from the holidays library, in holidays library, the alpha-2
         # code  of United Kingdom  is "UK" but this code is not used in pycountry instead
         # it uses "GB", so we need to convert it to "GB" in pycountry to get the country name
         # and the subdivisions
-        countries_data: list[dict] = [
-            (countries.get(alpha_2=code) if code != "UK" else countries.get(alpha_2="GB"))
-            for code in holidays_subdivisions.keys()
-        ]
+        countries_data: list[dict] = []
 
         subdivisions_data: dict[str, list[str]] = {}
 
         for country_code, country_subdivisions in holidays_subdivisions.items():
+            country_code, alpha2 = self._resolve_country(country_code)
+            if alpha2:
+                countries_data.append(alpha2)
+
             if country_subdivisions:
                 # Convert the country code to the pycountry format
                 # in holidays library, the alpha-2 code of United Kingdom is "UK"
                 # but this code is not used in pycountry instead it uses "GB"
                 # so we need to convert it to "GB" in pycountry to get the country name
                 # and the subdivisions
-                if country_code == "UK":
-                    country_code = "GB"
 
                 country_subdivisions_data = [
                     subdivisions.get(code=f"{country_code}-{subdivision_code}")
