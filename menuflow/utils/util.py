@@ -10,7 +10,7 @@ from re import compile, match, sub
 import holidays
 import jq
 from babel import Locale
-from jinja2 import Template, TemplateSyntaxError, UndefinedError
+from jinja2 import TemplateSyntaxError, UndefinedError
 from mautrix.types import LocationInfo, LocationMessageEventContent, RoomID, UserID
 from mautrix.util.logging import TraceLogger
 from pycountry import countries, subdivisions
@@ -195,14 +195,7 @@ class Util:
             return json.loads(f.read())
 
     @classmethod
-    def jinja_render(
-        cls,
-        template: str,
-        variables: dict = {},
-        return_errors: bool = False,
-        room_id: RoomID = None,  # TODO: Remove when the old variables have been fully migrated to the new scopes.
-        config: Config = None,  # TODO: Remove when the old variables have been fully migrated to the new scopes.
-    ) -> str:
+    def jinja_render(cls, template: str, variables: dict = {}, return_errors: bool = False) -> str:
         """Takes a string, renders it with Jinja, and returns the result.
         safely converting them to their actual characters.
 
@@ -226,36 +219,16 @@ class Util:
             for open, close in zip(cls._jinja_open_delims, cls._jinja_close_delims)
         )
         if has_jinja_delims:
-            # TODO: Remove when the old variables have been fully migrated to the new scopes.
+            # TODO: Remove when conversation variables are fully supported
             _variables = deepcopy(variables)
             _route = _variables.setdefault("route", {})
             if not isinstance(_route, dict):
                 _route = {}
                 _variables["route"] = _route
-
-            if config:
-                for old_key, new_key_dict in config.get(
-                    "menuflow.legacy_route_var_aliases", {}
-                ).items():
-                    new_scope, new_key = new_key_dict["scope"], new_key_dict["key"]
-
-                    old_str = f"{Scopes.ROUTE.value}.{old_key}"
-                    new_str = f"{new_scope}.{new_key}"
-
-                    if old_str in template:
-                        log.error(
-                            f"[{room_id}] {old_str} is deprecated. Use {new_str} to render variables."
-                        )
-
-                    _route[old_key] = (
-                        _variables.get(new_scope, {}).get(new_key, "")
-                        if new_key
-                        else _variables.get(new_scope, {})
-                    )
+            _route["external"] = _variables.get("conversation", {})
             # TODO: End of TODO
-
             try:
-                template: Template = jinja_env.from_string(template)
+                template = jinja_env.from_string(template)
                 temp_rendered = template.render(_variables)
             except TemplateSyntaxError as e:
                 txt_error = f"func_name: {e.name}, \nline: {e.lineno}, \nerror: {e.message}"
@@ -313,8 +286,7 @@ class Util:
         data: dict | list | str,
         variables: dict = {},
         flags: RenderFlags = RenderFlags.NONE,
-        room_id: RoomID = None,  # TODO: Remove when the old variables have been fully migrated to the new scopes.
-        config: Config = None,  # TODO: Remove when the old variables have been fully migrated to the new scopes.
+        room_id: RoomID = None,  # TODO: Remove when conversation variables are fully supported
     ) -> dict | list | str:
         """It takes a dictionary or list, converts it to a string,
         and then uses Jinja to render the string.
@@ -339,19 +311,20 @@ class Util:
             _data = data
 
         if isinstance(_data, dict):
-            return {
-                k: cls.recursive_render(v, variables, flags, room_id, config)
-                for k, v in _data.items()
-            }
+            return {k: cls.recursive_render(v, variables, flags) for k, v in _data.items()}
 
         elif isinstance(_data, list):
-            return [
-                cls.recursive_render(item, variables, flags, room_id, config) for item in _data
-            ]
+            return [cls.recursive_render(item, variables, flags) for item in _data]
 
         elif isinstance(_data, str):
+            # TODO: Remove when conversation variables are fully supported
+            if "route.external" in _data:
+                log.error(
+                    f"[{room_id}] route.external is deprecated. Use conversation.key to render variables."
+                )
+            # TODO: End of TODO
             return_errors = RenderFlags.RETURN_ERRORS in flags
-            rendered = cls.jinja_render(_data, variables, return_errors, room_id, config)
+            rendered = cls.jinja_render(_data, variables, return_errors)
 
             if RenderFlags.LITERAL_EVAL in flags:
                 rendered = cls.parse_literal(rendered)
