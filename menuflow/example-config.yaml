@@ -75,6 +75,9 @@ menuflow:
     # Timeout for processing client messages indicating the join event
     join_wait_timeout: 5.0
 
+    # Maximum number of attempts for the same node
+    max_node_attempts: 255
+
     # If true, the route will be cleaned up when the leave event is received.
     clean_up_route_on_leave: true
 

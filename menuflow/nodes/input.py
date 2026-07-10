@@ -15,6 +15,7 @@ from ..events.event_generator import send_node_event
 from ..repository import Input as InputModel
 from ..room import Room
 from ..utils import Middlewares, Nodes, Util
+from ..utils.types import Scopes
 from .message import Message
 from .switch import Switch
 
@@ -226,3 +227,10 @@ class Input(Switch, Message):
             await self._send_node_event(
                 event_type=event_type, o_connection=None, node_type=Nodes.input
             )
+
+    def reentry_counter(self, room: Room, executed_node_id: str) -> None:
+        # If the node id is the same as the executed node id, increment the attempt
+        if room.route.node_id == executed_node_id and room.route.state == RouteState.INPUT:
+            node_vars = room.scope.get(Scopes.NODE)
+            current_attempt = node_vars.get("reentry_node_attempts", 0)
+            room.set_node_var(reentry_node_attempts=current_attempt + 1)
