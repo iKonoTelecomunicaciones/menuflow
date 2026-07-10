@@ -229,6 +229,6 @@ class Input(Switch, Message):
             )
 
     def reentry_counter(self, room: Room, executed_node_id: str) -> None:
-        # If the node id is the same as the executed node id, increment the attempt
-        if room.route.node_id == executed_node_id and room.route.state == RouteState.INPUT:
-            room.set_node_var(reentry_node_attempts=room.reentry_node_attempts + 1)
+        if room.route.state != RouteState.INPUT:
+            return
+        super().reentry_counter(room=room, executed_node_id=executed_node_id)
