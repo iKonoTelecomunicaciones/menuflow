@@ -469,6 +469,16 @@ class Room(DBRoom):
         self.scope.get(Scopes.NODE).update(kwargs)
 
     @property
+    def reentry_node_attempts(self) -> int:
+        """Returns the number of attempts to enter the same node.
+
+        Returns
+        -------
+            The number of attempts to enter the same node.
+        """
+        return self.scope.get(Scopes.NODE).get("reentry_node_attempts", 0)
+
+    @property
     def conversation_uuid(self) -> str | None:
         """This function retrieves the conversation UUID from the room's variables.
 

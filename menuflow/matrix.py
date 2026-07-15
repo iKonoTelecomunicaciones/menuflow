@@ -51,6 +51,7 @@ class MatrixHandler(MatrixClient):
         self.LAST_JOIN_EVENT: dict[RoomID, StrippedStateEvent] = {}
         self.QUEUE_MESSAGE: dict[RoomID, asyncio.Queue] = {}
         self.flow_sync = FlowSync(config=self.config)
+        self.MAX_NODE_ATTEMPTS = self.config.get("menuflow.max_node_attempts", 255)
         Base.init_cls(config=self.config, session=self.api.session)
 
     def handle_sync(self, data: dict) -> list[asyncio.Task]:
@@ -519,6 +520,7 @@ class MatrixHandler(MatrixClient):
             (node := self.flow.node(room=room))
             and room.route.state != RouteState.END
             and not room.room_events.leave
+            and room.reentry_node_attempts <= self.MAX_NODE_ATTEMPTS
         ):
             if self.log.isEnabledFor(logging.DEBUG):
                 trigger_evt = evt if evt is not None else state_event
@@ -534,6 +536,7 @@ class MatrixHandler(MatrixClient):
                 if type(node) in (Input, InteractiveInput, FormInput, GPTAssistant, Webhook):
                     if run_input_node:
                         await node.run(evt)
+                        node.reentry_counter(room=room, executed_node_id=node.id)
                     run_input_node = True  # one-time reset to True
                     if room.route.state == RouteState.INPUT:
                         evt = await self.get_input_response(room=room, node=node)
@@ -572,6 +575,7 @@ class MatrixHandler(MatrixClient):
                         await self.load_room_constants(room_id=room.room_id, room=room)
 
                     await node.run()
+                    node.reentry_counter(room=room, executed_node_id=node.id)
                     if room.route.state == RouteState.INVITE:
                         self.log.debug(
                             f"[{room.room_id}] Invite state detected. Breaking out of the loop"
@@ -590,10 +594,12 @@ class MatrixHandler(MatrixClient):
                 room.route.state = RouteState.ERROR
                 break
 
+        attempts_exceeded = room.reentry_node_attempts > self.MAX_NODE_ATTEMPTS
         if (
             room.route.state in (RouteState.ERROR, RouteState.END)
             or node is None
             or room.room_events.leave
+            or attempts_exceeded
         ):
             if node is None:
                 msg = "Does not have a valid node"
@@ -603,6 +609,8 @@ class MatrixHandler(MatrixClient):
                 msg = "Has terminated the flow"
             elif room.room_events.leave:
                 msg = "Interrupted by leave event"
+            elif attempts_exceeded:
+                msg = "Maximum recursion depth exceeded in comparison"
 
             self.log.info(f"[{room.room_id}] {msg}. Updating to start")
             await room.update_menu(node_id="start")
