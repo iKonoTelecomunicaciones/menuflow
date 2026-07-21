@@ -16,7 +16,6 @@ from menuflow.utils.util import Util
 from ..config import Config
 from ..room import Room
 from ..utils.flags import RenderFlags
-from ..utils.types import Scopes
 
 
 def convert_to_bool(item) -> dict | list | str:
