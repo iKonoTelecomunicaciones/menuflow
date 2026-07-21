@@ -193,6 +193,14 @@ class Base:
         return o_connection
 
     def reentry_counter(self, room: Room, executed_node_id: str) -> None:
-        # If the node id is the same as the executed node id, increment the attempt
+        """It increments the reentry node attempts if the node id is the same as the executed node id.
+
+        Parameters
+        ----------
+        room : Room
+            The room where the node is being executed.
+        executed_node_id : str
+            The ID of the node that was executed.
+        """
         if room.route.node_id == executed_node_id:
             room.set_node_var(reentry_node_attempts=room.reentry_node_attempts + 1)

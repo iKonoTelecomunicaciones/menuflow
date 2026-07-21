@@ -447,6 +447,12 @@ class Room(DBRoom):
 
     @property
     def reentry_node_attempts(self) -> int:
+        """Returns the number of attempts to enter the same node.
+
+        Returns
+        -------
+            The number of attempts to enter the same node.
+        """
         return self.scope.get(Scopes.NODE).get("reentry_node_attempts", 0)
 
     @property
