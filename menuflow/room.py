@@ -500,7 +500,7 @@ class Room(DBRoom):
         -------
             A tuple containing the new scope and key.
         """
-        scope, key = Scopes.ROUTE.value, key
+        scope = Scopes.ROUTE.value
 
         if hasattr(self, "config"):
             for old_key, new_key_dict in self.config.get(
