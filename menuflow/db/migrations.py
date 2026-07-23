@@ -341,3 +341,21 @@ async def upgrade_v18(conn: Connection) -> None:
         "UPDATE route SET variables = variables || jsonb_build_object('node', node_vars) WHERE node_vars IS NOT NULL"
     )
     await conn.execute("ALTER TABLE route DROP COLUMN IF EXISTS node_vars")
+
+
+@upgrade_table.register(description="Add scope menu to room table in variables column")
+async def upgrade_v19(conn: Connection) -> None:
+    await conn.execute(
+        """UPDATE room
+            SET variables = variables || jsonb_build_object('menu', '{}'::jsonb)
+            WHERE variables IS NOT NULL
+        """
+    )
+    await conn.execute(
+        """UPDATE room SET variables = COALESCE(variables, '{}'::jsonb)
+            || jsonb_build_object('menu', COALESCE(variables->'menu', '{}'::jsonb)
+            || jsonb_build_object('bot_mxid', COALESCE(variables->'room'->>'current_bot_mxid', variables->>'current_bot_mxid'))
+            )
+            WHERE COALESCE(variables->'room'->>'current_bot_mxid', variables->>'current_bot_mxid') IS NOT NULL
+        """
+    )

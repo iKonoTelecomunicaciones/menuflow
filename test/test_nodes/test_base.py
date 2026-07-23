@@ -26,7 +26,7 @@ def test_convert_to_bool():
 def scope_variables() -> dict:
     """It returns a dictionary of scope variables for tests"""
     return {
-        "route.customer_room_id": "!1234567890:example.com",
+        "room.customer_room_id": "!1234567890:example.com",
         "route.string_number": "123456789",
         "route.number": 61481488798,
         "route.dictionary": {"key": "value"},
@@ -267,7 +267,7 @@ class TestBase:
                     "account_type_name": "Phone",
                     "label": "",
                     "deleted": False,
-                    "rooms": ["{{ route.customer_room_id }}"],
+                    "rooms": ["{{ room.customer_room_id }}"],
                     "opt_in": None,
                 }
             ],
@@ -276,7 +276,7 @@ class TestBase:
         test_data = await self.config_variables(base, scope_vars, data)
 
         assert test_data.get("accounts")[0].get("rooms")[0] == base.render_data(
-            "{{ route.customer_room_id }}"
+            "{{ room.customer_room_id }}"
         )
         assert scope_vars.get("route.number") == test_data.get("number")
 
@@ -476,7 +476,7 @@ class TestBase:
         and if it correctly replaces the placeholders with the corresponding values.
         """
         scope_vars = {
-            "route.customer_mxid": "@mxwa_573009091234:darknet",
+            "room.customer_mxid": "@mxwa_573009091234:darknet",
             "route.account_type_id": 1,
             "route.account_type_id_str": "1",
         }
@@ -485,7 +485,7 @@ class TestBase:
   "accounts": [
     {
       "label": "Created by menuflow",
-      "identifier": "{{ route.customer_mxid | user_bridge_account_id }}",
+      "identifier": "{{ room.customer_mxid | user_bridge_account_id }}",
       "account_type_id": {{ route.account_type_id }},
       "account_type_id_str": "{{ route.account_type_id_str }}",
       "account_type_id_int": "{{ route.account_type_id }}"

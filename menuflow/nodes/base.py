@@ -158,7 +158,11 @@ class Base:
                 flags |= RenderFlags.CUSTOM_UNESCAPE
 
         return Util.recursive_render(
-            data=data, variables=variables, flags=flags, room_id=self.room.room_id
+            data=data,
+            variables=variables,
+            flags=flags,
+            room_id=self.room.room_id,
+            config=getattr(self, "config", None),
         )
 
     async def get_o_connection(self) -> str:

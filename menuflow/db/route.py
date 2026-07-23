@@ -117,44 +117,19 @@ class Route:
         """
         await self.db.execute(q, *self.values)
 
-    async def clean_up(
-        self,
-        update_state: bool = True,
-        preserve_constants: bool = False,
-        var_keep_list: list[str] | None = None,
-    ) -> None:
+    async def clean_up(self, update_state: bool = True) -> None:
         """Cleans up the route when the node is set to start or when the route is reset.
 
         Parameters
         ----------
         update_state : bool
             If true, the state of the route will be set to start.
-        preserve_constants : bool
-            If true, the constants will be preserved.
-        var_keep_list : list[str] | None
-            The list of route variables to keep.
         """
-        constants = (
-            ["customer_room_id", "bot_mxid", "customer_mxid", "puppet_mxid"]
-            if preserve_constants
-            else []
-        )
-
-        if var_keep_list:
-            constants.extend(var_keep_list)
 
         if update_state:
             self.state = RouteState.START
         self.node_id = "start"
-        _vars: dict = self.variables.get("route", {})
         self.variables["route"] = {}
-
-        log.info(
-            f"[{_vars.get('customer_room_id')}] Cleaning up route for client '{self.client}', preserving constants: {constants}"
-        )
-
-        if constants:
-            self.variables["route"] = {c: _vars.get(c, "") for c in constants}
 
         self.stack = json.dumps({self.client: []})
         await self.update()
