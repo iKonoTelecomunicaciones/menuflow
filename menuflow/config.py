@@ -42,6 +42,7 @@ class Config(BaseFileConfig):
         copy("menuflow.join_wait_timeout")
         copy_dict("menuflow.legacy_route_var_aliases")
         copy("menuflow.clean_up_route_on_leave")
+        copy("menuflow.max_node_attempts")
         shared_secret = self["server.unshared_secret"]
         if shared_secret is None or shared_secret == "generate":
             base["server.unshared_secret"] = self._new_token()
