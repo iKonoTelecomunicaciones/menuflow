@@ -21,6 +21,7 @@ class CheckHoliday(Switch):
       timezone: "America/Bogota"
       country_code: "CO"
       subdivision_code: ""
+      validate_date: "2026-01-01"
       cases:
           - id: "True"
           o_connection: "message_1"
@@ -32,4 +33,5 @@ class CheckHoliday(Switch):
     timezone: str = ib(factory=str)
     country_code: str = ib(factory=str)
     subdivision_code: str = ib(factory=str)
+    validate_date: str = ib(factory=str)
     cases: list[Case] = ib(factory=list)
