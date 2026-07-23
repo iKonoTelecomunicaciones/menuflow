@@ -75,6 +75,30 @@ menuflow:
     # Timeout for processing client messages indicating the join event
     join_wait_timeout: 5.0
 
+    # If true, the route will be cleaned up when the leave event is received.
+    clean_up_route_on_leave: true
+
+    # Legacy variables aliases to keep compatibility with old scopes
+    legacy_route_var_aliases:
+      external:
+        scope: conversation
+        key: ""
+      bot_mxid:
+        scope: menu
+        key: bot_mxid
+      customer_room_id:
+        scope: room
+        key: customer_room_id
+      customer_mxid:
+        scope: room
+        key: customer_mxid
+      puppet_mxid:
+        scope: room
+        key: puppet_mxid
+      encolado:
+        scope: menu
+        key: encolado
+
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0

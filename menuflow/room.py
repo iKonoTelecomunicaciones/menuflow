@@ -286,12 +286,9 @@ class Room(DBRoom):
             reserved_scopes=self._reserved_scopes,
         )
 
-        # TODO: Remove when conversation variables are fully supported
-        if scope == Scopes.ROUTE.value and key.startswith("external."):
-            self.log.error(
-                f"[{self.room_id}] [VAR][GET] route.external is deprecated. Use conversation.{key} to get variable."
-            )
-            scope, key = "conversation", key.replace("external.", "", 1)
+        # TODO: Remove when the old variables have been fully migrated to the new scopes.
+        if scope == Scopes.ROUTE.value:
+            scope, key = self.resolve_legacy_var(key, "GET")
 
         _msg = f"[VAR][GET] {scope}.{key}"
         try:
@@ -332,12 +329,9 @@ class Room(DBRoom):
                 reserved_scopes=self._reserved_scopes,
             )
 
-            # TODO: Remove when conversation variables are fully supported
-            if scope == Scopes.ROUTE.value and key.startswith("external."):
-                self.log.error(
-                    f"[{self.room_id}] [VAR][SET] route.external is deprecated. Use conversation.key to set variables."
-                )
-                scope, key = "conversation", key.replace("external.", "", 1)
+            # TODO: Remove when the old variables have been fully migrated to the new scopes.
+            if scope == Scopes.ROUTE.value:
+                scope, key = self.resolve_legacy_var(key, "SET")
 
         new_variables = self.scope.get(scope)
         new_value = value.serialize() if isinstance(value, Obj) else value
@@ -351,13 +345,6 @@ class Room(DBRoom):
             return
 
         await self.scope.update(scope)
-
-        # It's necessary to update the room cache with the new variable information in the different bot_mxids.
-        # Otherwise, the room variables may vary from one bot_mxid to another.
-        if scope in self._variables:
-            self.sync_room_vars_cache(
-                room_id=self.room_id, variables=self.variables, bot_mxid=self.bot_mxid
-            )
 
     async def set_variables(self, variables: dict) -> None:
         """It takes a dictionary of variable IDs and values, and sets the variables to the values
@@ -391,12 +378,9 @@ class Room(DBRoom):
             reserved_scopes=self._reserved_scopes,
         )
 
-        # TODO: Remove when conversation variables are fully supported
-        if scope == Scopes.ROUTE.value and key.startswith("external."):
-            self.log.error(
-                f"[{self.room_id}] [VAR][DEL] route.external is deprecated. Use conversation.key to delete variables."
-            )
-            scope, key = "conversation", key.replace("external.", "", 1)
+        # TODO: Remove when the old variables have been fully migrated to the new scopes.
+        if scope == Scopes.ROUTE.value:
+            scope, key = self.resolve_legacy_var(key, "DEL")
 
         variables = self.scope.get(scope)
         if not variables:
@@ -415,13 +399,6 @@ class Room(DBRoom):
             return
 
         await self.scope.update(scope)
-
-        # It's necessary to update the room cache with the new variable information in the different bot_mxids.
-        # Otherwise, the room variables may vary from one bot_mxid to another.
-        if scope in self._variables:
-            self.sync_room_vars_cache(
-                room_id=self.room_id, variables=self.variables, bot_mxid=self.bot_mxid
-            )
 
     async def del_variables(self, variables: list = []) -> None:
         """This function delete the variables in the room.
@@ -495,3 +472,41 @@ class Room(DBRoom):
 
         for variable in variables:
             await self.set_variable(variable_id=f"{scope}.{variable}", value=variables[variable])
+
+    # TODO: Remove when the old variables have been fully migrated to the new scopes.
+    def resolve_legacy_var(self, key: str, type: str) -> tuple[str, str]:
+        """This function resolves the legacy variables to the new scopes.
+
+        Parameters
+        ----------
+        scope : str
+            The scope of the variable.
+        key : str
+            The key of the variable.
+        type : str
+            The type of the operation (GET, SET, DEL).
+
+        Returns
+        -------
+            A tuple containing the new scope and key.
+        """
+        scope = Scopes.ROUTE.value
+
+        if hasattr(self, "config"):
+            for old_key, new_key_dict in self.config.get(
+                "menuflow.legacy_route_var_aliases", {}
+            ).items():
+                new_scope, new_key = new_key_dict["scope"], new_key_dict["key"]
+
+                is_prefix = not new_key and key.startswith(f"{old_key}.")
+                is_exact = key == old_key
+
+                if is_prefix or is_exact:
+                    self.log.error(
+                        f"[VAR][{type}] {scope}.{old_key} is deprecated. Use {new_scope}.{new_key} to {type} variable."
+                    )
+                    scope = new_scope
+                    key = key.replace(f"{old_key}.", new_key, 1) if is_prefix else new_key
+                    break
+
+        return scope, key

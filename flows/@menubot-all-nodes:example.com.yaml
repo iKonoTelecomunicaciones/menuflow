@@ -625,7 +625,7 @@ menu:
         method: 'POST'
         url: http://acd-as:29601/provision/v1/cmd/acd
         json:
-          customer_room_id: '{{route.customer_room_id}}'
+          customer_room_id: '{{room.customer_room_id}}'
           destination: '!mecvMBiHLULHQKOWjU:darknet'
           joined_message: "{{ route.joined_message }}"
         middleware: "acd"
