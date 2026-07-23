@@ -20,7 +20,7 @@ class CheckHoliday(Switch):
 
     @property
     def timezone(self) -> str:
-        return self.render_data(self.content.get("timezone", str))
+        return self.render_data(self.content.get("timezone", "America/Bogota"))
 
     @property
     def country(self) -> str:
@@ -30,13 +30,32 @@ class CheckHoliday(Switch):
     def subregion(self) -> str:
         return self.render_data(self.content.get("subdivision_code", str))
 
+    @property
+    def validate_date(self) -> str:
+        return self.render_data(self.content.get("validate_date"))
+
     async def validate_connection(self) -> None:
         time_zone = pytz.timezone(self.timezone)
-        now = datetime.now(time_zone)
+        date_to_validate = None
+
+        if _date := self.validate_date:
+            formats = ("%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d", "%d/%m/%Y")
+            for fmt in formats:
+                try:
+                    date_to_validate = time_zone.localize(datetime.strptime(_date, fmt))
+                    break
+                except ValueError:
+                    continue
+
+            if date_to_validate is None:
+                self.log.error(
+                    f"[{self.room.room_id}] Invalid date format ({_date}). "
+                    "Today's date will be used instead."
+                )
 
         return (
             await self.get_case_by_id("True")
-            if self.check_holidays(now)
+            if self.check_holidays(date_to_validate or datetime.now(time_zone))
             else await self.get_case_by_id("False")
         )
 
@@ -45,6 +64,8 @@ class CheckHoliday(Switch):
         then update the menu to the "True" case. Otherwise, update the menu to the "False" case
 
         """
+        self.log.debug(f"[{self.room.room_id}] Entering check_holiday node {self.id}")
+
         o_connection = await self.validate_connection()
 
         await self.room.update_menu(node_id=o_connection, state=None)
