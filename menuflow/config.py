@@ -40,6 +40,9 @@ class Config(BaseFileConfig):
         copy("menuflow.inactivity_options.recreate_on_startup")
         copy("menuflow.enqueue_messages")
         copy("menuflow.join_wait_timeout")
+        copy("menuflow.customer_pattern")
+        copy("menuflow.ghost_pattern")
+        copy("menuflow.puppet_pattern")
         shared_secret = self["server.unshared_secret"]
         if shared_secret is None or shared_secret == "generate":
             base["server.unshared_secret"] = self._new_token()

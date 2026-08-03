@@ -3,7 +3,7 @@ from __future__ import annotations
 from asyncio import Future, Lock
 from collections import defaultdict
 from logging import getLogger
-from re import match
+from re import Pattern, compile, match
 from typing import TYPE_CHECKING, Any, cast
 
 from glom import Delete, PathAccessError, assign, glom
@@ -29,12 +29,6 @@ class Room(DBRoom):
     by_room_id: dict[(RoomID, UserID), "Room"] = {}
     pending_invites: dict[RoomID, Future] = {}
     _async_get_locks: dict[Any, Lock] = defaultdict(lambda: Lock())
-    # Pattern to match the customer's Mxid
-    _customer_pattern: str = r"^@.+_(?P<customer_phone>[0-9]{8,}):.+$"
-    # Pattern to match the ghost's id
-    _ghost_pattern: str = r"^(?P<customer_phone>[0-9]{8,})@s\..+$"
-    # Pattern to match the puppet's Mxid
-    _puppet_pattern: str = r"^@acd[0-9]+:.+$"
     # JQ2Glom instance
     _jq2glom: JQ2Glom = JQ2Glom()
     _reserved_scopes: set[str] = set(Scopes._value2member_map_)
@@ -56,6 +50,36 @@ class Room(DBRoom):
         self.matrix_client: MatrixHandler | None = None
         self.room_events: RoomEvents = None
         self.scope: Scope = Scope(room=self)
+
+    @property
+    def _customer_pattern(self) -> Pattern:
+        """This function retrieves the customer's pattern from the config.
+
+        Returns
+        -------
+            The customer's pattern is being returned as a string.
+        """
+        return compile(self.config["menuflow.customer_pattern"])
+
+    @property
+    def _ghost_pattern(self) -> Pattern:
+        """This function retrieves the ghost's pattern from the config.
+
+        Returns
+        -------
+            The ghost's pattern is being returned as a string.
+        """
+        return compile(self.config["menuflow.ghost_pattern"])
+
+    @property
+    def _puppet_pattern(self) -> Pattern:
+        """This function retrieves the puppet's pattern from the config.
+
+        Returns
+        -------
+            The puppet's pattern is being returned as a string.
+        """
+        return compile(self.config["menuflow.puppet_pattern"])
 
     @property
     async def get_ghost_number(self) -> str | None:
