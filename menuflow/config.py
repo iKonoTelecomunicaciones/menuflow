@@ -43,6 +43,9 @@ class Config(BaseFileConfig):
         copy_dict("menuflow.legacy_route_var_aliases")
         copy("menuflow.clean_up_route_on_leave")
         copy("menuflow.max_node_attempts")
+        copy("menuflow.customer_pattern")
+        copy("menuflow.ghost_pattern")
+        copy("menuflow.puppet_pattern")
         shared_secret = self["server.unshared_secret"]
         if shared_secret is None or shared_secret == "generate":
             base["server.unshared_secret"] = self._new_token()
