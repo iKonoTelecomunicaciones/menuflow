@@ -75,6 +75,10 @@ menuflow:
     # Timeout for processing client messages indicating the join event
     join_wait_timeout: 5.0
 
+    customer_pattern: ^@.+_(?P<customer_phone>[A-Z]*\.?[0-9]{8,}):.+$
+    ghost_pattern: ^(?P<customer_phone>[0-9]{8,})@s\..+$
+    puppet_pattern: ^@acd[0-9]+:.+$
+
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0
