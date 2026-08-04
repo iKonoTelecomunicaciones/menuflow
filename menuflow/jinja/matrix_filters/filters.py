@@ -1,13 +1,27 @@
 from re import match
 
+_DEFAULT_CUSTOMER_PATTERN = r"^@(?P<user_prefix>.+)_(?P<customer_phone>[A-Z]*\.?[0-9]{8,}):.+$"
 
-def user_bridge_info(user_id: str) -> str:
-    user_bridge_match = match("^@(?P<user_prefix>.+)_(?P<account_id>[0-9]{8,}):.+$", user_id)
+
+def user_bridge_info(user_id: str) -> tuple[str, str]:
+    from menuflow.web.base import get_config
+
+    config = get_config()
+    pattern = _DEFAULT_CUSTOMER_PATTERN
+
+    if config:
+        pattern = config.get("menuflow.customer_pattern", pattern) or pattern
+
+    user_bridge_match = match(pattern, user_id)
 
     if not user_bridge_match:
         return "", ""
 
-    return user_bridge_match.group("user_prefix"), user_bridge_match.group("account_id")
+    groups = user_bridge_match.groupdict()
+    prefix = groups.get("user_prefix") or ""
+    account_id = groups.get("customer_phone") or ""
+
+    return prefix, account_id
 
 
 def user_bridge_prefix(user_id: str) -> str:
