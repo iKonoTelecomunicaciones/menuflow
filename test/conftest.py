@@ -12,11 +12,12 @@ from menuflow.flow import Flow
 from menuflow.nodes import Base, Input, Location, Message, Switch
 from menuflow.room import Room
 from menuflow.utils import Util
-from menuflow.web.base import set_config
 
 fake_version = types.ModuleType("menuflow.version")
 fake_version.version = "test"
 sys.modules.setdefault("menuflow.version", fake_version)
+
+from menuflow.web.base import set_config
 
 
 async def _update_variables_no_db(self) -> None:
