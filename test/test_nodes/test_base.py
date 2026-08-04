@@ -477,7 +477,7 @@ class TestBase:
         """
         scope_vars = {
             "route.customer_mxid": "@mxwa_573009091234:darknet",
-            "room.customer_mxid_bsuid": "@wb_CO.1767778284254959:darknet",
+            "route.customer_mxid_bsuid": "@wb_CO.1767778284254959:darknet",
             "route.account_type_id": 1,
             "route.account_type_id_str": "1",
         }
@@ -487,7 +487,7 @@ class TestBase:
     {
       "label": "Created by menuflow",
       "identifier": "{{ route.customer_mxid | user_bridge_account_id }}",
-      "identifier_bsuid": "{{ room.customer_mxid_bsuid | user_bridge_account_id }}",
+      "identifier_bsuid": "{{ route.customer_mxid_bsuid | user_bridge_account_id }}",
       "account_type_id": {{ route.account_type_id }},
       "account_type_id_str": "{{ route.account_type_id_str }}",
       "account_type_id_int": "{{ route.account_type_id }}"
