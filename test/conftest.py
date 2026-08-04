@@ -17,6 +17,8 @@ fake_version = types.ModuleType("menuflow.version")
 fake_version.version = "test"
 sys.modules.setdefault("menuflow.version", fake_version)
 
+from menuflow.web.base import set_config
+
 
 async def _update_variables_no_db(self) -> None:
     """Persist room variables to the JSON string without touching the DB."""
@@ -27,6 +29,11 @@ async def _update_variables_no_db(self) -> None:
 async def _update_route_variables_no_db(self) -> None:
     """Simulates JSONB: normalizes keys and types like in the DB."""
     self.variables = json.loads(json.dumps(self.variables))
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def register_web_config(config: Config) -> None:
+    set_config(config=config, flow_utils=MagicMock())
 
 
 @pytest_asyncio.fixture
