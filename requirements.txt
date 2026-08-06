@@ -1,6 +1,6 @@
 aiohttp-cors==0.7.0
 aiohttp-swagger3==0.9.0
-aiosmtplib==3.0.1
+aiosmtplib==5.1.1
 asyncpg==0.29.0
 attrs==23.2.0
 Babel==2.14.0
