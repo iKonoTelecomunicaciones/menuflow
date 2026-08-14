@@ -14,7 +14,7 @@ lark==1.2.2
 Markdown==3.8.1
 mautrix==0.20.5
 nats-py==2.7.2
-openai==1.57.4
+openai==2.52.1
 phonenumbers==9.0.9
 pillow==12.1.1
 pycountry==24.6.1

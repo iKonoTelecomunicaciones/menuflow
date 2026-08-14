@@ -18,3 +18,6 @@ settings.json
 menuflow/version.py
 menuflow/__init__.py
 .pytest_cache
+
+.cursor/
+graph*
