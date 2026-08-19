@@ -55,6 +55,7 @@ class GPTAssistant(Switch):
     OPENAI_TIMEOUT: float = 60.0
     HISTORY_MAX_MESSAGES: int = 50
     ASSISTANT_ID_PREFIX: str = "asst_"
+    JSON_PATTERN: re.Pattern[str] = re.compile(r"```json(.*?)```", re.DOTALL)
 
     def __init__(
         self, gpt_assistant_node_data: GPTAssistantModel, room: Room, default_variables: dict
@@ -317,6 +318,12 @@ class GPTAssistant(Switch):
             return None
         return uploaded.id
 
+    async def _download_media(self, evt: MessageEvent) -> tuple[bytes, str]:
+        """Download a Matrix media file and return the raw bytes and mimetype."""
+        data = await self.room.matrix_client.download_media(evt.content.url)
+        mime = getattr(evt.content.info, "mimetype", None) or mimetype(data)
+        return data, mime
+
     async def _build_content_block(self, evt: MessageEvent | str) -> dict[str, Any] | None:
         """Convert a Matrix event (or raw string) into an OpenAI content block.
 
@@ -370,8 +377,7 @@ class GPTAssistant(Switch):
             ``input_image`` (Responses) or ``image_file`` (Assistants),
             or ``None`` if the upload failed.
         """
-        matrix_file = await self.room.matrix_client.download_media(evt.content.url)
-        file_mimetype = mimetype(matrix_file)
+        matrix_file, file_mimetype = await self._download_media(evt)
 
         if evt.content.body and "forwarded" not in evt.content.body.lower():
             file_name = evt.content.body
@@ -406,19 +412,15 @@ class GPTAssistant(Switch):
             ``input_file`` block, or ``None`` if the MIME type is not PDF
             or the upload failed.
         """
-        matrix_file = await self.room.matrix_client.download_media(evt.content.url)
-        file_mimetype = mimetype(matrix_file)
-
-        if file_mimetype != "application/pdf":
-            self.log.warning(f"[{self.room.room_id}] Unsupported file mimetype: {file_mimetype}")
+        if (_mimetype := getattr(evt.content.info, "mimetype", None)) != "application/pdf":
+            self.log.warning(f"[{self.room.room_id}] Unsupported file mimetype: {_mimetype}")
             return None
+
+        matrix_file, file_mimetype = await self._download_media(evt)
 
         file_name = evt.content.body if evt.content.body else "document.pdf"
         file_id = await self._upload_openai_file(
-            file_name=file_name,
-            data=matrix_file,
-            mime=file_mimetype,
-            purpose="assistants",
+            file_name=file_name, data=matrix_file, mime=file_mimetype, purpose="assistants"
         )
         if not file_id:
             return None
@@ -493,9 +495,7 @@ class GPTAssistant(Switch):
         _, thread_id = await self._ensure_assistants_ready()
         try:
             await self.client.beta.threads.messages.create(
-                thread_id=thread_id,
-                role="user",
-                content=blocks,
+                thread_id=thread_id, role="user", content=blocks
             )
         except openai.APIError as exc:
             self.log.error(f"[{self.room.room_id}] Failed to add message to thread: {exc}")
@@ -651,11 +651,8 @@ class GPTAssistant(Switch):
         str | dict | list
             Parsed JSON object/array, or the original string.
         """
-        if text.startswith("```json"):
-            json_pattern = re.compile(r"```json(.*?)```", re.DOTALL)
-            match = json_pattern.search(text)
-            if match:
-                text = html.unescape(match.group(1).strip())
+        if match := self.JSON_PATTERN.search(text):
+            text = html.unescape(match.group(1).strip())
 
         try:
             parsed_json = json.loads(text)
