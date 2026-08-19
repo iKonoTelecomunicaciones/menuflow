@@ -216,8 +216,7 @@ class GPTAssistant(Switch):
             raise
 
         if (self.state.assistant_id, self.state.thread_id) != previous_ids:
-            self._save_state()
-            await self.room.scope.update(Scopes.NODE)
+            await self._save_state()
 
         self.log.debug(
             f"[{self.room.room_id}] Assistants ready "
@@ -244,17 +243,34 @@ class GPTAssistant(Switch):
 
         self._state_loaded = True
 
-    def _save_state(self) -> None:
-        """Stage the current conversation into node variables as ``gpt_state``.
+    async def _save_state(self) -> None:
+        """Persist the current conversation into node variables as ``gpt_state``.
 
-        Does not flush to the database by itself; the caller must
-        ``await self.room.scope.update(Scopes.NODE)`` when persistence is required.
+        Stages into the node scope and flushes to the database immediately.
         """
         self.room.set_node_var(**{_STATE_KEY: self.state.to_dict()})
+        await self.room.scope.update(Scopes.NODE)
         self.log.debug(
-            f"[{self.room.room_id}] Staged GPT state into node scope "
+            f"[{self.room.room_id}] Persisted GPT state to node scope "
             f"(history={len(self.state.history)}, thread_id={self.state.thread_id!r})"
         )
+
+    def _file_purpose(self, *, for_vision: bool) -> str:
+        """Return the OpenAI Files API purpose for the active mode.
+
+        Responses mode always uses ``user_data``. Assistants mode uses
+        ``vision`` for image inputs.
+        """
+        if self.mode == GPTMode.ASSISTANTS and for_vision:
+            return "vision"
+        return "user_data"
+
+    @property
+    def _file_expiry_seconds(self) -> int | None:
+        secs = self.config.get("menuflow.openai.file_expiry_seconds", 0)
+        if not secs:
+            return None
+        return max(3600, min(int(secs), 604800))
 
     def _trim_history(self) -> None:
         """Keep the Responses-mode history within ``max_history_messages``.
@@ -302,7 +318,7 @@ class GPTAssistant(Switch):
         mime : str
             MIME type of ``data``.
         purpose : str
-            OpenAI upload purpose, e.g. ``vision`` or ``assistants``.
+            OpenAI upload purpose, e.g. ``user_data`` or ``vision``.
 
         Returns
         -------
@@ -310,9 +326,10 @@ class GPTAssistant(Switch):
             Uploaded file ID, or ``None`` if the API call failed (already logged).
         """
         try:
-            uploaded = await self.client.files.create(
-                file=(file_name, data, mime), purpose=purpose
-            )
+            kwargs: dict[str, Any] = {"file": (file_name, data, mime), "purpose": purpose}
+            if (secs := self._file_expiry_seconds) is not None:
+                kwargs["expires_after"] = {"anchor": "created_at", "seconds": secs}
+            uploaded = await self.client.files.create(**kwargs)
         except openai.APIError as exc:
             self.log.error(f"[{self.room.room_id}] Failed to upload file: {exc}")
             return None
@@ -386,7 +403,10 @@ class GPTAssistant(Switch):
             file_name = f"image{extension}"
 
         file_id = await self._upload_openai_file(
-            file_name=file_name, data=matrix_file, mime=file_mimetype, purpose="vision"
+            file_name=file_name,
+            data=matrix_file,
+            mime=file_mimetype,
+            purpose=self._file_purpose(for_vision=True),
         )
         if not file_id:
             return None
@@ -399,7 +419,7 @@ class GPTAssistant(Switch):
         """Build a Responses-mode PDF block from a Matrix file message.
 
         Only ``application/pdf`` is accepted. The file is uploaded with
-        purpose ``assistants``.
+        purpose ``user_data``.
 
         Parameters
         ----------
@@ -420,7 +440,10 @@ class GPTAssistant(Switch):
 
         file_name = evt.content.body if evt.content.body else "document.pdf"
         file_id = await self._upload_openai_file(
-            file_name=file_name, data=matrix_file, mime=file_mimetype, purpose="assistants"
+            file_name=file_name,
+            data=matrix_file,
+            mime=file_mimetype,
+            purpose=self._file_purpose(for_vision=False),
         )
         if not file_id:
             return None
@@ -489,7 +512,7 @@ class GPTAssistant(Switch):
 
         if self.mode == GPTMode.RESPONSES:
             self.state.history.append({"role": "user", "content": blocks})
-            self._save_state()
+            await self._save_state()
             return True
 
         _, thread_id = await self._ensure_assistants_ready()
@@ -550,11 +573,16 @@ class GPTAssistant(Switch):
 
         assistant_message = ai_response.output_text or ""
         if assistant_message:
-            self.state.history.append({"role": "assistant", "content": assistant_message})
+            self.state.history.append(
+                {
+                    "role": "assistant",
+                    "content": [{"type": "output_text", "text": assistant_message}],
+                }
+            )
             assistant_message = self.parse_openai_output(assistant_message)
 
         self._trim_history()
-        self._save_state()
+        await self._save_state()
         return assistant_message
 
     async def _run_assistants(self, instructions: str | None = None) -> str | dict | list:
@@ -597,7 +625,7 @@ class GPTAssistant(Switch):
         if assistant_message:
             assistant_message = self.parse_openai_output(assistant_message)
 
-        self._save_state()
+        await self._save_state()
         return assistant_message
 
     async def _extract_thread_reply(self, thread_id: str) -> str:
