@@ -76,8 +76,8 @@ class HTTPRequest(Switch):
     def context_params(self) -> dict[str, str]:
         return self.render_data(
             {
-                "bot_mxid": f"{{ {Scopes.MENU.value}.bot_mxid }}",
-                "customer_room_id": f"{{ {Scopes.ROOM.value}.customer_room_id }}",
+                "bot_mxid": f"{{{{ {Scopes.MENU.value}.bot_mxid }}}}",
+                "customer_room_id": f"{{{{ {Scopes.ROOM.value}.customer_room_id }}}}",
             }
         )
 
