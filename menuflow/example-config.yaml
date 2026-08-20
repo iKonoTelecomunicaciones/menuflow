@@ -106,6 +106,14 @@ menuflow:
     ghost_pattern: ^(?P<customer_phone>[0-9]{8,})@s\..+$
     puppet_pattern: ^@acd[0-9]+:.+$
 
+    openai:
+        # Seconds that OpenAI will keep the uploaded files (images, PDFs).
+        # 0: no expiration (default behavior of OpenAI, expires_at: null).
+        # Minimum with expiration: 3600 (1 hour — lower limit of the API).
+        # Maximum: 2592000 (30 days — upper limit of the API).
+        # Recommended: 604800 (7 days) for ephemeral chats.
+        file_expiry_seconds: 604800
+
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0

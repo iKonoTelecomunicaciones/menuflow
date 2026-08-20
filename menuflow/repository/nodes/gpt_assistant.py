@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import List
-
 from attr import dataclass, ib
 from mautrix.types import SerializableAttrs
 
@@ -48,6 +46,7 @@ class GPTAssistant(Switch):
             message: "Please enter a valid option"
             attempts: 3
           group_messages_timeout: 10
+          max_history_messages: 50
           inactivity_options:
             active: true
             chat_timeout: 20 #seconds
@@ -78,5 +77,6 @@ class GPTAssistant(Switch):
     validation: str = ib(default=None)
     validation_attempts: int = ib(default=None)
     inactivity_options: InactivityOptions = ib(default=None)
-    middlewares: List = ib(default=None)
+    middlewares: list = ib(default=None)
     group_messages_timeout: int = ib(default=None)
+    max_history_messages: int = ib(default=None)

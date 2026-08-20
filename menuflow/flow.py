@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional, Union
+from typing import Union
 
 from mautrix.util.logging import TraceLogger
 
@@ -61,11 +61,11 @@ class Flow:
 
     def __init__(self) -> None:
         self.data: Flow = None
-        self.nodes: List[Dict] = []
-        self.nodes_by_id: Dict[str, Dict] = {}
+        self.nodes: list[dict] = []
+        self.nodes_by_id: dict[str, dict] = {}
 
     @property
-    def flow_variables(self) -> Dict:
+    def flow_variables(self) -> dict:
         return {"flow": self.data.flow_variables or {}}
 
     @classmethod
@@ -74,18 +74,18 @@ class Flow:
 
     async def load_flow(
         self,
-        flow_mxid: Optional[str] = None,
-        content: Optional[Dict] = None,
-        config: Optional[Config] = None,
+        flow_mxid: str | None = None,
+        content: dict | None = None,
+        config: Config | None = None,
     ) -> Flow:
         self.data = await FlowModel.load_flow(flow_mxid=flow_mxid, content=content, config=config)
         self.nodes = self.data.nodes or []
-        self.nodes_by_id: Dict[str, Dict] = {}
+        self.nodes_by_id: dict[str, dict] = {}
 
-    def _add_node_to_cache(self, node_data: Dict):
+    def _add_node_to_cache(self, node_data: dict):
         self.nodes_by_id[node_data.get("id")] = node_data
 
-    def get_node_by_id(self, node_id: str) -> Dict | None:
+    def get_node_by_id(self, node_id: str) -> dict | None:
         """This function returns a node from a cache or a list of nodes based on its ID.
 
         Parameters
@@ -229,16 +229,11 @@ class Flow:
                 delay_node_data=node_data, room=room, default_variables=self.flow_variables
             )
         elif node_data.get("type") == "gpt_assistant":
-            node_initialized = None
-            if GPTAssistant.assistant_cache.get((room.room_id, room.route.id)):
-                node_initialized = GPTAssistant.assistant_cache.get((room.room_id, room.route.id))
-            else:
-                node_initialized = GPTAssistant(
-                    gpt_assistant_node_data=node_data,
-                    room=room,
-                    default_variables=self.flow_variables,
-                )
-                GPTAssistant.assistant_cache[(room.room_id, room.route.id)] = node_initialized
+            node_initialized = GPTAssistant(
+                gpt_assistant_node_data=node_data,
+                room=room,
+                default_variables=self.flow_variables,
+            )
 
             if node_data.get("middlewares"):
                 middlewares = []

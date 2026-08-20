@@ -317,8 +317,6 @@ class MatrixHandler(MatrixClient):
 
             # Clean up the actions
             await room.clean_up()
-            if (room.room_id, room.route.id) in GPTAssistant.assistant_cache:
-                del GPTAssistant.assistant_cache[(room.room_id, room.route.id)]
 
             room.room_events.join = True
             await self.load_room_constants(room_id=evt.room_id, room=room)
