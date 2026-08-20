@@ -107,11 +107,11 @@ jobs:
 
           # Disable StrictHostKeyChecking ask in SSH config
           [[ -e ~/.ssh ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
-          ssh -tt ${{ secrets.HOST_TESTING }} "echo '** Connected **'"
+          ssh -tt -l ${{ secrets.SSH_USER }} ${{ secrets.HOST_TESTING }} "echo '** Connected **'"
 
           echo "** Download updated Testing docker image **"
           # Download updated docker image to testing server
-          ssh -tt ${{ secrets.HOST_TESTING }} " \
+          ssh -tt -l ${{ secrets.SSH_USER }} ${{ secrets.HOST_TESTING }} " \
             docker pull ${{ vars.MENUFLOW_IMAGE }}:${{ vars.TAG_TESTING }} \
           "
 
@@ -122,7 +122,7 @@ jobs:
             service=$(echo ${stack} | cut -d '.' -f1)
             menuflow_service="${stack_name}_${service}-menuflow"
             echo " >> Remove the service if exists"
-            ssh -tt ${{ secrets.HOST_TESTING }} " \
+            ssh -tt -l ${{ secrets.SSH_USER }} ${{ secrets.HOST_TESTING }} " \
               if docker service ps ${menuflow_service}; then \
                 docker service rm ${menuflow_service}; \
               else \
@@ -131,5 +131,5 @@ jobs:
             "
 
             echo " >> Deploy the service"
-            ssh -tt ${{ secrets.HOST_TESTING }} "yes | docker-stack deploy ${stack_name};"
+            ssh -tt -l ${{ secrets.SSH_USER }} ${{ secrets.HOST_TESTING }} "yes | docker-stack deploy ${stack_name};"
           done
