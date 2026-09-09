@@ -477,6 +477,12 @@ class GPTAssistant(Switch):
 
         return text
 
+    async def _route_to_next_node(self) -> None:
+        """Run the switch node and update the menu."""
+        output = await Switch.run(self, update_state=False, generate_event=False)
+        o_connection = output if output else self.id
+        await self.room.update_menu(o_connection)
+
     async def run(self, messages: list[MessageEvent] | None = None) -> None:
         """If the room is in input mode, then set the variable.
         Otherwise, show the message and enter input mode
@@ -511,9 +517,7 @@ class GPTAssistant(Switch):
             if _inactivity.get("active"):
                 await Util.cancel_task(task_name=self.room.room_id)
 
-            output = await Switch.run(self, update_state=False, generate_event=False)
-            o_connection = output if output else self.id
-            await self.room.update_menu(o_connection)
+            await self._route_to_next_node()
 
         elif self.room.route.state == RouteState.TIMEOUT:
             o_connection = await self.get_case_by_id("timeout")
@@ -526,17 +530,22 @@ class GPTAssistant(Switch):
             # and the room state is set to input.
             self.log.debug(f"[{self.room.room_id}] Entering gpt_assistant node {self.id}")
 
-            if not await self.room.get_variable(_variable):
+            response = await self.room.get_variable(_variable)
+            if not response:
                 if _initial_info := self.initial_info:
                     await self.add_message([_initial_info])
 
                 response = await self.run_assistant()
                 if isinstance(response, openai.APIError):
                     raise response
+
                 await self.room.set_variable(_variable, value=response)
 
-            message = await self.room.get_variable(_variable)
-            await self.room.matrix_client.send_text(room_id=self.room.room_id, text=message)
+            if isinstance(response, (dict, list)):
+                await self._route_to_next_node()
+                return
+
+            await self.room.matrix_client.send_text(room_id=self.room.room_id, text=response)
             await self.room.update_menu(
                 node_id=self.id, state=RouteState.INPUT, update_node_vars=False
             )
