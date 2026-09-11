@@ -20,13 +20,12 @@ class GPTAssistant(Switch):
     """
     ## GptAssistant
 
-    This node allows to interact with the GPT Assistant API.
+    This node allows to interact with the GPT Responses API.
 
-    * If you want to create a new assistant, you need to provide name, instructions, model parameters.
-    * If you want to use an existing assistant, you need to provide assistant_id.
+    * If you want to provide the assistant some initial information,
+    you can use the initial_info parameter.
 
-    **Note:**
-    If you want to provide the assistant some initial information,
+    * If you want to provide the assistant some initial information,
     you can use the initial_info parameter.
 
     content:
