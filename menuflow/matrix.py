@@ -318,6 +318,14 @@ class MatrixHandler(MatrixClient):
             # Clean up the actions
             await room.clean_up()
 
+            # TODO: Remove this condition when detecting failure on scope menu.
+            if _menu_content := room.scope.get(Scopes.MENU.value):
+                self.log.critical(
+                    f"[{_room_id}] Content has been detected in the menu scope. Cleaning... Old menu: {_menu_content}"
+                )
+                room.scope.clear(Scopes.MENU)
+                await room.scope.update(Scopes.MENU)
+
             room.room_events.join = True
             await self.load_room_constants(room_id=evt.room_id, room=room)
             await self.update_room_events(room=room, evt=evt)
