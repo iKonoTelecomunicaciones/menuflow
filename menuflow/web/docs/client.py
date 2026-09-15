@@ -46,7 +46,12 @@ create_client_doc = """
 set_variables_doc = """
     ---
     summary: Set variables
-    description: Set variables for a room
+    description: |
+        Set variables for a room.
+
+        - scope `conversation` (default / omitted): flat `variables`; optional `conversation_uuid`.
+        - any other scope value (including `null`): `variables` nested by scope name
+        (`room`, `route`, `node`, `menu`, or custom).
     tags:
         - Room
 
@@ -68,19 +73,49 @@ set_variables_doc = """
                     properties:
                         variables:
                             type: object
+                            additionalProperties: true
                         bot_mxid:
                             type: string
+                            nullable: true
+                            description: |
+                                The Matrix user ID of the client if scope is "conversation".
+                                If not provided, the current bot MXID will be used.
                         conversation_uuid:
                             type: string
-                example:
-                    variables:
-                        var1: value
-                        var2: value
-                    bot_mxid: "@bot:example.com"
-                    conversation_uuid: "1234567890"
+                        scope:
+                            type: string
+                            nullable: true
+                            description: |
+                                Omit or "conversation" for flat variables.
+                                Any other value (including null) for variables nested by scope.
+
+                examples:
+                    ConversationScope:
+                        summary: Conversation scope (default)
+                        value:
+                            variables:
+                                var1: value
+                                var2: value
+                            bot_mxid: "@bot:example.com"
+                            conversation_uuid: "1234567890"
+                    MultipleScopes:
+                        summary: Set variables by scope
+                        value:
+                            scope: null
+                            bot_mxid: "@bot:example.com"
+                            variables:
+                                room:
+                                    locale: es
+                                route:
+                                    trace_id: t1
+                                node:
+                                    step: 2
+
     responses:
         '201':
             $ref: '#/components/responses/VariablesSetSuccess'
+        '404':
+            $ref: '#/components/responses/SetVariablesNotFound'
         '500':
             $ref: '#/components/responses/InternalServerError'
 """
