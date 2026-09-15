@@ -25,7 +25,15 @@ from .config import Config
 from .db.room import Room as DBRoom
 from .db.route import RouteState
 from .flow_sync import FlowSync
-from .nodes import Base, FormInput, GPTAssistant, Input, InteractiveInput, Message, Webhook
+from .nodes import (
+    Base,
+    FormInput,
+    GPTAssistant,
+    Input,
+    InteractiveInput,
+    Message,
+    Webhook,
+)
 from .repository.room_events import RoomEvents
 from .room import Room
 from .room_sync_primitives import PrimitiveType, RoomSyncPrimitives
@@ -113,9 +121,18 @@ class MatrixHandler(MatrixClient):
             if prev_membership == Membership.INVITE:
                 await self.handle_reject_invite(evt)
 
+    def _check_leave_preconditions(self, evt: StateEvent, room_events: RoomEvents) -> str | None:
+        ts = getattr(evt, "timestamp", 0)
+        if room_events.is_join_stale(ts):
+            join_id = getattr(room_events.last_join_event, "event_id", None)
+            return f"older than last join event ({join_id})."
+        if room_events.is_leave_stale(ts):
+            leave_id = getattr(room_events.last_leave_event, "event_id", None)
+            return f"older than last leave event ({leave_id})."
+        return None
+
     async def handle_leave(self, evt: StrippedStateEvent) -> None:
         _event_id, _room_id = evt.event_id, evt.room_id
-
         room: Room = await Room.get_by_room_id(
             room_id=evt.room_id, bot_mxid=self.mxid, create=False
         )
@@ -126,22 +143,20 @@ class MatrixHandler(MatrixClient):
 
         room_events = RoomEvents.deserialize(room._events)
         room.room_events = room_events
-        last_join_ts = room.room_events.last_join_ts
 
-        if getattr(evt, "timestamp", 0) < last_join_ts:
-            last_join_id = getattr(room_events.last_join_event, "event_id", None)
+        if reason := self._check_leave_preconditions(evt, room_events):
             self.log.warning(
-                f"[{_room_id}] Ignoring {evt.content.get('membership')} event ({_event_id}) "
-                f"is older than last join event ({last_join_id}) ({last_join_ts})"
+                f"[{_room_id}] Ignoring {evt.content.get('membership')} event ({_event_id}) is {reason}"
             )
             return
 
-        self.log.info(f"[{_room_id}] Handling leave event ({_event_id}) for bot ({evt.state_key})")
+        self.log.info(f"[{_room_id}] Leave event ({_event_id}) for bot ({evt.state_key}) accepted")
 
         await Util.cancel_task(task_name=room.room_id)
 
         room_events.leave = True
         room_events.join = False
+        room_events.last_leave_event = evt
 
         if self.config.get("menuflow.clean_up_route_on_leave", True):
             await room.route.clean_up()
