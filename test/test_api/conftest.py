@@ -17,6 +17,24 @@ def patched_get_by_room_id(mocker):
 
 
 @pytest.fixture
+def patched_db_room_get_by_room_id(mocker):
+    """Patches ``DBRoom.get_by_room_id`` used to resolve ``current_bot_mxid``."""
+    return mocker.patch(
+        "menuflow.web.api.client.DBRoom.get_by_room_id",
+        new_callable=AsyncMock,
+    )
+
+
+@pytest.fixture
+def mock_db_room(patched_db_room_get_by_room_id):
+    """DB room with ``room.current_bot_mxid`` set for conversation resolution."""
+    db_room = MagicMock()
+    db_room._variables = {"room": {"current_bot_mxid": "@bot:example.com"}}
+    patched_db_room_get_by_room_id.return_value = db_room
+    return db_room
+
+
+@pytest.fixture
 def mock_room(patched_get_by_room_id):
     """Returns a MagicMock room pre-wired to satisfy ``set_variables``.
 
