@@ -68,8 +68,6 @@ async def test_resolves_bot_mxid_from_room_when_missing(
 
     assert resp.status == HTTPStatus.OK
     patched_db_room_get_by_room_id.assert_awaited_once_with(ROOM_ID)
-    await set_variables(make_mock_request({"variables": {"a": 1}, "bot_mxid": BOT_MXID}))
-
     patched_get_by_room_id.assert_awaited_once_with(ROOM_ID, BOT_MXID)
 
 
