@@ -48,7 +48,7 @@ set_variables_doc = """
     summary: Set variables
     description: |
         Set variables for a room.
-        
+
         - scope `conversation` (default / omitted): flat `variables`; optional `conversation_uuid`.
         - any other scope value (including `null`): `variables` nested by scope name
         (`room`, `route`, `node`, `menu`, or custom).
@@ -88,7 +88,6 @@ set_variables_doc = """
                             description: |
                                 Omit or "conversation" for flat variables.
                                 Any other value (including null) for variables nested by scope.
-                
 
                 examples:
                     ConversationScope:
@@ -111,7 +110,7 @@ set_variables_doc = """
                                     trace_id: t1
                                 node:
                                     step: 2
-                    
+
     responses:
         '201':
             $ref: '#/components/responses/VariablesSetSuccess'
