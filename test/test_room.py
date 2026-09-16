@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+import logging
+from unittest.mock import MagicMock
 
 import pytest
 import pytest_asyncio
@@ -11,10 +12,13 @@ from pytest_mock import MockerFixture
 from menuflow.config import Config
 from menuflow.db import Route
 from menuflow.room import Room
-from menuflow.utils.types import Scopes
+from menuflow.utils.types import ProtectedVars, Scopes
 
 SYNCED_PREFIX = [Scopes.ROOM.value]
 NOT_SYNCED = [Scopes.ROUTE.value, Scopes.NODE.value]
+
+PROTECTED_VAR = ProtectedVars.CUSTOMER_MXID.value  # "room.customer_mxid"
+PROTECTED_KEY = "customer_mxid"
 
 
 @pytest_asyncio.fixture
@@ -79,3 +83,43 @@ async def test_set_variable_syncs_cache_for_custom_scope_billing(
 
     assert other_room.variables == "{}"
     assert not hasattr(other_room, "_vars_cache") or other_room._variables == {}
+
+
+# ---------- ProtectedVars guard ------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_set_variable_blocks_protected_var(room: Room, caplog):
+    caplog.set_level(logging.WARNING)
+
+    await room.set_variable(variable_id=PROTECTED_VAR, value="x")
+
+    assert PROTECTED_KEY not in room._variables.get(Scopes.ROOM.value, {})
+    assert any("Cannot set protected variable" in r.message for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_set_variable_bypass_allows_protected_var(room: Room):
+    await room.set_variable(variable_id=PROTECTED_VAR, value="x", bypass_protection=True)
+
+    assert room._variables[Scopes.ROOM.value][PROTECTED_KEY] == "x"
+
+
+@pytest.mark.asyncio
+async def test_del_variable_blocks_protected_var(room: Room, caplog):
+    caplog.set_level(logging.WARNING)
+    await room.set_variable(variable_id=PROTECTED_VAR, value="x", bypass_protection=True)
+
+    await room.del_variable(variable_id=PROTECTED_VAR)
+
+    assert room._variables[Scopes.ROOM.value][PROTECTED_KEY] == "x"
+    assert any("Cannot delete protected variable" in r.message for r in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_del_variable_bypass_allows_protected_var(room: Room):
+    await room.set_variable(variable_id=PROTECTED_VAR, value="x", bypass_protection=True)
+
+    await room.del_variable(variable_id=PROTECTED_VAR, bypass_protection=True)
+
+    assert PROTECTED_KEY not in room._variables.get(Scopes.ROOM.value, {})
