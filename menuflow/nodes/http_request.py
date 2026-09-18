@@ -11,7 +11,7 @@ from ..repository import HTTPRequest as HTTPRequestModel
 from ..room import Room
 from ..utils import Nodes, Util
 from ..utils.flags import RenderFlags
-from ..utils.types import Scopes
+from ..utils.types import ProtectedVars
 from .switch import Switch
 
 if TYPE_CHECKING:
@@ -76,8 +76,8 @@ class HTTPRequest(Switch):
     def context_params(self) -> dict[str, str]:
         return self.render_data(
             {
-                "bot_mxid": f"{{{{ {Scopes.MENU.value}.bot_mxid }}}}",
-                "customer_room_id": f"{{{{ {Scopes.ROOM.value}.customer_room_id }}}}",
+                "bot_mxid": f"{{{{ {ProtectedVars.BOT_MXID.value} }}}}",
+                "customer_room_id": f"{{{{ {ProtectedVars.CUSTOMER_ROOM_ID.value} }}}}",
             }
         )
 

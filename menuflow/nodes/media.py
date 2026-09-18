@@ -26,7 +26,7 @@ from ..events.event_generator import send_node_event
 from ..repository import Media as MediaModel
 from ..room import Room
 from ..utils import Nodes
-from ..utils.types import Scopes
+from ..utils.types import ProtectedVars
 from .message import Message
 
 try:
@@ -76,8 +76,8 @@ class Media(Message):
     def context_params(self) -> dict[str, str]:
         return self.render_data(
             {
-                "bot_mxid": f"{{{{ {Scopes.MENU.value}.bot_mxid }}}}",
-                "customer_room_id": f"{{{{ {Scopes.ROOM.value}.customer_room_id }}}}",
+                "bot_mxid": f"{{{{ {ProtectedVars.BOT_MXID.value} }}}}",
+                "customer_room_id": f"{{{{ {ProtectedVars.CUSTOMER_ROOM_ID.value} }}}}",
             }
         )
 

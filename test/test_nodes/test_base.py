@@ -476,11 +476,15 @@ class TestBase:
         and if it correctly replaces the placeholders with the corresponding values.
         """
         scope_vars = {
-            "room.customer_mxid": "@mxwa_573009091234:darknet",
             "room.customer_mxid_bsuid": "@wb_CO.1767778284254959:darknet",
             "route.account_type_id": 1,
             "route.account_type_id_str": "1",
         }
+        await base.room.set_variable(
+            "room.customer_mxid",
+            "@mxwa_573009091234:darknet",
+            bypass_protection=True,
+        )
 
         opt_in_body = """{
   "accounts": [
