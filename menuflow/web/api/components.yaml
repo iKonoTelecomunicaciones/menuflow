@@ -1479,6 +1479,22 @@ components:
                 detail:
                   message: Scopes not found
 
+    SetVariablesNotFound:
+      description: Get variables not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          examples:
+            CurrentBotMxidNotFound:
+              value:
+                detail:
+                  message: current_bot_mxid not found in the room variables
+            RoomNotFound:
+              value:
+                detail:
+                  message: room_id '1' not found
+
     GetListModulesSuccess:
       description: Get list modules success.
       content:
