@@ -69,6 +69,7 @@ async def test_resolves_bot_mxid_from_room_when_missing(
     assert resp.status == HTTPStatus.OK
     patched_db_room_get_by_room_id.assert_awaited_once_with(ROOM_ID)
     patched_get_by_room_id.assert_awaited_once_with(ROOM_ID, BOT_MXID)
+    mock_room.set_conversation_variables.assert_awaited_once_with(variables={"a": 1})
 
 
 @pytest.mark.asyncio
