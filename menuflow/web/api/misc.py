@@ -17,6 +17,7 @@ from ...flow_utils import FlowUtils
 from ...jinja.env import jinja_env
 from ...utils.errors import GettingDataError
 from ...utils.flags import RenderFlags
+from ...utils.types import ProtectedVars
 from ...utils.util import Util as Utils
 from ..base import get_config, get_flow_utils, routes
 from ..docs.misc import (
@@ -165,7 +166,8 @@ async def render_data(request: web.Request) -> web.Response:
         if not room_obj:
             return resp.not_found(f"Room '{room_id}' not found")
         else:
-            bot_mxid = room_obj._variables.get("room", {}).get("current_bot_mxid")
+            _pv_scope, _pv_key = ProtectedVars.CURRENT_BOT_MXID.value.split(".", 1)
+            bot_mxid = room_obj._variables.get(_pv_scope, {}).get(_pv_key)
 
             if room_obj and bot_mxid:
                 route_obj = await DBRoute.get_by_room_and_client(

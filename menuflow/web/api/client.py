@@ -9,7 +9,7 @@ from mautrix.client import Client as MatrixClient
 from mautrix.errors import MatrixConnectionError, MatrixInvalidToken, MatrixRequestError
 from mautrix.types import UserID
 
-from menuflow.utils.types import Scopes
+from menuflow.utils.types import ProtectedVars
 
 from ...config import Config
 from ...db.flow import Flow as DBFlow
@@ -143,6 +143,15 @@ async def set_variables(request: web.Request) -> web.Response:
     scope = data.get("scope", "conversation")
 
     try:
+        if not bot_mxid and scope == "conversation":
+            db_room = await DBRoom.get_by_room_id(room_id)
+            if not db_room:
+                return resp.not_found(f"room_id '{room_id}' not found", uuid)
+            _pv_scope, _pv_key = ProtectedVars.CURRENT_BOT_MXID.value.split(".", 1)
+            bot_mxid = db_room._variables.get(_pv_scope, {}).get(_pv_key)
+            if not bot_mxid:
+                return resp.not_found("current_bot_mxid not found in the room variables", uuid)
+
         room: Room = await Room.get_by_room_id(room_id, bot_mxid)
 
         if scope == "conversation":
@@ -229,7 +238,8 @@ async def get_variables(request: web.Request) -> web.Response:
             return resp.not_found(f"room_id '{room_id}' not found", uuid)
 
         if not bot_mxid:
-            bot_mxid = room._variables.get("room", {}).get("current_bot_mxid")
+            scope, key = ProtectedVars.CURRENT_BOT_MXID.value.split(".", 1)
+            bot_mxid = room._variables.get(scope, {}).get(key)
             if not bot_mxid:
                 return resp.not_found("current_bot_mxid not found in the room variables", uuid)
 
@@ -273,7 +283,8 @@ async def status(request: web.Request) -> web.Response:
             return resp.not_found(f"room_id '{room_id}' not found", uuid)
 
         if not bot_mxid:
-            bot_mxid = room._variables.get("room", {}).get("current_bot_mxid")
+            scope, key = ProtectedVars.CURRENT_BOT_MXID.value.split(".", 1)
+            bot_mxid = room._variables.get(scope, {}).get(key)
             if not bot_mxid:
                 return resp.not_found(
                     "current_bot_mxid not found in the room variables, send the bot_mxid in the query parameters",

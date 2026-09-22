@@ -19,7 +19,7 @@ from .db.route import Route, RouteState
 from .repository.room_events import RoomEvents
 from .scope import Scope
 from .utils import JQ2Glom, Util
-from .utils.types import Scopes
+from .utils.types import ProtectedVars, Scopes
 
 if TYPE_CHECKING:
     from .matrix import MatrixHandler
@@ -326,7 +326,13 @@ class Room(DBRoom):
             self.log.error(f"{_msg} => {e}")
             return
 
-    async def set_variable(self, variable_id: str, value: Any, scope: str | None = None) -> None:
+    async def set_variable(
+        self,
+        variable_id: str,
+        value: Any,
+        scope: str | None = None,
+        bypass_protection: bool = False,
+    ) -> None:
         """The function sets a variable value in either the room or route scope
         and updates the corresponding JSON data.
 
@@ -339,7 +345,11 @@ class Room(DBRoom):
         value : Any
             The `value` parameter in the `set_variable` function
             is the value that you want to assign to the variable identified by `variable_id`.
-
+        scope : str | None, optional
+            The scope of the variable. If None, the scope will be inferred from the variable_id.
+        bypass_protection : bool, optional
+            If True, bypasses the ProtectedVars guard. Only internal callers
+            (MatrixHandler bootstrap) should set this to True.
         """
         if not variable_id:
             return
@@ -357,10 +367,16 @@ class Room(DBRoom):
             if scope == Scopes.ROUTE.value:
                 scope, key = self.resolve_legacy_var(key, "SET")
 
+        scoped_key = f"{scope}.{key}"
+        _msg = f"[VAR][SET] {scoped_key}"
+
+        if not bypass_protection and ProtectedVars.is_protected(scoped_key):
+            self.log.warning(f"{_msg} Cannot set protected variable")
+            return
+
         new_variables = self.scope.get(scope)
         new_value = value.serialize() if isinstance(value, Obj) else value
 
-        _msg = f"[VAR][SET] {scope}.{key}"
         try:
             assign(new_variables, self._jq2glom.to_glom_path(key), new_value, missing=dict)
             self.log.debug("%s = %r", _msg, new_value)
@@ -382,7 +398,7 @@ class Room(DBRoom):
         for variable in variables:
             await self.set_variable(variable_id=variable, value=variables[variable])
 
-    async def del_variable(self, variable_id: str) -> None:
+    async def del_variable(self, variable_id: str, bypass_protection: bool = False) -> None:
         """The function delete a variable in either the room or route scope
         and updates the corresponding JSON data.
 
@@ -392,6 +408,9 @@ class Room(DBRoom):
             The `variable_id` parameter is a string that represents the identifier of the variable you want to set.
             It can be in the format "scope.key" or just "key".
             The "scope" indicates the scope of the variable (e.g., "room" or "route")."
+        bypass_protection : bool, optional
+            If True, bypasses the ProtectedVars guard. Only internal callers
+            (MatrixHandler bootstrap) should set this to True.
         """
         if not variable_id:
             return
@@ -405,13 +424,18 @@ class Room(DBRoom):
         # TODO: Remove when the old variables have been fully migrated to the new scopes.
         if scope == Scopes.ROUTE.value:
             scope, key = self.resolve_legacy_var(key, "DEL")
+        scoped_key = f"{scope}.{key}"
+        _msg = f"[VAR][DEL] {scoped_key}"
+
+        if not bypass_protection and ProtectedVars.is_protected(scoped_key):
+            self.log.warning(f"{_msg} Cannot delete protected variable")
+            return
 
         variables = self.scope.get(scope)
         if not variables:
             self.log.debug(f"Variables in scope {scope} are empty")
             return
 
-        _msg = f"[VAR][DEL] {scope}.{key}"
         try:
             glom(variables, Delete(self._jq2glom.to_glom_path(key)))
             self.log.debug(f"{_msg} => Deleted")

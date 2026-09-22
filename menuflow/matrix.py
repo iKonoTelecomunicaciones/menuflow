@@ -33,7 +33,7 @@ from .room_monitor import RoomMonitor
 from .room_sync_primitives import PrimitiveType, RoomSyncPrimitives
 from .user import User
 from .utils import Util
-from .utils.types import QueueSignal, Scopes
+from .utils.types import ProtectedVars, QueueSignal, Scopes
 
 if TYPE_CHECKING:
     from .flow import Flow, Node
@@ -217,7 +217,6 @@ class MatrixHandler(MatrixClient):
         """
         _menu_str = Scopes.MENU.value
         _route_str = Scopes.ROUTE.value
-        _room_str = Scopes.ROOM.value
 
         if not room:
             room: Room = await Room.get_by_room_id(room_id=room_id, bot_mxid=self.mxid)
@@ -239,25 +238,41 @@ class MatrixHandler(MatrixClient):
                     self.log.critical(
                         f"[{room.room_id}] migrating {_var} from {_route_str} to {_menu_str}"
                     )
-                    await room.set_variable(variable_id=f"{_menu_str}.{_var}", value=_val)
+                    await room.set_variable(
+                        variable_id=f"{_menu_str}.{_var}", value=_val, bypass_protection=True
+                    )
             # TODO: End of TODO
 
-        await room.set_variable(f"{_room_str}.current_bot_mxid", self.mxid)
+        await room.set_variable(
+            ProtectedVars.CURRENT_BOT_MXID.value, value=self.mxid, bypass_protection=True
+        )
 
-        if not await room.get_variable(variable_id=f"{_room_str}.customer_room_id"):
-            await room.set_variable(f"{_room_str}.customer_room_id", room_id)
+        if not await room.get_variable(variable_id=ProtectedVars.CUSTOMER_ROOM_ID.value):
+            await room.set_variable(
+                ProtectedVars.CUSTOMER_ROOM_ID.value, room_id, bypass_protection=True
+            )
 
-        if not await room.get_variable(variable_id=f"{_menu_str}.bot_mxid"):
-            await room.set_variable(variable_id=f"{_menu_str}.bot_mxid", value=self.mxid)
+        if not await room.get_variable(variable_id=ProtectedVars.BOT_MXID.value):
+            await room.set_variable(
+                variable_id=ProtectedVars.BOT_MXID.value, value=self.mxid, bypass_protection=True
+            )
 
-        if not await room.get_variable(variable_id=f"{_room_str}.customer_mxid"):
+        if not await room.get_variable(variable_id=ProtectedVars.CUSTOMER_MXID.value):
             user_mxid: UserID | None = await room.customer_mxid
             await User.get_by_mxid(mxid=user_mxid)
-            await room.set_variable(variable_id=f"{_room_str}.customer_mxid", value=user_mxid)
+            await room.set_variable(
+                variable_id=ProtectedVars.CUSTOMER_MXID.value,
+                value=user_mxid,
+                bypass_protection=True,
+            )
 
-        if not await room.get_variable(variable_id=f"{_room_str}.puppet_mxid"):
+        if not await room.get_variable(variable_id=ProtectedVars.PUPPET_MXID.value):
             puppet_mxid: str = await room.get_puppet_mxid
-            await room.set_variable(variable_id=f"{_room_str}.puppet_mxid", value=puppet_mxid)
+            await room.set_variable(
+                variable_id=ProtectedVars.PUPPET_MXID.value,
+                value=puppet_mxid,
+                bypass_protection=True,
+            )
 
     async def update_room_events(self, room: Room, evt: StateEvent | MessageEvent | None = None):
         """This function updates the room events in the database.

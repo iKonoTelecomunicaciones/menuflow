@@ -1,3 +1,5 @@
+from enum import Enum
+
 from mautrix.types import SerializableEnum
 
 
@@ -49,3 +51,18 @@ class QueueSignal:
     LEAVE = object()
     TIMEOUT = object()
     CANCELLED = object()
+
+
+class ProtectedVars(Enum):
+    CURRENT_BOT_MXID = Scopes.ROOM.value + ".current_bot_mxid"
+    CUSTOMER_ROOM_ID = Scopes.ROOM.value + ".customer_room_id"
+    CUSTOMER_MXID = Scopes.ROOM.value + ".customer_mxid"
+    PUPPET_MXID = Scopes.ROOM.value + ".puppet_mxid"
+    BOT_MXID = Scopes.MENU.value + ".bot_mxid"
+
+    @classmethod
+    def is_protected(cls, variable_id: str) -> bool:
+        return variable_id in _PROTECTED_VARS_SET
+
+
+_PROTECTED_VARS_SET: frozenset[str] = frozenset(e.value for e in ProtectedVars)
