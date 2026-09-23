@@ -29,6 +29,7 @@ from .nodes import (
     Base,
     FormInput,
     GPTAssistant,
+    HTTPRequest,
     Input,
     InteractiveInput,
     Message,
@@ -609,7 +610,7 @@ class MatrixHandler(MatrixClient):
                         self.log.info(f"[{room.room_id}] {_msg}")
                 else:
                     # TODO: This is to fix the problem where path constants are not stored. Possible removal.
-                    if (
+                    if isinstance(node, HTTPRequest) or (
                         isinstance(node, Message)
                         and node.id == RouteState.START.value
                         and room.route.state == RouteState.START
