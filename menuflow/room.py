@@ -366,10 +366,10 @@ class Room(DBRoom):
             if scope == Scopes.ROUTE.value:
                 scope, key = self.resolve_legacy_var(key, "SET")
 
-        fq_name = f"{scope}.{key}"
-        _msg = f"[VAR][SET] {fq_name}"
+        scoped_key = f"{scope}.{key}"
+        _msg = f"[VAR][SET] {scoped_key}"
 
-        if not bypass_protection and ProtectedVars.is_protected(fq_name):
+        if not bypass_protection and ProtectedVars.is_protected(scoped_key):
             self.log.warning(f"{_msg} Cannot set protected variable")
             return
 
@@ -423,10 +423,10 @@ class Room(DBRoom):
         # TODO: Remove when the old variables have been fully migrated to the new scopes.
         if scope == Scopes.ROUTE.value:
             scope, key = self.resolve_legacy_var(key, "DEL")
-        fq_name = f"{scope}.{key}"
-        _msg = f"[VAR][DEL] {fq_name}"
+        scoped_key = f"{scope}.{key}"
+        _msg = f"[VAR][DEL] {scoped_key}"
 
-        if not bypass_protection and ProtectedVars.is_protected(fq_name):
+        if not bypass_protection and ProtectedVars.is_protected(scoped_key):
             self.log.warning(f"{_msg} Cannot delete protected variable")
             return
 
