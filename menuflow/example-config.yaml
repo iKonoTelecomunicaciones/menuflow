@@ -114,6 +114,13 @@ menuflow:
         # Recommended: 604800 (7 days) for ephemeral chats.
         file_expiry_seconds: 604800
 
+    # Timeout for the invite done event to join the room
+    invite_done_timeout: 30.0
+
+    # Tolerance for the invite timestamp to join the room
+    invite_ts_tolerance: 5.0
+
+
 server:
     # The IP and port to listen to.
     hostname: 0.0.0.0

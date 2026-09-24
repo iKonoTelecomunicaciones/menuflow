@@ -9,7 +9,7 @@ from pytest_mock import MockerFixture
 from menuflow.config import Config
 from menuflow.db import Route
 from menuflow.flow import Flow
-from menuflow.nodes import Base, Input, Location, Message, Switch
+from menuflow.nodes import Base, Input, InviteUser, Location, Message, Switch
 from menuflow.room import Room
 from menuflow.utils import Util
 
@@ -135,6 +135,25 @@ async def input_media(sample_flow_1: Flow, base: Base) -> Input:
     input_node_data = sample_flow_1.get_node_by_id("input-4")
     input_node = Input(input_node_data, room=base.room, default_variables=base.default_variables)
     return input_node
+
+
+@pytest_asyncio.fixture
+async def invite_user(base: Base) -> InviteUser:
+    node_data = {
+        "id": "invite-user-1",
+        "type": "invite_user",
+        "invitee": "@agent:example.com",
+        "timeout": 5,
+        "on_join": "leave",
+        "cases": [
+            {"id": "join", "o_connection": "next-node"},
+            {"id": "reject", "o_connection": "reject-node"},
+            {"id": "timeout", "o_connection": "timeout-node"},
+            {"id": "fail", "o_connection": "fail-node"},
+        ],
+    }
+    InviteUser.config = base.room.config
+    return InviteUser(node_data, room=base.room, default_variables=base.default_variables)
 
 
 @pytest_asyncio.fixture
