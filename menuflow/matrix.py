@@ -373,7 +373,7 @@ class MatrixHandler(MatrixClient):
             self.log.info(
                 f"{base_msg} detected invite_user node running, waiting for leave event to complete for continuing"
             )
-            _invite_timeout = self.config.get("menuflow.invite_done_timeout")
+            _invite_timeout = self.config.get("menuflow.invite_done_timeout", 30.0)
             try:
                 await asyncio.wait_for(invite_done.wait(), timeout=_invite_timeout)
             except asyncio.TimeoutError:
