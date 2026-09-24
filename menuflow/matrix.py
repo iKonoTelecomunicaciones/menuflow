@@ -55,7 +55,8 @@ class MatrixHandler(MatrixClient):
         self.flow_sync = FlowSync(config=self.config)
         self.MAX_NODE_ATTEMPTS = self.config.get("menuflow.max_node_attempts", 255)
         Base.init_cls(config=self.config, session=self.api.session)
-        self.room_monitor = RoomMonitor(client=self, config=self.config)
+        RoomMonitor.init_cls(client=self, config=self.config)
+        self.room_monitor = RoomMonitor()
 
     def handle_sync(self, data: dict) -> list[asyncio.Task]:
         # This is a way to remove duplicate events from the sync
@@ -369,7 +370,16 @@ class MatrixHandler(MatrixClient):
         else:
             self.log.info(base)
 
+        if await self.room_monitor.is_a_bot(room_id=_room_id):
+            self.log.debug(
+                f"[{_room_id}] The incoming message ({_event_id}) is a bot, ignoring messages..."
+            )
+            return
+
         if await self.room_monitor.start_monitoring(message.room_id):
+            self.log.debug(
+                f"[{_room_id}] The incoming message ({_event_id}) is ignored due to bot war"
+            )
             return
 
         # Message edits are ignored
@@ -379,6 +389,8 @@ class MatrixHandler(MatrixClient):
             and message.content._relates_to.rel_type == RelationType.REPLACE
         ):
             return
+
+        self.room_monitor.register_message(room_id=_room_id)
 
         # Ignore bot messages
         if (
@@ -425,7 +437,6 @@ class MatrixHandler(MatrixClient):
             self.log.warning(f"[{_room_id}] Ignoring message ({_event_id}) in pending invite")
             return
 
-        self.room_monitor.register_message(room_id=_room_id)
         if not room.room_events.join:
             timeout = self.config["menuflow.join_wait_timeout"]
 
