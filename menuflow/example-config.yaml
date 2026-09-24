@@ -116,12 +116,14 @@ menuflow:
 
     # This section is used to handle and avoid a menubot war with external bots
     bot_war:
+        # If true, the bot war will be enabled
+        is_enabled: true
         # The time when we're going to check if the message limit is reached after of the first message
         init_checker_limit_timer: 10
         # The message threshold to consider that it's a bot war if the limit is reached between the checker limit timer
-        message_threshold: 10
+        message_threshold: 20
         # The time to ignore and restore the conversation after to check if the message limit is reached
-        time_to_ignore: 30
+        time_to_ignore: 60
         # This multiplier is used to increase the time to ignore the conversation
         time_multiplier: 2
         # The sometimes when the conversations are ignored. If this value is higher, the time to ignore increases.

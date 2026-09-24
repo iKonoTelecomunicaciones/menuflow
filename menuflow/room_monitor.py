@@ -25,14 +25,7 @@ class RoomMonitor:
     tag_data = None
     init_checker_limit_timer = None
 
-    def __init__(
-        self,
-        room_id: RoomID | None = None,
-    ) -> None:
-        self.client = self.client
-        if room_id is None:
-            return
-
+    def __init__(self, room_id: RoomID) -> None:
         self.room_id = room_id
         self.message_counter = 0
         self.ignore = False
@@ -58,13 +51,13 @@ class RoomMonitor:
             self.MONITORING_ROOMS[room_id] = RoomMonitor(room_id=room_id)
         return self.MONITORING_ROOMS[room_id]
 
-    async def start_monitoring(self, room_id: RoomID) -> bool:
+    async def ignore_room(self) -> bool:
         """
         Run bot-war checks and timers for an incoming message
 
         Returns True if the message must not be processed further
         """
-        monitor = self._get_or_create(room_id)
+        monitor = self._get_or_create(self.room_id)
 
         running_limit_task = monitor.running_limit_task
         running_restore_task = monitor.running_restore_task
@@ -94,8 +87,8 @@ class RoomMonitor:
         else:
             asyncio.create_task(self.restore_state(), name=self.task_name)
 
-    def register_message(self, room_id: RoomID) -> None:
-        self._get_or_create(room_id).message_counter += 1
+    def register_message(self) -> None:
+        self._get_or_create(self.room_id).message_counter += 1
 
     async def check_message_limit(self) -> None:
         self.log.debug(f"[{self.room_id}] Checking message limit...")
