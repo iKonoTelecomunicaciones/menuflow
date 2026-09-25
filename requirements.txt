@@ -1,6 +1,6 @@
 aiohttp-cors==0.7.0
 aiohttp-swagger3==0.9.0
-aiosmtplib==5.1.2
+aiosmtplib==3.0.1
 asyncpg==0.29.0
 attrs==23.2.0
 Babel==2.14.0
@@ -14,9 +14,9 @@ lark==1.2.2
 Markdown==3.8.1
 mautrix==0.20.5
 nats-py==2.7.2
-openai==3.10.0
+openai==2.52.1
 phonenumbers==9.0.9
-pillow==12.3.0
+pillow==12.1.1
 pycountry==24.6.1
 python-Levenshtein==0.25.1
 python-magic==0.4.27

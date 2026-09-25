@@ -14,7 +14,7 @@ from .switch import Switch
 
 
 class InviteCase(Enum):
-    FAIL = "fail"
+    ERROR = "error"
     JOIN = "join"
     REJECT = "reject"
     TIMEOUT = NodeStatus.TIMEOUT.value
@@ -59,12 +59,12 @@ class InviteUser(Switch):
     async def _invite_and_wait(
         self, room_id, user_id: UserID, timeout: float, invite_ack
     ) -> InviteCase:
-        """Invite and wait for JOIN/REJECT/FAILED. Returns FAILED if already routed (reject/timeout)."""
+        """Invite and wait for JOIN/REJECT/ERROR. Returns ERROR if already routed (reject/timeout)."""
         try:
             await self.room.matrix_client.invite_user(room_id, user_id)
         except Exception as e:
             self.log.error(f"[{room_id}] User {user_id} not invited: {e}")
-            return InviteCase.FAIL
+            return InviteCase.ERROR
 
         try:
             # shield keeps the Future usable if wait_for times out
