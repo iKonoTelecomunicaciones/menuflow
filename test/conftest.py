@@ -149,7 +149,7 @@ async def invite_user(base: Base) -> InviteUser:
             {"id": "join", "o_connection": "next-node"},
             {"id": "reject", "o_connection": "reject-node"},
             {"id": "timeout", "o_connection": "timeout-node"},
-            {"id": "fail", "o_connection": "fail-node"},
+            {"id": "error", "o_connection": "error-node"},
         ],
     }
     InviteUser.config = base.room.config

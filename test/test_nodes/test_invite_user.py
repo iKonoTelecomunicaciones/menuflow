@@ -90,7 +90,7 @@ class TestRouteCase:
     async def test_route_case_fail(self, invite_user: InviteUser):
         invite_user.room.update_menu = AsyncMock()
         await invite_user._route_case(InviteCase.ERROR)
-        invite_user.room.update_menu.assert_awaited_once_with("fail-node")
+        invite_user.room.update_menu.assert_awaited_once_with("error-node")
 
 
 class TestInviteAndWait:
