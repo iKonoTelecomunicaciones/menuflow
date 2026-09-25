@@ -41,7 +41,7 @@ def _async_matrix_client(invite_user: InviteUser) -> None:
 
 class TestInviteCase:
     def test_invite_case_values(self):
-        assert InviteCase.FAIL.value == "fail"
+        assert InviteCase.ERROR.value == "error"
         assert InviteCase.JOIN.value == "join"
         assert InviteCase.REJECT.value == "reject"
         assert InviteCase.TIMEOUT.value == "timeout"
@@ -89,7 +89,7 @@ class TestRouteCase:
     @pytest.mark.asyncio
     async def test_route_case_fail(self, invite_user: InviteUser):
         invite_user.room.update_menu = AsyncMock()
-        await invite_user._route_case(InviteCase.FAIL)
+        await invite_user._route_case(InviteCase.ERROR)
         invite_user.room.update_menu.assert_awaited_once_with("fail-node")
 
 
@@ -103,7 +103,7 @@ class TestInviteAndWait:
             invite_user.room.room_id, INVITEE, 1.0, invite_ack
         )
 
-        assert result == InviteCase.FAIL
+        assert result == InviteCase.ERROR
 
     @pytest.mark.asyncio
     async def test_join_when_future_resolves_join(self, invite_user: InviteUser):
