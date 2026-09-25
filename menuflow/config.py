@@ -47,6 +47,8 @@ class Config(BaseFileConfig):
         copy("menuflow.ghost_pattern")
         copy("menuflow.puppet_pattern")
         copy("menuflow.openai.file_expiry_seconds")
+        copy("menuflow.invite_done_timeout")
+        copy("menuflow.invite_ts_tolerance")
         shared_secret = self["server.unshared_secret"]
         if shared_secret is None or shared_secret == "generate":
             base["server.unshared_secret"] = self._new_token()
