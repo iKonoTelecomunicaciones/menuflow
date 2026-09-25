@@ -4,7 +4,7 @@ import asyncio
 from logging import getLogger
 from typing import TYPE_CHECKING, Dict
 
-from mautrix.types import RoomID
+from mautrix.types import EventType, RoomID, StateEvent
 from mautrix.util.logging import TraceLogger
 
 from .config import Config
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 
 class RoomMonitor:
+    TAG_STATE_EVENT_TYPE = EventType.find("ik.chat.tag", EventType.Class.STATE)
     MONITORING_ROOMS: Dict[RoomID, RoomMonitor] = {}
     log: TraceLogger = getLogger("menuflow.room_monitor")
     client: MatrixHandler
@@ -34,6 +35,7 @@ class RoomMonitor:
         self.running_limit_task = False
         self.running_restore_task = False
         self.task_name = f"{room_id}_message_traceback"
+        self._is_bot: bool | None = None
 
     @classmethod
     def init_cls(cls, client: MatrixHandler, config: Config) -> None:
@@ -45,11 +47,12 @@ class RoomMonitor:
         cls.tag_data = config["menuflow.bot_war.tag_data"]
         cls.init_checker_limit_timer = config["menuflow.bot_war.init_checker_limit_timer"]
 
-    def _get_or_create(self, room_id: RoomID) -> RoomMonitor:
-        if room_id not in self.MONITORING_ROOMS:
-            self.log.debug(f"[{room_id}] Adding room to message traceback")
-            self.MONITORING_ROOMS[room_id] = RoomMonitor(room_id=room_id)
-        return self.MONITORING_ROOMS[room_id]
+    @classmethod
+    def _get_or_create(cls, room_id: RoomID) -> RoomMonitor:
+        if room_id not in cls.MONITORING_ROOMS:
+            cls.log.debug(f"[{room_id}] Adding room to message traceback")
+            cls.MONITORING_ROOMS[room_id] = RoomMonitor(room_id=room_id)
+        return cls.MONITORING_ROOMS[room_id]
 
     async def ignore_room(self) -> bool:
         """
@@ -156,7 +159,7 @@ class RoomMonitor:
             )
 
     @classmethod
-    async def is_a_bot(cls, room_id: RoomID) -> bool:
+    async def _fetch_is_bot(cls, room_id: RoomID) -> bool:
         conversation_tags = None
         try:
             conversation_tags = await cls.client.api.session.get(
@@ -177,3 +180,15 @@ class RoomMonitor:
                 return True
 
         return False
+
+    @classmethod
+    async def is_a_bot(cls, room_id: RoomID) -> bool:
+        monitor = cls._get_or_create(room_id)
+        if monitor._is_bot is None:
+            monitor._is_bot = await cls._fetch_is_bot(room_id)
+        return monitor._is_bot
+
+    @classmethod
+    async def handle_tag_event(cls, evt: StateEvent) -> None:
+        monitor = cls._get_or_create(evt.room_id)
+        monitor._is_bot = await cls._fetch_is_bot(evt.room_id)

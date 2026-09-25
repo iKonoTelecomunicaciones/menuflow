@@ -134,6 +134,13 @@ menuflow:
             id: "!zmaYLozoleDzEBibBV:darknet"
             text: "bot"
             color: "#38d66d"
+            
+    # Timeout for the invite done event to join the room
+    invite_done_timeout: 30.0
+
+    # Tolerance for the invite timestamp to join the room
+    invite_ts_tolerance: 5.0
+
 
 server:
     # The IP and port to listen to.

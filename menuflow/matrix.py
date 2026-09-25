@@ -26,7 +26,8 @@ from .config import Config
 from .db.room import Room as DBRoom
 from .db.route import RouteState
 from .flow_sync import FlowSync
-from .nodes import Base, FormInput, GPTAssistant, Input, InteractiveInput, Message, Webhook
+from .nodes import Base, FormInput, GPTAssistant, Input, InteractiveInput, Webhook
+from .nodes.invite_user import InviteCase
 from .repository.room_events import RoomEvents
 from .room import Room
 from .room_monitor import RoomMonitor
@@ -168,7 +169,18 @@ class MatrixHandler(MatrixClient):
         await room.scope.update(Scopes.MENU)
         await room.route.update()
 
-        self.unlock_room(room_id=evt.room_id, evt=evt)
+        self.QUEUE_MESSAGE.pop(_room_id, None)
+        self.unlock_room(room_id=_room_id, evt=evt)
+
+        # If an invite user is in progress, notify that leave cleanup is complete
+        key = (_room_id, PrimitiveType.LEAVE_DONE)
+        leave_done = RoomSyncPrimitives.room_sync_primitives.get(key)
+        if leave_done and not leave_done.is_set():
+            self.log.info(
+                f"[{_room_id}] Leave event ({_event_id}) complete and detected invite_user node running, "
+                "sending LEAVE_DONE signal"
+            )
+            leave_done.set()
 
     async def handle_invite(self, evt: StrippedStateEvent):
         self.log.info(f"[{evt.room_id}] Handling invite event ({evt.event_id})")
@@ -182,9 +194,21 @@ class MatrixHandler(MatrixClient):
 
     async def handle_reject_invite(self, evt: StrippedStateEvent):
         self.log.info(f"[{evt.room_id}] Handling reject invite event {evt.event_id}")
-        if evt.room_id in Room.pending_invites:
-            if not Room.pending_invites[evt.room_id].done():
-                Room.pending_invites[evt.room_id].set_result(False)
+        # state_key is the invitee who rejected; matches INVITE_ACK key (room_id, invitee)
+        invite_ack = RoomSyncPrimitives.room_sync_primitives.get((evt.room_id, evt.state_key))
+        if invite_ack and not invite_ack.done():
+            self.log.info(
+                f"[{evt.room_id}] Reject invite event ({evt.event_id}) detected invite_user node running, "
+                "sending REJECT signal"
+            )
+            invite_ack.set_result(InviteCase.REJECT)
+
+    def _has_pending_invite(self, room_id: RoomID) -> bool:
+        """True if an invite handoff Future is waiting for result in this room."""
+        return any(
+            k[0] == room_id and isinstance(v, asyncio.Future) and not v.done()
+            for k, v in RoomSyncPrimitives.room_sync_primitives.items()
+        )
 
     async def load_all_room_constants(self):
         """This function loads room constants for joined rooms in a Matrix chat using Python.
@@ -301,16 +325,32 @@ class MatrixHandler(MatrixClient):
         self.log.info(f"[{room.room_id}] {msg}")
 
     async def handle_join(self, evt: StateEvent):
-        _event_id, _room_id = evt.event_id, evt.room_id
+        _event_id, _room_id, _user_id = evt.event_id, evt.room_id, evt.state_key
         membership_evt = evt.content.get("membership")
-        base_msg = f"[{_room_id}] Ignoring {membership_evt} event ({_event_id})."
+        base_msg = f"[{_room_id}] Join event ({_event_id}) from {_user_id}"
+        ignore_msg = f"[{_room_id}] Ignoring {membership_evt} event ({_event_id})."
+        invite_ack = RoomSyncPrimitives.room_sync_primitives.get((_room_id, _user_id))
 
-        if _room_id in Room.pending_invites and not Room.pending_invites[_room_id].done():
-            Room.pending_invites[_room_id].set_result(True)
+        if evt.room_id in self.LOCKED_ROOMS and not invite_ack:
+            self.log.warning(f"{ignore_msg} Menu is locked.")
+            return
 
-        locked = evt.room_id in self.LOCKED_ROOMS
-        if locked or not evt.state_key == self.mxid:
-            self.log.warning(f"{base_msg} {'Menu locked.' if locked else 'Not from the bot'}")
+        if _user_id != self.mxid:
+            if invite_ack and not invite_ack.done():
+                invite_ts_tolerance = self.config.get("menuflow.invite_ts_tolerance", 5.0)
+                invite_ts = getattr(invite_ack, "invite_created_at", None)
+                evt_ts_s = getattr(evt, "timestamp", 0) / 1000
+                if invite_ts and evt_ts_s < (invite_ts - invite_ts_tolerance):
+                    self.log.warning(
+                        f"{ignore_msg} Old event from invitee "
+                        f"(evt={evt_ts_s:.1f}s < invite={invite_ts:.1f}s). Ignoring."
+                    )
+                    return
+                self.log.info(f"{base_msg} detected invite_user node running, sending JOIN signal")
+                invite_ack.set_result(InviteCase.JOIN)
+                return
+
+            self.log.warning(f"{ignore_msg} Not from the bot.")
             return
 
         room_events_db: dict = await DBRoom.get_events_by_room_id(room_id=evt.room_id)
@@ -320,20 +360,40 @@ class MatrixHandler(MatrixClient):
 
         if getattr(evt, "timestamp", 0) < last_join_ts:
             self.log.warning(
-                f"{base_msg} Is older than last join event ({last_join_evt.event_id}) ({last_join_ts})"
+                f"{ignore_msg} Is older than last join event ({last_join_evt.event_id}) ({last_join_ts})"
             )
             return
 
         if not last_join_evt:
             self.log.warning(f"[{_room_id}] No last join event found in the database")
         elif last_join_evt and _event_id == last_join_evt.get("event_id"):
-            self.log.warning(f"{base_msg} Already processed.")
+            self.log.warning(f"{ignore_msg} Already processed.")
             return
+
+        key = (_room_id, PrimitiveType.INVITE_DONE)
+        invite_done = RoomSyncPrimitives.room_sync_primitives.get(key)
+        if invite_done and not invite_done.is_set():
+            self.log.info(
+                f"{base_msg} detected invite_user node running, waiting for leave event to complete for continuing"
+            )
+            _invite_timeout = self.config.get("menuflow.invite_done_timeout", 30.0)
+            try:
+                await asyncio.wait_for(invite_done.wait(), timeout=_invite_timeout)
+            except asyncio.TimeoutError:
+                self.log.warning(
+                    f"{ignore_msg} because leave event did not complete within timeout ({_invite_timeout}s)"
+                )
+                return
+            self.log.debug(f"{base_msg} invite finished successfully, JOIN continuing")
+            # Leave may have updated shared room events; reload before continuing
+            room_events = RoomEvents.deserialize(
+                await DBRoom.get_events_by_room_id(room_id=evt.room_id)
+            )
 
         async with RoomSyncPrimitives(
             room_id=_room_id, primitive=PrimitiveType.JOIN_READY
         ) as room_sync:
-            self.log.info(f"[{_room_id}] Join event ({_event_id}) from {evt.state_key} accepted")
+            self.log.info(f"[{_room_id}] Join event ({_event_id}) from {_user_id} accepted")
 
             room: Room = await Room.get_by_room_id(room_id=_room_id, bot_mxid=self.mxid)
             room.room_events = room_events
@@ -435,9 +495,9 @@ class MatrixHandler(MatrixClient):
             self.log.warning(f"[{_room_id}] Message ({_event_id}) ignored due to rate limit")
             return
 
-        # TODO: Review this logic to ignore messages in pending invites.
-        if _room_id in Room.pending_invites:
-            self.log.warning(f"[{_room_id}] Ignoring message ({_event_id}) in pending invite")
+        # Ignore messages while an invite handoff is waiting for result
+        if self._has_pending_invite(_room_id):
+            self.log.warning(f"{base} because detected invite_user node running, ignoring message")
             return
 
         if not room.room_events.join:
@@ -587,6 +647,8 @@ class MatrixHandler(MatrixClient):
             room_id=room.room_id, mxid=self.mxid, loaded_metadata=self.flow.data.loaded_metadata
         )
 
+        node_run_result = None
+
         while (
             (node := self.flow.node(room=room))
             and room.route.state != RouteState.END
@@ -636,22 +698,10 @@ class MatrixHandler(MatrixClient):
 
                         self.log.info(f"[{room.room_id}] {_msg}")
                 else:
-                    # TODO: This is to fix the problem where path constants are not stored. Possible removal.
-                    if (
-                        isinstance(node, Message)
-                        and node.id == RouteState.START.value
-                        and room.route.state == RouteState.START
-                    ):
-                        self.log.info(f"[{room.room_id}] Checking if room constants are loaded...")
-                        await self.load_room_constants(room_id=room.room_id, room=room)
-
-                    await node.run()
-                    node.reentry_counter(room=room, executed_node_id=node.id)
-                    if room.route.state == RouteState.INVITE:
-                        self.log.debug(
-                            f"[{room.room_id}] Invite state detected. Breaking out of the loop"
-                        )
+                    node_run_result = await node.run()
+                    if node_run_result is RouteState.INVITE:
                         break
+                    node.reentry_counter(room=room, executed_node_id=node.id)
             except MLimitExceeded as e:
                 self.log.error(
                     f"[{room.room_id}] MLimitExceeded exception has occurred in the pipeline [{node.id}]: {e}\n"
@@ -665,6 +715,12 @@ class MatrixHandler(MatrixClient):
                 room.route.state = RouteState.ERROR
                 break
 
+        if node_run_result != RouteState.INVITE:
+            await self.handle_algorithm_completion(room=room, node=node, evt=evt)
+
+    async def handle_algorithm_completion(
+        self, room: Room, node: Node = None, evt: MessageEvent | None = None
+    ) -> None:
         attempts_exceeded = room.reentry_node_attempts > self.MAX_NODE_ATTEMPTS
         if (
             room.route.state in (RouteState.ERROR, RouteState.END)

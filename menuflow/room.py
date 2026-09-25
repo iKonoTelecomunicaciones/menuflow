@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from asyncio import Future, Lock
+from asyncio import Lock
 from collections import defaultdict
 from logging import getLogger
 from re import Pattern, compile, match
@@ -27,7 +27,6 @@ if TYPE_CHECKING:
 
 class Room(DBRoom):
     by_room_id: dict[(RoomID, UserID), "Room"] = {}
-    pending_invites: dict[RoomID, Future] = {}
     _async_get_locks: dict[Any, Lock] = defaultdict(lambda: Lock())
     # JQ2Glom instance
     _jq2glom: JQ2Glom = JQ2Glom()
