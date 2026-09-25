@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
+from mautrix.api import Method
 from mautrix.client import Client as MatrixClient
 from mautrix.errors.request import MLimitExceeded
 from mautrix.types import (
@@ -29,6 +30,7 @@ from .nodes import Base, FormInput, GPTAssistant, Input, InteractiveInput, Webho
 from .nodes.invite_user import InviteCase
 from .repository.room_events import RoomEvents
 from .room import Room
+from .room_monitor import RoomMonitor
 from .room_sync_primitives import PrimitiveType, RoomSyncPrimitives
 from .user import User
 from .utils import Util
@@ -54,6 +56,7 @@ class MatrixHandler(MatrixClient):
         self.flow_sync = FlowSync(config=self.config)
         self.MAX_NODE_ATTEMPTS = self.config.get("menuflow.max_node_attempts", 255)
         Base.init_cls(config=self.config, session=self.api.session)
+        RoomMonitor.init_cls(client=self, config=self.config)
 
     def handle_sync(self, data: dict) -> list[asyncio.Task]:
         # This is a way to remove duplicate events from the sync
@@ -426,6 +429,20 @@ class MatrixHandler(MatrixClient):
         else:
             self.log.info(base)
 
+        if self.config["menuflow.bot_war.is_enabled"]:
+            if await RoomMonitor.is_a_bot(room_id=_room_id):
+                self.log.debug(
+                    f"[{_room_id}] The incoming message ({_event_id}) is a bot, ignoring messages..."
+                )
+                return
+
+            room_monitor = RoomMonitor(room_id=_room_id)
+            if await room_monitor.ignore_room():
+                self.log.debug(
+                    f"[{_room_id}] The incoming message ({_event_id}) is ignored due to bot war"
+                )
+                return
+
         # Message edits are ignored
         if (
             message.content._relates_to
@@ -455,6 +472,10 @@ class MatrixHandler(MatrixClient):
 
         if not last_message_evt:
             self.log.warning(f"[{_room_id}] No last processed message found in the database")
+
+        if self.config["menuflow.bot_war.is_enabled"]:
+            # Increment the message counter to detect bot war
+            room_monitor.register_message()
 
         if last_message_time > current_message_time:
             self.log.warning(

@@ -27,6 +27,7 @@ from .db import Client as DBClient
 from .flow import Flow
 from .http_middlewares import end_auth_middleware, start_auth_middleware
 from .matrix import MatrixHandler
+from .room_monitor import RoomMonitor
 
 if TYPE_CHECKING:
     from .__main__ import MenuFlow
@@ -130,6 +131,10 @@ class MenuClient(DBClient):
 
         self.matrix_handler.add_event_handler(
             EventType.ROOM_MEMBER, self.matrix_handler.handle_member
+        )
+
+        self.matrix_handler.add_event_handler(
+            RoomMonitor.TAG_STATE_EVENT_TYPE, RoomMonitor.handle_tag_event
         )
 
     def _set_sync_ok(self, ok: bool) -> Callable[[dict[str, Any]], Awaitable[None]]:
