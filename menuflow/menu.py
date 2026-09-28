@@ -294,3 +294,6 @@ class MenuClient(DBClient):
             return user
 
         return None
+
+
+RoomMonitor.menu_client_cache = MenuClient.cache

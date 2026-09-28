@@ -2,22 +2,20 @@ from __future__ import annotations
 
 import asyncio
 from logging import getLogger
-from typing import TYPE_CHECKING, Dict
-
 from mautrix.types import EventType, RoomID, StateEvent
 from mautrix.util.logging import TraceLogger
+from .db.room import Room as DBRoom
+from menuflow.utils.types import ProtectedVars
 
 from .config import Config
-
-if TYPE_CHECKING:
-    from .matrix import MatrixHandler
 
 
 class RoomMonitor:
     TAG_STATE_EVENT_TYPE = EventType.find("ik.chat.tag", EventType.Class.STATE)
-    MONITORING_ROOMS: Dict[RoomID, RoomMonitor] = {}
+    MONITORING_ROOMS: dict[RoomID, RoomMonitor] = {}
     log: TraceLogger = getLogger("menuflow.room_monitor")
-    client: MatrixHandler
+    api = None
+    domain = None
 
     default_time_to_ignore = None
     ignored_counter_threshold = None
@@ -25,6 +23,7 @@ class RoomMonitor:
     time_multiplier = None
     tag_data = None
     init_checker_limit_timer = None
+    menu_client_cache: dict = {}
 
     def __init__(self, room_id: RoomID) -> None:
         self.room_id = room_id
@@ -38,8 +37,9 @@ class RoomMonitor:
         self._is_bot: bool | None = None
 
     @classmethod
-    def init_cls(cls, client: MatrixHandler, config: Config) -> None:
-        cls.client = client
+    def init_cls(cls, api, domain, config: Config) -> None:
+        cls.api = api
+        cls.domain = domain
         cls.default_time_to_ignore = config["menuflow.bot_war.time_to_ignore"]
         cls.ignored_counter_threshold = config["menuflow.bot_war.ignored_counter_threshold"]
         cls.message_threshold = config["menuflow.bot_war.message_threshold"]
@@ -120,13 +120,14 @@ class RoomMonitor:
             self.time_to_ignore *= self.time_multiplier
 
     async def set_room_tag_bot(self) -> None:
+        menu_access_token = await self._get_menu_credentials()
         room_tag = self.tag_data
         try:
             self.log.debug(f"[{self.room_id}] Setting room tag {room_tag.get('text')}...")
             url_path = f"/_matrix/client/v3/rooms/{self.room_id}/state/ik.chat.tag"
-            request_response = await self.client.api.session.put(
-                url=f"{self.client.api.base_url}{url_path}",
-                headers={"Authorization": f"Bearer {self.client.api.token}"},
+            request_response = await self.api.session.put(
+                url=f"{self.api.base_url}{url_path}",
+                headers={"Authorization": f"Bearer {menu_access_token}"},
                 json={"tags": [self.tag_data]},
             )
             request_response_json = await request_response.json()
@@ -140,10 +141,10 @@ class RoomMonitor:
             url_path = (
                 f"/_matrix/client/v3/rooms/{room_tag.get('id')}/state/m.space.child/{self.room_id}"
             )
-            request_response = await self.client.api.session.put(
-                url=f"{self.client.api.base_url}{url_path}",
-                headers={"Authorization": f"Bearer {self.client.api.token}"},
-                json={"via": [self.client.domain], "suggested": False},
+            request_response = await self.api.session.put(
+                url=f"{self.api.base_url}{url_path}",
+                headers={"Authorization": f"Bearer {menu_access_token}"},
+                json={"via": [self.domain], "suggested": False},
             )
             request_response_json = await request_response.json()
             if request_response_json.get("error"):
@@ -162,9 +163,9 @@ class RoomMonitor:
     async def _fetch_is_bot(cls, room_id: RoomID) -> bool:
         conversation_tags = None
         try:
-            conversation_tags = await cls.client.api.session.get(
-                url=f"{cls.client.api.base_url}/_matrix/client/v3/rooms/{room_id}/state/ik.chat.tag",
-                headers={"Authorization": f"Bearer {cls.client.api.token}"},
+            conversation_tags = await cls.api.session.get(
+                url=f"{cls.api.base_url}/_matrix/client/v3/rooms/{room_id}/state/ik.chat.tag",
+                headers={"Authorization": f"Bearer {cls.api.token}"},
             )
         except Exception as error:
             cls.log.error(f"Error checking if the {room_id} is a bot: {error}")
@@ -180,6 +181,15 @@ class RoomMonitor:
                 return True
 
         return False
+
+    async def _get_menu_credentials(self) -> dict:
+        db_room = await DBRoom.get_by_room_id(self.room_id)
+        _pv_scope, _pv_key = ProtectedVars.CURRENT_BOT_MXID.value.split(".", 1)
+        bot_mxid = db_room._variables.get(_pv_scope, {}).get(_pv_key)
+
+        menu_client = self.menu_client_cache.get(bot_mxid)
+
+        return menu_client.access_token
 
     @classmethod
     async def is_a_bot(cls, room_id: RoomID) -> bool:

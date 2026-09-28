@@ -56,7 +56,7 @@ class MatrixHandler(MatrixClient):
         self.flow_sync = FlowSync(config=self.config)
         self.MAX_NODE_ATTEMPTS = self.config.get("menuflow.max_node_attempts", 255)
         Base.init_cls(config=self.config, session=self.api.session)
-        RoomMonitor.init_cls(client=self, config=self.config)
+        RoomMonitor.init_cls(api=self.api, domain=self.domain, config=self.config)
 
     def handle_sync(self, data: dict) -> list[asyncio.Task]:
         # This is a way to remove duplicate events from the sync
