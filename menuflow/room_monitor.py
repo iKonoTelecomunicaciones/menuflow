@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import asyncio
 from logging import getLogger
+
 from mautrix.types import EventType, RoomID, StateEvent
 from mautrix.util.logging import TraceLogger
-from .db.room import Room as DBRoom
+
 from menuflow.utils.types import ProtectedVars
 
 from .config import Config
+from .db.room import Room as DBRoom
 
 
 class RoomMonitor:
