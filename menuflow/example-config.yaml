@@ -142,7 +142,7 @@ menuflow:
             tag_text: bot
             # The color of the tag to identify a conversation as a bot
             tag_color: "#38d66d"
-            
+
     # Timeout for the invite done event to join the room
     invite_done_timeout: 30.0
 
