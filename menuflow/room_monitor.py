@@ -120,27 +120,36 @@ class RoomMonitor:
             self.time_to_ignore *= self.time_multiplier
 
     async def set_room_tag_bot(self) -> None:
-        menu_access_token = await self._get_menu_credentials()
+        bot_mxid = await self._get_current_menu()
+        menu_access_token = await self._get_menu_credentials(bot_mxid)
         room_tag = self.tag_data
         try:
-            self.log.debug(f"[{self.room_id}] Setting room tag {room_tag.get('text')}...")
+            self.log.debug(f"[{self.room_id}] Setting room tag {room_tag.get('tag_text')}...")
             url_path = f"/_matrix/client/v3/rooms/{self.room_id}/state/ik.chat.tag"
             request_response = await self.api.session.put(
                 url=f"{self.api.base_url}{url_path}",
                 headers={"Authorization": f"Bearer {menu_access_token}"},
-                json={"tags": [self.tag_data]},
+                json={
+                    "tags": [
+                        {
+                            "id": room_tag.get("space_room_mxid"),
+                            "text": room_tag.get("tag_text"),
+                            "color": room_tag.get("tag_color"),
+                        }
+                    ]
+                },
             )
             request_response_json = await request_response.json()
             if request_response_json.get("error"):
                 self.log.error(
-                    f"[{self.room_id}] Error setting room tag {room_tag.get('text')}: "
+                    f"[{self.room_id}] Error setting room tag {room_tag.get('tag_text')}: "
                     f"{request_response_json.get('error')}"
                 )
 
-            self.log.debug(f"[{self.room_id}] Setting portal to space for {room_tag.get('id')}...")
-            url_path = (
-                f"/_matrix/client/v3/rooms/{room_tag.get('id')}/state/m.space.child/{self.room_id}"
+            self.log.debug(
+                f"[{self.room_id}] Setting portal to space for {room_tag.get('space_room_mxid')}..."
             )
+            url_path = f"/_matrix/client/v3/rooms/{room_tag.get('space_room_mxid')}/state/m.space.child/{self.room_id}"
             request_response = await self.api.session.put(
                 url=f"{self.api.base_url}{url_path}",
                 headers={"Authorization": f"Bearer {menu_access_token}"},
@@ -149,14 +158,14 @@ class RoomMonitor:
             request_response_json = await request_response.json()
             if request_response_json.get("error"):
                 self.log.error(
-                    f"[{self.room_id}] Error setting portal to space {room_tag.get('id')}: "
+                    f"[{self.room_id}] Error setting portal to space {room_tag.get('space_room_mxid')}: "
                     f"{request_response_json.get('error')}"
                 )
 
         except Exception as error:
             self.log.error(
-                f"[{self.room_id}] Error adding portal to tag {room_tag.get('text')} "
-                f"or space {room_tag.get('id')}: {error}"
+                f"[{self.room_id}] Error adding portal to tag {room_tag.get('tag_text')} "
+                f"or space {room_tag.get('space_room_mxid')}: {error}"
             )
 
     @classmethod
@@ -172,24 +181,26 @@ class RoomMonitor:
 
         if conversation_tags:
             tags_payload = await conversation_tags.json()
-            bot_tag_text = cls.tag_data["text"]
+            bot_tag_text = cls.tag_data["tag_text"]
             tag_list = tags_payload.get("tags", tags_payload) if tags_payload else []
             if tag_list and any(
-                (tag.get("text") if isinstance(tag, dict) else tag) == bot_tag_text
+                (tag.get("tag_text") if isinstance(tag, dict) else tag) == bot_tag_text
                 for tag in tag_list
             ):
                 return True
 
         return False
 
-    async def _get_menu_credentials(self) -> dict:
+    async def _get_menu_credentials(self, bot_mxid: str) -> dict:
+        menu_client = self.menu_client_cache.get(bot_mxid)
+        return menu_client.access_token
+
+    async def _get_current_menu(self):
         db_room = await DBRoom.get_by_room_id(self.room_id)
         _pv_scope, _pv_key = ProtectedVars.CURRENT_BOT_MXID.value.split(".", 1)
         bot_mxid = db_room._variables.get(_pv_scope, {}).get(_pv_key)
 
-        menu_client = self.menu_client_cache.get(bot_mxid)
-
-        return menu_client.access_token
+        return bot_mxid
 
     @classmethod
     async def is_a_bot(cls, room_id: RoomID) -> bool:
