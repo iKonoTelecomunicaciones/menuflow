@@ -22,6 +22,7 @@ class RoomMonitor:
     message_threshold = None
     time_multiplier = None
     tag_data = None
+    paths = None
     init_checker_limit_timer = None
     menu_client_cache: dict = {}
 
@@ -45,6 +46,7 @@ class RoomMonitor:
         cls.message_threshold = config["menuflow.bot_war.message_threshold"]
         cls.time_multiplier = config["menuflow.bot_war.time_multiplier"]
         cls.tag_data = config["menuflow.bot_war.tag_data"]
+        cls.paths = config["menuflow.bot_war.paths"]
         cls.init_checker_limit_timer = config["menuflow.bot_war.init_checker_limit_timer"]
 
     @classmethod
@@ -116,16 +118,17 @@ class RoomMonitor:
             self.ignored_counter = 0
             self.time_to_ignore = self.default_time_to_ignore
             await self.set_room_tag_bot()
+            await self.add_portal_to_bot_space()
         else:
             self.time_to_ignore *= self.time_multiplier
 
     async def set_room_tag_bot(self) -> None:
-        bot_mxid = await self._get_current_menu()
-        menu_access_token = await self._get_menu_credentials(bot_mxid)
         room_tag = self.tag_data
         try:
             self.log.debug(f"[{self.room_id}] Setting room tag {room_tag.get('tag_text')}...")
-            url_path = f"/_matrix/client/v3/rooms/{self.room_id}/state/ik.chat.tag"
+            bot_mxid = await self._get_current_menu(self.room_id)
+            menu_access_token = await self._get_menu_credentials(bot_mxid)
+            url_path = self.paths.get("set_room_tag").replace("{room_id}", self.room_id)
             request_response = await self.api.session.put(
                 url=f"{self.api.base_url}{url_path}",
                 headers={"Authorization": f"Bearer {menu_access_token}"},
@@ -146,10 +149,24 @@ class RoomMonitor:
                     f"{request_response_json.get('error')}"
                 )
 
+        except Exception as error:
+            self.log.error(
+                f"[{self.room_id}] Error adding portal to tag {room_tag.get('tag_text')} : {error}"
+            )
+
+    async def add_portal_to_bot_space(self) -> None:
+        room_tag = self.tag_data
+        try:
             self.log.debug(
                 f"[{self.room_id}] Setting portal to space for {room_tag.get('space_room_mxid')}..."
             )
-            url_path = f"/_matrix/client/v3/rooms/{room_tag.get('space_room_mxid')}/state/m.space.child/{self.room_id}"
+            bot_mxid = await self._get_current_menu(self.room_id)
+            menu_access_token = await self._get_menu_credentials(bot_mxid)
+            url_path = (
+                self.paths.get("set_portal_space")
+                .replace("{space_room_mxid}", room_tag.get("space_room_mxid"))
+                .replace("{room_id}", self.room_id)
+            )
             request_response = await self.api.session.put(
                 url=f"{self.api.base_url}{url_path}",
                 headers={"Authorization": f"Bearer {menu_access_token}"},
@@ -161,20 +178,22 @@ class RoomMonitor:
                     f"[{self.room_id}] Error setting portal to space {room_tag.get('space_room_mxid')}: "
                     f"{request_response_json.get('error')}"
                 )
-
         except Exception as error:
             self.log.error(
-                f"[{self.room_id}] Error adding portal to tag {room_tag.get('tag_text')} "
-                f"or space {room_tag.get('space_room_mxid')}: {error}"
+                f"[{self.room_id}] Error adding portal to space {room_tag.get('space_room_mxid')}: "
+                f"{error}"
             )
 
     @classmethod
     async def _fetch_is_bot(cls, room_id: RoomID) -> bool:
         conversation_tags = None
         try:
+            bot_mxid = await cls._get_current_menu(room_id)
+            menu_access_token = await cls._get_menu_credentials(bot_mxid)
+            url_path = cls.paths.get("get_room_tags").replace("{room_id}", room_id)
             conversation_tags = await cls.api.session.get(
-                url=f"{cls.api.base_url}/_matrix/client/v3/rooms/{room_id}/state/ik.chat.tag",
-                headers={"Authorization": f"Bearer {cls.api.token}"},
+                url=f"{cls.api.base_url}{url_path}",
+                headers={"Authorization": f"Bearer {menu_access_token}"},
             )
         except Exception as error:
             cls.log.error(f"Error checking if the {room_id} is a bot: {error}")
@@ -182,21 +201,22 @@ class RoomMonitor:
         if conversation_tags:
             tags_payload = await conversation_tags.json()
             bot_tag_text = cls.tag_data["tag_text"]
-            tag_list = tags_payload.get("tags", tags_payload) if tags_payload else []
-            if tag_list and any(
-                (tag.get("tag_text") if isinstance(tag, dict) else tag) == bot_tag_text
-                for tag in tag_list
-            ):
+            tag_list = tags_payload.get("tags") if tags_payload else []
+            if tag_list and any(tag.get("text") == bot_tag_text for tag in tag_list):
                 return True
 
         return False
 
-    async def _get_menu_credentials(self, bot_mxid: str) -> dict:
-        menu_client = self.menu_client_cache.get(bot_mxid)
-        return menu_client.access_token
+    @classmethod
+    async def _get_menu_credentials(cls, bot_mxid: str | None) -> str | None:
+        if not bot_mxid:
+            return None
+        menu_client = cls.menu_client_cache.get(bot_mxid)
+        return menu_client.access_token if menu_client else None
 
-    async def _get_current_menu(self):
-        db_room = await DBRoom.get_by_room_id(self.room_id)
+    @classmethod
+    async def _get_current_menu(cls, room_id: RoomID) -> str:
+        db_room = await DBRoom.get_by_room_id(room_id)
         _pv_scope, _pv_key = ProtectedVars.CURRENT_BOT_MXID.value.split(".", 1)
         bot_mxid = db_room._variables.get(_pv_scope, {}).get(_pv_key)
 
@@ -207,9 +227,11 @@ class RoomMonitor:
         monitor = cls._get_or_create(room_id)
         if monitor._is_bot is None:
             monitor._is_bot = await cls._fetch_is_bot(room_id)
+
         return monitor._is_bot
 
     @classmethod
     async def handle_tag_event(cls, evt: StateEvent) -> None:
+        cls.log.debug(f"[{evt.room_id}] Handling tag event...")
         monitor = cls._get_or_create(evt.room_id)
         monitor._is_bot = await cls._fetch_is_bot(evt.room_id)

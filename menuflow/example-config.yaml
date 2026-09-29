@@ -129,6 +129,11 @@ menuflow:
         # The sometimes when the conversations are ignored. If this value is higher, the time to ignore increases.
         # This value also will be used to tag and ignore definitely the conversation while a supervisor takes a decision
         ignored_counter_threshold: 3
+        # The paths to fetch the room tags and set the portal to space
+        paths:
+            set_room_tag: "/_matrix/client/v3/rooms/{room_id}/state/ik.chat.tag"
+            set_portal_space: "/_matrix/client/v3/rooms/{room_id}/state/m.space.child/{space_room_mxid}"
+            get_room_tags: "/_matrix/client/v3/rooms/{room_id}/state/ik.chat.tag"
         # The tag data to identify a conversation as a bot
         tag_data:
             # The room ID of the space to add the portal to
