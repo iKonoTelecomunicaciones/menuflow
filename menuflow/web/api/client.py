@@ -152,7 +152,7 @@ async def set_variables(request: web.Request) -> web.Response:
             if not bot_mxid:
                 return resp.not_found("current_bot_mxid not found in the room variables", uuid)
 
-        room: Room = await Room.get_by_room_id(room_id=room_id, create=True)
+        room: Room = await Room.get_by_room_id(room_id=room_id, bot_mxid=bot_mxid, create=True)
 
         if scope == "conversation":
             await room.set_conversation_variables(variables=variables)
