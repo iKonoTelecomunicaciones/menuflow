@@ -66,26 +66,21 @@ class RoomMonitor:
         """
         monitor = self._get_or_create(self.room_id)
 
-        running_limit_task = monitor.running_limit_task
-        running_restore_task = monitor.running_restore_task
-        time_to_ignore = monitor.time_to_ignore
-        checker_limit_timer = monitor.init_checker_limit_timer
-
         loop: asyncio.AbstractEventLoop | None = None
         if monitor.ignore is False:
-            if running_limit_task is False:
+            if monitor.running_limit_task is False:
                 monitor.running_limit_task = True
                 loop = asyncio.get_event_loop()
-                loop.call_later(checker_limit_timer, monitor.conversation_status)
+                loop.call_later(monitor.init_checker_limit_timer, monitor.conversation_status)
             return False
 
-        if running_restore_task is False:
+        if monitor.running_restore_task is False:
             monitor.log.warning(
-                f"[{monitor.room_id}] Ignoring messages for {time_to_ignore} seconds..."
+                f"[{monitor.room_id}] Ignoring messages for {monitor.time_to_ignore} seconds..."
             )
             monitor.running_restore_task = True
             loop = asyncio.get_event_loop()
-            loop.call_later(time_to_ignore, monitor.conversation_status, True)
+            loop.call_later(monitor.time_to_ignore, monitor.conversation_status, True)
         return True
 
     def conversation_status(self, ignore: bool = False):
@@ -120,7 +115,8 @@ class RoomMonitor:
             self.ignored_counter = 0
             self.time_to_ignore = self.default_time_to_ignore
             await self.set_room_tag_bot()
-            await self.add_portal_to_bot_space()
+            if self.tag_data.get("space_room_mxid"):
+                await self.add_portal_to_bot_space()
         else:
             self.time_to_ignore *= self.time_multiplier
 
@@ -130,9 +126,9 @@ class RoomMonitor:
             self.log.debug(f"[{self.room_id}] Setting room tag {room_tag.get('tag_text')}...")
             bot_mxid = await self._get_current_menu(self.room_id)
             menu_access_token = await self._get_menu_credentials(bot_mxid)
-            url_path = self.paths.get("set_room_tag").replace("{room_id}", self.room_id)
+            url_path = self.paths.get("set_room_tag").format(room_id=self.room_id)
             request_response = await self.api.session.put(
-                url=f"{self.api.base_url}{url_path}",
+                url=f"{self.api.base_url}/{url_path}",
                 headers={"Authorization": f"Bearer {menu_access_token}"},
                 json={
                     "tags": [
@@ -164,13 +160,11 @@ class RoomMonitor:
             )
             bot_mxid = await self._get_current_menu(self.room_id)
             menu_access_token = await self._get_menu_credentials(bot_mxid)
-            url_path = (
-                self.paths.get("set_portal_space")
-                .replace("{space_room_mxid}", room_tag.get("space_room_mxid"))
-                .replace("{room_id}", self.room_id)
+            url_path = self.paths.get("set_portal_space").format(
+                space_room_mxid=room_tag.get("space_room_mxid"), room_id=self.room_id
             )
             request_response = await self.api.session.put(
-                url=f"{self.api.base_url}{url_path}",
+                url=f"{self.api.base_url}/{url_path}",
                 headers={"Authorization": f"Bearer {menu_access_token}"},
                 json={"via": [self.domain], "suggested": False},
             )
@@ -192,9 +186,9 @@ class RoomMonitor:
         try:
             bot_mxid = await cls._get_current_menu(room_id)
             menu_access_token = await cls._get_menu_credentials(bot_mxid)
-            url_path = cls.paths.get("get_room_tags").replace("{room_id}", room_id)
+            url_path = cls.paths.get("get_room_tags").format(room_id=room_id)
             conversation_tags = await cls.api.session.get(
-                url=f"{cls.api.base_url}{url_path}",
+                url=f"{cls.api.base_url}/{url_path}",
                 headers={"Authorization": f"Bearer {menu_access_token}"},
             )
         except Exception as error:
