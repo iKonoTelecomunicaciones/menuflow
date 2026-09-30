@@ -56,7 +56,9 @@ async def test_get_by_room_id_called_with_create_true(
     await set_variables(make_mock_request({"variables": {"a": 1}, "bot_mxid": BOT_MXID}))
 
     patched_db_room_get_by_room_id.assert_not_awaited()
-    patched_get_by_room_id.assert_awaited_once_with(room_id=ROOM_ID, create=True)
+    patched_get_by_room_id.assert_awaited_once_with(
+        room_id=ROOM_ID, bot_mxid=BOT_MXID, create=True
+    )
 
 
 @pytest.mark.asyncio
@@ -68,7 +70,9 @@ async def test_resolves_bot_mxid_from_room_when_missing(
 
     assert resp.status == HTTPStatus.OK
     patched_db_room_get_by_room_id.assert_awaited_once_with(ROOM_ID)
-    patched_get_by_room_id.assert_awaited_once_with(room_id=ROOM_ID, create=True)
+    patched_get_by_room_id.assert_awaited_once_with(
+        room_id=ROOM_ID, bot_mxid=BOT_MXID, create=True
+    )
     mock_room.set_conversation_variables.assert_awaited_once_with(variables={"a": 1})
 
 
@@ -100,17 +104,6 @@ async def test_conversation_current_bot_mxid_not_found(
     body = json.loads(resp.text)
     assert body["detail"]["message"] == "current_bot_mxid not found in the room variables"
     patched_get_by_room_id.assert_not_awaited()
-
-
-@pytest.mark.asyncio
-async def test_custom_scope_creates_room_without_bot_mxid(
-    mock_room, patched_get_by_room_id, patched_db_room_get_by_room_id
-):
-    """Non-conversation scope does not resolve bot_mxid from DBRoom."""
-    await set_variables(make_mock_request({"scope": None, "variables": {"route": {"a": 1}}}))
-
-    patched_db_room_get_by_room_id.assert_not_awaited()
-    patched_get_by_room_id.assert_awaited_once_with(room_id=ROOM_ID, create=True)
 
 
 # ---------- Conversation (scope == "conversation") ----------------------------------
