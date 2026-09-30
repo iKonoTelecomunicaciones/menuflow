@@ -170,15 +170,13 @@ async def render_data(request: web.Request) -> web.Response:
             bot_mxid = room_obj._variables.get(_pv_scope, {}).get(_pv_key)
 
             if room_obj and bot_mxid:
-                route_obj = await DBRoute.get_by_room_and_client(
-                    room=room_obj.id, client=bot_mxid, create=False
-                )
+                route_obj = await DBRoute.get_by_room(room=room_obj.id)
                 flow_obj = await DBFlow.get_by_mxid(bot_mxid)
 
                 if room_vars := room_obj._variables:
                     dict_variables |= room_vars
 
-                if route_vars := route_obj.variables:
+                if route_obj and (route_vars := route_obj.variables):
                     dict_variables |= route_vars
 
                 if flow_vars := flow_obj.flow_vars:

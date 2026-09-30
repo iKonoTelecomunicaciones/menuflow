@@ -1,4 +1,4 @@
-"""Tests for Room cache propagation across bot_mxids for room-scoped variables."""
+"""Tests for Room cache keyed by room_id (single entry per room)."""
 
 from __future__ import annotations
 
@@ -14,23 +14,8 @@ from menuflow.db import Route
 from menuflow.room import Room
 from menuflow.utils.types import ProtectedVars, Scopes
 
-SYNCED_PREFIX = [Scopes.ROOM.value]
-NOT_SYNCED = [Scopes.ROUTE.value, Scopes.NODE.value]
-
 PROTECTED_VAR = ProtectedVars.CUSTOMER_MXID.value  # "room.customer_mxid"
 PROTECTED_KEY = "customer_mxid"
-
-
-@pytest_asyncio.fixture
-async def second_room(mocker: MockerFixture, config: Config, room: Room) -> Room:
-    mocker.patch.object(Route, "update")
-    other_route = Route(room=1, node_id="start", client="@bar:foo.com")
-    other = Room(room_id=room.room_id)
-    other.matrix_client = MagicMock()
-    other.bot_mxid = "@bar:foo.com"
-    other.route = other_route
-    other.config = config
-    return other
 
 
 @pytest_asyncio.fixture
@@ -46,41 +31,47 @@ async def other_room(mocker: MockerFixture, config: Config) -> Room:
 
 
 @pytest.fixture(autouse=True)
-def _sync_cache_fixture(mocker: MockerFixture, room: Room, second_room: Room, other_room: Room):
+def _cache_fixture(room: Room, other_room: Room):
     Room.by_room_id.clear()
-    room._add_to_cache(bot_mxid=room.bot_mxid)
-    second_room._add_to_cache(bot_mxid=second_room.bot_mxid)
-    other_room._add_to_cache(bot_mxid=other_room.bot_mxid)
+    room._add_to_cache()
+    other_room._add_to_cache()
     yield
     Room.by_room_id.clear()
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("scope", SYNCED_PREFIX)
-async def test_set_variable_syncs_cache_for_room_scopes(
-    room: Room, second_room: Room, other_room: Room, scope: str
-):
-    await room.set_variable(variable_id=f"{scope}.k", value="v")
+async def test_cache_single_entry_per_room(room: Room, mocker: MockerFixture, config: Config):
+    """A second Room with the same room_id overwrites the cache entry."""
+    mocker.patch.object(Route, "update")
+    other_route = Route(room=1, node_id="start", client="@bar:foo.com")
+    second = Room(room_id=room.room_id)
+    second.matrix_client = MagicMock()
+    second.bot_mxid = "@bar:foo.com"
+    second.route = other_route
+    second.config = config
 
-    assert second_room.variables == room.variables
-    assert not hasattr(second_room, "_vars_cache")
-    assert second_room._variables[scope]["k"] == "v"
+    second._add_to_cache()
 
+    assert Room.by_room_id[room.room_id] is second
+    assert len([k for k in Room.by_room_id if k == room.room_id]) == 1
+
+
+@pytest.mark.asyncio
+async def test_set_variable_does_not_affect_other_room(room: Room, other_room: Room):
+    """Variables set on one room stay isolated from a different room_id."""
+    await room.set_variable(variable_id="room.k", value="v")
+
+    assert room._variables[Scopes.ROOM.value]["k"] == "v"
     assert other_room.variables == "{}"
     assert not hasattr(other_room, "_vars_cache") or other_room._variables == {}
 
 
 @pytest.mark.asyncio
-async def test_set_variable_syncs_cache_for_custom_scope_billing(
-    room: Room, second_room: Room, other_room: Room
-):
-    """Custom scopes need explicit scope=...; billing.k alone resolves to route by default."""
+async def test_set_variable_custom_scope_isolated(room: Room, other_room: Room):
+    """Custom scopes on one room stay isolated from a different room_id."""
     await room.set_variable(variable_id="k", value="v", scope="billing")
 
-    assert second_room.variables == room.variables
-    assert not hasattr(second_room, "_vars_cache")
-    assert second_room._variables["billing"]["k"] == "v"
-
+    assert room._variables["billing"]["k"] == "v"
     assert other_room.variables == "{}"
     assert not hasattr(other_room, "_vars_cache") or other_room._variables == {}
 

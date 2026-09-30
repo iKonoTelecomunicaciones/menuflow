@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 
 
 class Room(DBRoom):
-    by_room_id: dict[(RoomID, UserID), "Room"] = {}
+    by_room_id: dict[RoomID, "Room"] = {}
     _async_get_locks: dict[Any, Lock] = defaultdict(lambda: Lock())
     # JQ2Glom instance
     _jq2glom: JQ2Glom = JQ2Glom()
@@ -218,7 +218,7 @@ class Room(DBRoom):
     @classmethod
     @async_getter_lock
     async def get_by_room_id(
-        cls, room_id: RoomID, bot_mxid: UserID, create: bool = True
+        cls, room_id: RoomID, bot_mxid: UserID | None = None, create: bool = False
     ) -> "Room" | None:
         """It gets a room from the database, or creates one if it doesn't exist
 
@@ -226,65 +226,33 @@ class Room(DBRoom):
         ----------
         room_id : RoomID
             The room's ID.
-        bot_mxid : UserID
-            The bot's Mxid.
+        bot_mxid : UserID | None, optional
+            The bot claiming the route. Only used when create is True (join path).
         create : bool, optional
-            If True, the room will be created if it doesn't exist.
+            If True, the room (and route when bot_mxid is set) will be created if missing.
 
         Returns
         -------
             The room object
 
         """
-
-        try:
-            room = cls.by_room_id[(bot_mxid, room_id)]
-            room.bot_mxid = bot_mxid
-            room.route = await Route.get_by_room_and_client(room=room.id, client=bot_mxid)
-            return room
-        except KeyError:
-            pass
-
-        room: Room | None = cast(cls, await super().get_by_room_id(room_id))
-
-        if room is not None:
-            room.bot_mxid = bot_mxid
-            room.route = await Route.get_by_room_and_client(room=room.id, client=bot_mxid)
-            room._add_to_cache(bot_mxid=bot_mxid)
-            return room
-
-        if create:
-            room = cls(room_id=room_id)
-            await room.insert()
+        room: Room | None = cls.by_room_id.get(room_id)
+        if room is None:
             room = cast(cls, await super().get_by_room_id(room_id))
-            room.bot_mxid = bot_mxid
-            room.route = await Route.get_by_room_and_client(room=room.id, client=bot_mxid)
-            room._add_to_cache(bot_mxid=bot_mxid)
-            return room
+            if room is None:
+                if not create:
+                    return None
+                await cls(room_id=room_id).insert()
+                room = cast(cls, await super().get_by_room_id(room_id))
+            room._add_to_cache()
 
-    def _add_to_cache(self, bot_mxid: UserID) -> None:
+        room.route = await Route.get_by_room(room=room.id, client=bot_mxid, create=create)
+        room.bot_mxid = room.route.client if room.route else None
+        return room
+
+    def _add_to_cache(self) -> None:
         if self.room_id:
-            self.by_room_id[(bot_mxid, self.room_id)] = self
-
-    @classmethod
-    def sync_room_vars_cache(
-        cls, room_id: RoomID, variables: str, bot_mxid: UserID | None = None
-    ) -> None:
-        """This function updates the room variables cache for all bot mxids.
-
-        Parameters
-        ----------
-        room_id : RoomID
-            The room's ID.
-        variables : str
-            The variables to update.
-        bot_mxid : UserID|None
-            The bot's Mxid. If None, all bot mxids will be updated.
-        """
-        for (_bot_mxid, _room_id), room in cls.by_room_id.items():
-            if _room_id == room_id and _bot_mxid != bot_mxid:
-                room.variables = variables
-                room.clear_vars_cache()
+            self.by_room_id[self.room_id] = self
 
     async def clean_up(self):
         await Util.cancel_task(task_name=self.room_id)
