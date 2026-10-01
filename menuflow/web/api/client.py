@@ -19,9 +19,12 @@ from ...db.route import Route as DBRoute
 from ...db.tag import Tag as DBTag
 from ...menu import MenuClient
 from ...room import Room
+from ...utils.util import Util as FlowUtil
+from ...webhook.webhook import Webhook
 from ..base import get_config, routes
 from ..docs.client import (
     create_client_doc,
+    delete_room_doc,
     enable_disable_client_doc,
     get_variables_doc,
     reload_client_flow_doc,
@@ -301,3 +304,26 @@ async def status(request: web.Request) -> web.Response:
         return resp.server_error(str(e), uuid)
 
     return resp.success(data=response, uuid=uuid)
+
+
+@routes.delete("/v1/room/{room_id}")
+# @Util.docstring(delete_room_doc)
+async def delete_room(request: web.Request) -> web.Response:
+    uuid = Util.generate_uuid()
+    log.info(f"({uuid}) -> '{request.method}' '{request.path}' Deleting room")
+
+    room_id = request.match_info["room_id"]
+    try:
+        db_room = await DBRoom.get_by_room_id(room_id)
+        if not db_room:
+            return resp.not_found(f"room_id '{room_id}' not found", uuid)
+
+        await db_room.purge()
+        Room.remove_from_cache(room_id)
+        Webhook.by_room_id.pop(room_id, None)
+        await FlowUtil.cancel_task(task_name=room_id)
+    except Exception as e:
+        log.error(f"({uuid}) -> Error deleting room: {e}", exc_info=True)
+        return resp.server_error(str(e), uuid)
+
+    return resp.success(message=f"Room '{room_id}' deleted successfully", uuid=uuid)

@@ -699,6 +699,13 @@ components:
             flow_vars:
               variable1: "value2"
 
+    DeleteRoomOk:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponseDetailMessage"
+      example:
+        detail:
+          message: "Room '!vOmHZZMQibXsynuNFm:example.com' deleted successfully"
+
     DeleteTagOk:
       allOf:
         - $ref: "#/components/schemas/BaseResponseDetailMessage"
@@ -1557,6 +1564,23 @@ components:
             detail:
               message: Flow with ID 1 not found in the database
 
+
+    # /v1/room/{room_id}
+    DeleteRoomSuccess:
+      description: Delete room success.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/DeleteRoomOk"
+    DeleteRoomNotFound:
+      description: Delete room not found.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/BaseResponseDetailMessage"
+          example:
+            detail:
+              message: "room_id '!vOmHZZMQibXsynuNFm:example.com' not found"
 
     # /v1/room/{room_id}/status
     GetStatusSuccess:
