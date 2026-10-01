@@ -307,7 +307,7 @@ async def status(request: web.Request) -> web.Response:
 
 
 @routes.delete("/v1/room/{room_id}")
-# @Util.docstring(delete_room_doc)
+@Util.docstring(delete_room_doc)
 async def delete_room(request: web.Request) -> web.Response:
     uuid = Util.generate_uuid()
     log.info(f"({uuid}) -> '{request.method}' '{request.path}' Deleting room")
