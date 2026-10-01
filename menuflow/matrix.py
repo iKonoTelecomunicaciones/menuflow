@@ -5,7 +5,6 @@ import logging
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
-from mautrix.api import Method
 from mautrix.client import Client as MatrixClient
 from mautrix.errors.request import MLimitExceeded
 from mautrix.types import (
