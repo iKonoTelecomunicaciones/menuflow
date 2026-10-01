@@ -53,9 +53,12 @@ async def start_auth_middleware(
 
     token_str: str = ""
     if middleware.type == "jwt":
-        room: Room = await Room.get_by_room_id(
-            room_id=context_params.get("customer_room_id"), bot_mxid=context_params.get("bot_mxid")
-        )
+        room: Room = await Room.get_by_room_id(room_id=context_params.get("customer_room_id"))
+        if not room:
+            log.warning(
+                f"Room {context_params.get('customer_room_id')} not found for JWT middleware"
+            )
+            return
         room_variables: Dict = middleware.auth.get("variables", {})
         token_key: str = list(room_variables.keys())[0]
 

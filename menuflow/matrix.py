@@ -128,9 +128,7 @@ class MatrixHandler(MatrixClient):
 
     async def handle_leave(self, evt: StrippedStateEvent) -> None:
         _event_id, _room_id = evt.event_id, evt.room_id
-        room: Room = await Room.get_by_room_id(
-            room_id=evt.room_id, bot_mxid=self.mxid, create=False
-        )
+        room: Room = await Room.get_by_room_id(room_id=evt.room_id)
 
         if not room:
             self.log.warning(f"[{_room_id}] Room not found. Ignoring leave event")
@@ -242,7 +240,13 @@ class MatrixHandler(MatrixClient):
         _route_str = Scopes.ROUTE.value
 
         if not room:
-            room: Room = await Room.get_by_room_id(room_id=room_id, bot_mxid=self.mxid)
+            room: Room = await Room.get_by_room_id(room_id=room_id)
+            if not room or not room.route:
+                self.log.warning(
+                    f"[{room_id}] Skipping room constants: room or route missing, "
+                    f"or route owned by another bot"
+                )
+                return
             room.config = self.config
             room.matrix_client = self
 
@@ -394,7 +398,9 @@ class MatrixHandler(MatrixClient):
         ) as room_sync:
             self.log.info(f"[{_room_id}] Join event ({_event_id}) from {_user_id} accepted")
 
-            room: Room = await Room.get_by_room_id(room_id=_room_id, bot_mxid=self.mxid)
+            room: Room = await Room.get_by_room_id(
+                room_id=_room_id, bot_mxid=self.mxid, create=True
+            )
             room.room_events = room_events
             room.config = self.config
             room.matrix_client = self
@@ -462,7 +468,11 @@ class MatrixHandler(MatrixClient):
             )
             return
 
-        room: Room = await Room.get_by_room_id(room_id=_room_id, bot_mxid=self.mxid)
+        room: Room = await Room.get_by_room_id(room_id=_room_id)
+        if not room or not room.route:
+            self.log.warning(f"[{_room_id}] Room or route missing. Ignoring message ({_event_id})")
+            return
+
         room.room_events = RoomEvents.deserialize(room._events)
         last_message_evt = room.room_events.last_processed_message
 
@@ -754,9 +764,13 @@ class MatrixHandler(MatrixClient):
 
         recreate_rooms = []
         for inactivity_room in inactivity_rooms:
-            room: Room = await Room.get_by_room_id(
-                room_id=inactivity_room.get("room_id"), bot_mxid=self.mxid
-            )
+            room: Room = await Room.get_by_room_id(room_id=inactivity_room.get("room_id"))
+            if not room or not room.route:
+                self.log.warning(
+                    f"[{inactivity_room.get('room_id')}] Skipping inactivity task: room or route missing"
+                )
+                continue
+
             room.room_events = RoomEvents.deserialize(room._events)
 
             task_name = room.room_id
