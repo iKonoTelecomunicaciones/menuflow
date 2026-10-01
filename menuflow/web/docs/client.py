@@ -220,6 +220,34 @@ get_variables_doc = """
             $ref: '#/components/responses/InternalServerError'
 """
 
+delete_room_doc = """
+    ---
+    summary: Delete a room
+    description: |
+        Delete every stored record for a room (webhook subscriptions, route and room)
+        so the next chat is handled as a brand new room. Protected variables are not
+        reloaded here; they are set again when a new chat joins.
+    tags:
+        - Room
+
+    parameters:
+        - name: room_id
+          in: path
+          required: true
+          description: The room ID to delete
+          schema:
+            type: string
+          example: "!vOmHZZMQibXsynuNFm:example.com"
+
+    responses:
+        '200':
+            $ref: '#/components/responses/DeleteRoomSuccess'
+        '404':
+            $ref: '#/components/responses/DeleteRoomNotFound'
+        '500':
+            $ref: '#/components/responses/InternalServerError'
+"""
+
 status_doc = """
     ---
     summary: Get status

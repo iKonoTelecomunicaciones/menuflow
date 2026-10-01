@@ -359,3 +359,28 @@ async def upgrade_v19(conn: Connection) -> None:
             WHERE COALESCE(variables->'room'->>'current_bot_mxid', variables->>'current_bot_mxid') IS NOT NULL
         """
     )
+
+
+@upgrade_table.register(description="Enforce a single route per room")
+async def upgrade_v20(conn: Connection) -> None:
+    # Keep only the route of the room's active bot. Rooms with no
+    # current_bot_mxid predate the variable and lose every route.
+    await conn.execute(
+        """DELETE FROM route AS rt
+           USING room AS ro
+           WHERE rt.room = ro.id
+             AND (
+                 COALESCE(ro.variables->'room'->>'current_bot_mxid',
+                          ro.variables->>'current_bot_mxid') IS NULL
+              OR rt.client IS DISTINCT FROM COALESCE(
+                          ro.variables->'room'->>'current_bot_mxid',
+                          ro.variables->>'current_bot_mxid')
+             )
+        """
+    )
+
+    # (room, client) was only indexed, never unique, so concurrent inserts
+    # could leave same-client duplicates that the delete above preserves.
+    await conn.execute(
+        "DELETE FROM route WHERE id NOT IN (SELECT MAX(id) FROM route GROUP BY room)"
+    )

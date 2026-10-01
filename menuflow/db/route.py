@@ -91,29 +91,40 @@ class Route:
         return stack
 
     @classmethod
-    async def get_by_room_and_client(
-        cls, room: int, client: UserID, create: bool = True
+    async def get_by_room(
+        cls, room: int, client: UserID | None = None, create: bool = False
     ) -> Route | None:
-        q = f"SELECT id, {cls._columns} FROM route WHERE room=$1 and client=$2"
-        row = await cls.db.fetchrow(q, room, client)
+        q = f"SELECT id, {cls._columns} FROM route WHERE room=$1"
+        row = await cls.db.fetchrow(q, room)
 
-        if not row:
-            if not create:
-                return
+        if row:
+            route = cls._from_row(row)
+            if create and client and route.client != client:
+                route._reassign_client(client)
+                await route.update()
+            return route
 
-            route = cls(room=room, client=client)
-            await route.insert()
+        if not create or not client:
+            return None
 
-        return cls._from_row(row) if row else route
+        route = cls(room=room, client=client)
+        await route.insert()
 
-    async def insert(self) -> str:
+        return route
+
+    def _reassign_client(self, client: UserID) -> None:
+        stack = json.loads(self.stack) if self.stack else {}
+        stack = {client: stack.get(self.client, [])}
+        self.client, self.stack = client, json.dumps(stack)
+
+    async def insert(self) -> None:
         q = f"INSERT INTO route ({self._columns}) VALUES ($1, $2, $3, $4, $5, $6)"
         await self.db.execute(q, *self.values)
 
     async def update(self) -> None:
         q = """
-            UPDATE route SET node_id = $3, state = $4, variables = $5, stack = $6
-            WHERE room = $1 and client = $2
+            UPDATE route SET client = $2, node_id = $3, state = $4, variables = $5, stack = $6
+            WHERE room = $1
         """
         await self.db.execute(q, *self.values)
 
@@ -135,5 +146,5 @@ class Route:
         await self.update()
 
     async def update_variables(self) -> None:
-        q = "UPDATE route SET variables = $3 WHERE room = $1 and client = $2"
-        await self.db.execute(q, self.room, self.client, json.dumps(self.variables))
+        q = "UPDATE route SET variables = $2 WHERE room = $1"
+        await self.db.execute(q, self.room, json.dumps(self.variables))
