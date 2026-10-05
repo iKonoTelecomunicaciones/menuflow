@@ -68,6 +68,16 @@ class Room:
         q = "UPDATE room SET events = $2 WHERE room_id = $1"
         await self.db.execute(q, self.room_id, json.dumps(self.events))
 
+    async def purge(self) -> None:
+        """Delete webhook, route and room rows for this room in one transaction.
+
+        Order follows the foreign keys: webhook and route reference room.
+        """
+        async with self.db.acquire() as conn, conn.transaction():
+            await conn.execute("DELETE FROM webhook WHERE room_id = $1", self.room_id)
+            await conn.execute("DELETE FROM route WHERE room = $1", self.id)
+            await conn.execute("DELETE FROM room WHERE id = $1", self.id)
+
     @classmethod
     async def get_by_room_id(cls, room_id: RoomID) -> Room | None:
         q = f"SELECT id, {cls._columns} FROM room WHERE room_id=$1"

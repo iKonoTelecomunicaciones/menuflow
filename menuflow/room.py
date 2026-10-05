@@ -254,6 +254,10 @@ class Room(DBRoom):
         if self.room_id:
             self.by_room_id[self.room_id] = self
 
+    @classmethod
+    def remove_from_cache(cls, room_id: RoomID) -> None:
+        cls.by_room_id.pop(room_id, None)
+
     async def clean_up(self):
         await Util.cancel_task(task_name=self.room_id)
         await self.route.clean_up()
