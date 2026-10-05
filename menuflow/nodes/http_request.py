@@ -191,31 +191,7 @@ class HTTPRequest(Switch):
 
         _http_variables = self.http_variables
         if isinstance(response_data, (dict, list, str)) and _http_variables:
-            for variable in _http_variables:
-                if isinstance(response_data, str):
-                    try:
-                        variables[variable] = self.render_data(response_data)
-                    except KeyError:
-                        pass
-                    break
-                else:
-                    default_value = None
-                    jq_result: dict = Util.jq_compile(_http_variables[variable], response_data)
-                    if jq_result.get("status") != 200:
-                        self.log.error(
-                            f"[{_room_id}] Error parsing '{self.http_variables[variable]}' with jq "
-                            f"on variable '{variable}'. Set to default value ({default_value}). "
-                            f"Error message: {jq_result.get('error')}, Status: {jq_result.get('status')}"
-                        )
-                    data_match = jq_result.get("result")
-
-                    try:
-                        data_match = default_value if not data_match else data_match
-                        variables[variable] = (
-                            data_match if not data_match or len(data_match) > 1 else data_match[0]
-                        )
-                    except KeyError:
-                        pass
+            variables.update(self.resolve_response_variables(_http_variables, response_data))
 
         o_connection = await self.get_case_by_id(id=response.status)
         await self.room.update_menu(

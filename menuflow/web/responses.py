@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from http import HTTPStatus
 from logging import Logger, getLogger
-from typing import Dict, Optional
 
 from aiohttp import web
 
@@ -112,9 +111,7 @@ class _Response:
             status=HTTPStatus.CONFLICT,
         )
 
-    def ok(
-        self, data: Optional[Dict] = {}, uuid: str = "", log_msg: str | None = None
-    ) -> web.Response:
+    def ok(self, data: dict = {}, uuid: str = "", log_msg: str | None = None) -> web.Response:
         log.debug(f"({uuid}) -> {log_msg or data}")
         return web.json_response(data, status=HTTPStatus.OK)
 
@@ -170,16 +167,15 @@ class _Response:
         )
 
     def management_response(
-        self, message: str, data: dict = None, status: int = 200
+        self,
+        message: str = None,
+        uuid: str = None,
+        data: dict = None,
+        log_msg: str = None,
+        status: int = 200,
     ) -> web.Response:
-        response_data = {"detail": {"message": message}}
-
-        if data:
-            response_data["detail"] |= {"data": data}
-
-        return web.json_response(
-            response_data,
-            status=status,
+        return self._base_response(
+            status=status, message=message, uuid=uuid, data=data, log_msg=log_msg
         )
 
     def conflict(

@@ -204,3 +204,60 @@ class Base:
         """
         if room.route.node_id == executed_node_id:
             room.set_node_var(reentry_node_attempts=room.reentry_node_attempts + 1)
+
+    def resolve_response_variables(
+        self, mapping: dict, response_data: dict | list | str, default_value: Any = None
+    ) -> dict:
+        """Resolve node variables from a response body.
+
+        Each entry in `mapping` is a variable name and a jq expression. When
+        `response_data` is a string, the first variable is set with
+        `render_data` and the rest are skipped. On a jq error or an empty
+        match, the variable is set to `default_value`. A single jq match is
+        unwrapped; several matches are kept as a list.
+
+        Parameters
+        ----------
+        mapping : dict
+            Variable names mapped to jq expressions.
+        response_data : dict | list | str
+            Response body to read the values from.
+        default_value : Any, optional
+            Value used when a jq expression fails or matches nothing.
+
+        Returns
+        -------
+        dict
+            Variable names mapped to the resolved values.
+        """
+
+        variables: dict = {}
+
+        for name, expression in mapping.items():
+            if isinstance(response_data, str):
+                try:
+                    variables[name] = self.render_data(response_data)
+                except KeyError:
+                    pass
+                break
+
+            jq_result = Util.jq_compile(expression, response_data)
+
+            if jq_result.get("status") != 200:
+                self.log.error(
+                    f"[{self.room.room_id}] Error parsing '{expression}' with jq "
+                    f"on variable '{name}'. Set to default value ({default_value}). "
+                    f"Error message: {jq_result.get('error')}, Status: {jq_result.get('status')}"
+                )
+
+            data_match = jq_result.get("result")
+
+            try:
+                data_match = default_value if not data_match else data_match
+                variables[name] = (
+                    data_match if not data_match or len(data_match) > 1 else data_match[0]
+                )
+            except KeyError:
+                pass
+
+        return variables

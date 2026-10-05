@@ -60,5 +60,5 @@ class Webhook:
         return cls._from_row(row)
 
     async def delete(self) -> None:
-        q = "DELETE FROM webhook WHERE room_id = $1 AND client = $2"
-        await self.db.execute(q, self.room_id, self.client)
+        q = "DELETE FROM webhook WHERE room_id = $1 AND client = $2 AND filter = $3"
+        await self.db.execute(q, self.room_id, self.client, self.filter)

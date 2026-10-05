@@ -1,4 +1,3 @@
-import asyncio
 import logging
 from collections import deque
 from copy import deepcopy
@@ -18,8 +17,9 @@ class WebhookHandler:
     log: TraceLogger = logging.getLogger("menuflow.handler_webhook")
     webhook_queue: WebhookQueue = None
 
-    def __init__(self) -> None:
-        self.webhook_queue = WebhookQueue(config=get_config())
+    def __init__(self, trace_id: str) -> None:
+        self.webhook_queue = WebhookQueue(config=get_config(), trace_id=trace_id)
+        self.trace_id = trace_id
 
     async def _remove_webhooks(self, webhooks: list[Webhook]) -> None:
         """
@@ -32,7 +32,7 @@ class WebhookHandler:
         """
         while webhooks:
             webhook = webhooks.popleft()
-            self.log.debug(f"Removing webhook for room {webhook.room_id}")
+            self.log.debug(f"({self.trace_id}) Removing webhook for room {webhook.room_id}")
             await webhook.remove()
 
     async def handle_webhook_event(self, event: dict) -> tuple[int, str]:
@@ -52,14 +52,15 @@ class WebhookHandler:
             The status code is 200 if the event was handled successfully, otherwise it is 422.
             The message is a string describing the result of the operation.
         """
-        self.log.debug(f"Incoming webhook event: {event}")
+        self.log.debug(f"({self.trace_id}) Incoming new webhook event: {event}")
 
         # Get the data from rooms that waiting for webhook event
-        whebhook_data: dict[RoomID, Webhook] | None = await Webhook.get_whebhook_data()
-        whebhook_data_copy = deepcopy(whebhook_data)
+        whebhook_data: dict[RoomID, Webhook] | None = await Webhook.get_webhook_data()
 
         if not whebhook_data:
-            self.log.debug("No rooms waiting for webhook event, saving to queue")
+            self.log.debug(
+                f"({self.trace_id}) No rooms waiting for webhook event, saving to queue"
+            )
             event_id = await self.webhook_queue.get_event_id(event=event)
 
             if event_id is not None:
@@ -67,18 +68,24 @@ class WebhookHandler:
 
             return 202, "Webhook event saved to queue, no rooms waiting"
 
+        whebhook_data_copy = deepcopy(whebhook_data)
         webhooks_to_delete = deque()
 
         message = "The event was not handled successfully"
         status = 202
 
         for whebhook in whebhook_data_copy.values():
-            room = await Room.get_by_room_id(room_id=whebhook.room_id)
-            menu_client = await MenuClient.get(user_id=whebhook.client)
+            room: Room | None = await Room.get_by_room_id(room_id=whebhook.room_id)
+            if not room:
+                webhooks_to_delete.append(whebhook)
+                self.log.debug(f"({self.trace_id}) Room {whebhook.room_id} not found")
+                continue
+
+            menu_client: MenuClient | None = await MenuClient.get(user_id=whebhook.client)
 
             if not menu_client:
                 webhooks_to_delete.append(whebhook)
-                self.log.debug(f"Menu client not found for room {room.room_id}")
+                self.log.debug(f"({self.trace_id}) Menu client not found for room {room.room_id}")
                 continue
 
             # Get the node of the room
@@ -86,48 +93,57 @@ class WebhookHandler:
 
             if not node:
                 webhooks_to_delete.append(whebhook)
-                self.log.debug(f"Node webhook not found for room {room.room_id}")
+                self.log.debug(f"({self.trace_id}) Node webhook not found for room {room.room_id}")
                 message = "Node webhook not found in rooms"
                 continue
 
             if not node.type or node.type != "webhook":
                 webhooks_to_delete.append(whebhook)
-                self.log.debug(f"Node is not a webhook node for room {room.room_id}")
+                self.log.debug(
+                    f"({self.trace_id}) Node is not a webhook node for room {room.room_id}"
+                )
                 message = "No rooms with webhook node found"
                 continue
 
             if not node.validate_webhook_filter(filter=whebhook.filter, event_data=event):
                 self.log.debug(
-                    f"Webhook filter {whebhook.filter} does not match for room {room.room_id} and event {event}"
+                    f"({self.trace_id}) Webhook filter {whebhook.filter} "
+                    f"does not match for room {room.room_id} and event {event}"
                 )
                 message = f"Webhook filter {whebhook.filter} does not match for event {event}"
                 continue
 
-            self.log.debug(f"Executing event for room {room.room_id}")
+            delivered = menu_client.matrix_handler.deliver_webhook_event(
+                room_id=room.room_id, event=event
+            )
+            if not delivered:
+                self.log.debug(
+                    f"({self.trace_id}) Webhook event not delivered for room {room.room_id}"
+                )
+                continue
 
+            self.log.debug(f"({self.trace_id}) Executing event for room {room.room_id}")
             status = 200
             message = "The event was handled successfully"
-
-            # Execute event to the flow
-            await node.run(evt=event)
             webhooks_to_delete.append(whebhook)
 
-        # Get the event ID from the database
-        event_id = await self.webhook_queue.get_event_id(event=event)
+        if webhooks_to_delete:
+            await self._remove_webhooks(webhooks=webhooks_to_delete)
 
         if status != 200:
-            self.log.debug(f"Event {event} not handled, saving to queue")
+            self.log.debug(f"({self.trace_id}) Event data not handled, saving to queue")
+            event_id = await self.webhook_queue.get_event_id(event=event)
 
             if event_id is not None:
                 await self.webhook_queue.add_event_to_queue(event=event, event_id=event_id)
 
             return status, message
 
-        if event_id:
-            self.log.debug(f"Event {event} handled successfully, removing event from queue")
-            # Remove the event from the queue
-            asyncio.create_task(self.webhook_queue.remove_event_from_queue(id=event_id))
+        queued_event = await self.webhook_queue.get_event(event=event)
+        if queued_event:
+            self.log.debug(
+                f"({self.trace_id}) Event data handled successfully, removing event from queue"
+            )
+            await self.webhook_queue.remove_event_from_queue(id=queued_event.id)
 
-        # Remove the webhooks that are not needed anymore
-        asyncio.create_task(self._remove_webhooks(webhooks=webhooks_to_delete))
         return status, message

@@ -552,6 +552,21 @@ class MatrixHandler(MatrixClient):
 
         return queue
 
+    def deliver_webhook_event(self, room_id: RoomID, event: dict) -> bool:
+        """Enqueue a webhook payload for a room whose algorithm is already waiting.
+
+        Returns
+        -------
+        bool
+            True when the payload was handed to the room queue.
+        """
+        if room_id not in self.LOCKED_ROOMS:
+            return False
+
+        self.QUEUE_MESSAGE.setdefault(room_id, asyncio.Queue()).put_nowait(event)
+        self.log.debug(f"[{room_id}] Webhook event enqueued")
+        return True
+
     async def get_input_response(self, room: Room, node: Node) -> list[MessageEvent] | None:
         """Waits for the next message(s) from the room, applying inactivity and grouping settings.
 
@@ -589,7 +604,8 @@ class MatrixHandler(MatrixClient):
                 room=room, inactivity=inactivity, queue=queue
             )
 
-            room.set_node_var(inactivity={})
+            if not isinstance(node, Webhook):
+                room.set_node_var(inactivity={})
             await room.route.update()
         else:
             self.log.info(f"[{room_id}] Inactivity options not detected")
