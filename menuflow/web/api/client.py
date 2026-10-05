@@ -152,7 +152,7 @@ async def set_variables(request: web.Request) -> web.Response:
             if not bot_mxid:
                 return resp.not_found("current_bot_mxid not found in the room variables", uuid)
 
-        room: Room = await Room.get_by_room_id(room_id, bot_mxid)
+        room: Room = await Room.get_by_room_id(room_id=room_id, bot_mxid=bot_mxid, create=True)
 
         if scope == "conversation":
             await room.set_conversation_variables(variables=variables)
@@ -243,8 +243,8 @@ async def get_variables(request: web.Request) -> web.Response:
             if not bot_mxid:
                 return resp.not_found("current_bot_mxid not found in the room variables", uuid)
 
-        route = await DBRoute.get_by_room_and_client(room=room.id, client=bot_mxid, create=False)
-        if not route:
+        route = await DBRoute.get_by_room(room=room.id)
+        if not route or route.client != bot_mxid:
             return resp.not_found(f"Client '{bot_mxid}' not found in room", uuid)
 
         all_variables = {**room._variables, **route.variables}
@@ -291,8 +291,8 @@ async def status(request: web.Request) -> web.Response:
                     uuid,
                 )
 
-        route = await DBRoute.get_by_room_and_client(room=room.id, client=bot_mxid, create=False)
-        if not route:
+        route = await DBRoute.get_by_room(room=room.id)
+        if not route or route.client != bot_mxid:
             return resp.not_found(f"Client '{bot_mxid}' not found in room", uuid)
 
         response = {"status": route.state.value, "node_id": route.node_id, "client": route.client}

@@ -73,7 +73,7 @@ class WebhookHandler:
         status = 202
 
         for whebhook in whebhook_data_copy.values():
-            room = await Room.get_by_room_id(room_id=whebhook.room_id, bot_mxid=whebhook.client)
+            room = await Room.get_by_room_id(room_id=whebhook.room_id)
             menu_client = await MenuClient.get(user_id=whebhook.client)
 
             if not menu_client:
