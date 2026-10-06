@@ -9,7 +9,7 @@ from mautrix.types import Format, MessageEvent, MessageType, TextMessageEventCon
 from menuflow.db.route import RouteState
 from menuflow.events.event_types import MenuflowNodeEvents
 from menuflow.room import Room
-from menuflow.utils.types import Nodes, NodeStatus
+from menuflow.utils.types import Nodes
 from menuflow.utils.util import Util
 from menuflow.webhook.webhook_queue import WebhookQueue
 
@@ -20,7 +20,6 @@ from .input import Input
 
 class WebhookCase(Enum):
     WEBHOOK = "webhook"
-    TIMEOUT = NodeStatus.TIMEOUT.value
 
 
 class Webhook(Input):
@@ -57,6 +56,9 @@ class Webhook(Input):
             The variables for the webhook.
         """
         return self.render_data(self.content.get("variables"))
+
+    def reserved_cases(self) -> set[str]:
+        return super().reserved_cases() | {case.value for case in WebhookCase}
 
     async def get_webhook(self, filter: str) -> ControllerWebhook:
         """

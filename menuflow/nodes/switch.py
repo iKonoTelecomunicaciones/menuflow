@@ -46,6 +46,9 @@ class Switch(Base):
     def set_variables(self) -> dict:
         return self.render_data(self.content.get("set_variables", {}))
 
+    def reserved_cases(self) -> set[str]:
+        return {status.value for status in NodeStatus}
+
     async def load_cases(self) -> dict[str, str]:
         """It loads the cases into a dictionary.
 
@@ -94,6 +97,15 @@ class Switch(Base):
                 f"[{self.room.room_id}] Validation value not found, validating case by case in [{self.id}]"
             )
             return await self.validate_cases()
+
+        if result in self.reserved_cases():
+            self.log.debug(
+                f"[{self.room.room_id}] Validation [{result}] is a reserved case in [{self.id}]"
+            )
+            _, case_o_connection = await self.manage_case_exceptions()
+            if case_o_connection is None or case_o_connection in ["finish", ""]:
+                case_o_connection = await self.get_o_connection()
+            return case_o_connection
 
         return await self.get_case_by_id(result)
 
