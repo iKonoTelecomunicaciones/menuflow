@@ -189,9 +189,7 @@ class HTTPRequest(Switch):
         except ContentTypeError:
             response_data = await response.text()
 
-        _http_variables = self.http_variables
-        if isinstance(response_data, (dict, list, str)) and _http_variables:
-            variables.update(self.resolve_response_variables(_http_variables, response_data))
+        variables.update(self.resolve_response_variables(self.http_variables, response_data))
 
         o_connection = await self.get_case_by_id(id=response.status)
         await self.room.update_menu(

@@ -583,7 +583,12 @@ class MatrixHandler(MatrixClient):
         if room_id not in self.LOCKED_ROOMS:
             return False
 
-        self.QUEUE_MESSAGE.setdefault(room_id, asyncio.Queue()).put_nowait(event)
+        try:
+            self.QUEUE_MESSAGE.setdefault(room_id, asyncio.Queue()).put_nowait(event)
+        except Exception as e:
+            self.log.error(f"[{room_id}] Error enqueuing webhook event: {e}")
+            return False
+
         self.log.debug(f"[{room_id}] Webhook event enqueued")
         return True
 

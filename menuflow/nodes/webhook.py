@@ -142,13 +142,7 @@ class Webhook(Input):
             The connection data for the webhook.
             If the event is not valid, it returns None.
         """
-
-        _vars = self.variables
-
-        if not isinstance(evt, (dict, list, str)) and not _vars:
-            variables = {}
-        else:
-            variables = self.resolve_response_variables(_vars, evt)
+        variables = self.resolve_response_variables(self.variables, evt)
 
         if variables:
             await self.room.set_variables(variables=variables)
