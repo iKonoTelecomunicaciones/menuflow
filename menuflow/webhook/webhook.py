@@ -37,13 +37,14 @@ class Webhook(DBWhebhook):
         """
         This function removes the webhook from the cache by deleting it from the
         `by_room_id` dictionary using the room ID as the key.
-        If the room ID is not found in the cache, it does nothing.
+        A newer subscription for the same room, with a different filter, is left in place.
         """
-        if self.room_id in self.by_room_id:
+        cached = self.by_room_id.get(self.room_id)
+        if cached is not None and cached.filter == self.filter:
             del self.by_room_id[self.room_id]
 
     @classmethod
-    async def get_whebhook_data(cls) -> dict[RoomID, "Webhook"] | None:
+    async def get_webhook_data(cls) -> dict[RoomID, "Webhook"] | None:
         """
         This function retrieves all the webhook data from the database and caches it in the
         `by_room_id` dictionary. If the data is already cached, it returns the cached data.
@@ -99,10 +100,10 @@ class Webhook(DBWhebhook):
         webhook = await cls.get_by_room_id(room_id=room_id, client=client)
 
         if not webhook:
-            cls.log.debug(f"Webhook not found from room {room_id} and client {client}")
+            cls.log.debug(f"[{room_id}] Webhook not found for client {client}")
             return None
 
-        cls.log.debug(f"Webhook found from room {room_id} and client {client}")
+        cls.log.debug(f"[{room_id}] Webhook found for client {client}")
         cls.by_room_id[room_id] = webhook
         return webhook
 

@@ -44,7 +44,6 @@ class NodeStatus(SerializableEnum):
     ATTEMPT_EXCEEDED = "attempt_exceeded"
     DEFAULT = "default"
     TIMEOUT = "timeout"
-    WEBHOOK = "webhook"
 
 
 class QueueSignal:
