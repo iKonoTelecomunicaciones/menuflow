@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Any
 
 from markdown import markdown
@@ -9,6 +10,10 @@ from ..repository import Form, FormMessage, FormMessageContent
 from ..room import Room
 from ..utils import Nodes, NodeStatus
 from .input import Input
+
+
+class FormCase(Enum):
+    SUBMITTED = "submitted"
 
 
 class FormInput(Input):
@@ -55,6 +60,9 @@ class FormInput(Input):
         )
         form_message.trim_reply_fallback()
         return form_message
+
+    def reserved_cases(self) -> set[str]:
+        return super().reserved_cases() | {case.value for case in FormCase}
 
     async def __update_menu(self, case_id: str) -> str:
         o_connection = await self.get_case_by_id(case_id)
@@ -114,7 +122,7 @@ class FormInput(Input):
             self.room.set_node_var(
                 content=content.serialize() if isinstance(content, Obj) else content
             )
-            o_connection = await self.__update_menu("submitted")
+            o_connection = await self.__update_menu(FormCase.SUBMITTED.value)
 
             await self._send_node_event(
                 event_type=MenuflowNodeEvents.NodeInputData, o_connection=o_connection
@@ -138,5 +146,5 @@ class FormInput(Input):
             )
 
             await self._send_node_event(
-                event_type=MenuflowNodeEvents.NodeEntry, node_type=Nodes.media, o_connection=None
+                event_type=MenuflowNodeEvents.NodeEntry, node_type=Nodes.form, o_connection=None
             )

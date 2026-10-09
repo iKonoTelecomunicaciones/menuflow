@@ -92,5 +92,5 @@ class InteractiveInput(Input):
 
             event_type = MenuflowNodeEvents.NodeEntry
             await self._send_node_event(
-                event_type=event_type, o_connection=None, node_type=Nodes.media
+                event_type=event_type, o_connection=None, node_type=Nodes.interactive_input
             )
