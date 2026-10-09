@@ -42,7 +42,7 @@ WEBHOOK_NODE = {
 
 
 class MemoryDB:
-    """Tablas webhook y webhook_queue reemplazadas en memoria."""
+    """Tables subscriptions and queued_events replaced in memory."""
 
     def __init__(self) -> None:
         self.subscriptions: list[dict] = []
@@ -61,7 +61,7 @@ def _queue_row(row: dict) -> SimpleNamespace:
 
 @pytest.fixture
 def memory(mocker) -> MemoryDB:
-    """Parchea el acceso SQL de las suscripciones y de la cola de eventos."""
+    """Patches the SQL access to the subscriptions and the queued_events."""
     db = MemoryDB()
 
     async def insert_subscription(self) -> None:
@@ -196,7 +196,7 @@ async def _flush_room_variables(self) -> None:
 
 @pytest.fixture
 def events(mocker):
-    """Captura NodeEntry, NodeInputData y NodeInputTimeout."""
+    """Captures NodeEntry, NodeInputData and NodeInputTimeout."""
     return mocker.patch("menuflow.nodes.input.send_node_event", AsyncMock())
 
 
@@ -260,7 +260,7 @@ def api(mocker, memory: MemoryDB, matrix: MatrixHandler) -> WebhookHandler:
 def story(
     memory: MemoryDB, matrix: MatrixHandler, api: WebhookHandler, make_room, make_webhook_node
 ):
-    """Acciones con nombre de lo que hace el usuario o el sistema."""
+    """Actions with the name of what the user or the system does."""
 
     class Story:
         async def room(self, room_id: str = ROOM_ID, session_id: str = SESSION_ID):

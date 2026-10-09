@@ -233,6 +233,9 @@ class Base:
 
         variables: dict = {}
 
+        if not isinstance(response_data, (dict, list, str)) or not mapping:
+            return variables
+
         for name, expression in mapping.items():
             if isinstance(response_data, str):
                 try:

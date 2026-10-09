@@ -14,7 +14,7 @@ OTHER_EVENT = {"user_id": "S2", "status": "ok"}
 
 class TestRoomWaitsFirst:
     async def test_event_arrives_and_room_continues_by_webhook_case(self, story, memory, events):
-        """La sala ya espera: el POST que coincide la despierta y sigue por el case webhook."""
+        """The room is already waiting: the POST that matches wakes it up and continues by the webhook case."""
         node = await story.room()
         await story.room_waits(node)
 
@@ -31,7 +31,7 @@ class TestRoomWaitsFirst:
         assert MenuflowNodeEvents.NodeInputData in event_types(events)
 
     async def test_room_is_subscribed_with_rendered_filter(self, story, memory, events):
-        """Al entrar, la suscripción guarda el filtro ya renderizado y el estado queda en espera."""
+        """When entering, the subscription saves the already rendered filter and the state remains in waiting."""
         node = await story.room()
 
         await story.room_waits(node)
@@ -44,7 +44,7 @@ class TestRoomWaitsFirst:
 
 class TestEventArrivesFirst:
     async def test_event_is_stored_when_no_room_is_waiting(self, story, memory):
-        """Si nadie espera, el evento se guarda y la API responde 202."""
+        """If no one is waiting, the event is saved and the API responds 202."""
         status, _message = await story.post(EVENT)
 
         assert status == 202
@@ -52,7 +52,7 @@ class TestEventArrivesFirst:
         assert memory.subscriptions == []
 
     async def test_room_entering_later_receives_stored_event(self, story, memory):
-        """La sala que entra después recibe el evento guardado y no queda suscrita."""
+        """The room that enters later receives the saved event and is not subscribed."""
         await story.post(EVENT)
         node = await story.room()
 
@@ -64,7 +64,7 @@ class TestEventArrivesFirst:
         assert len(memory.queued_events) == 1
 
     async def test_stored_event_for_other_session_is_ignored(self, story, memory):
-        """Un evento guardado de otra sesión no se entrega: la sala se suscribe y espera."""
+        """A saved event from another session is not delivered: the room subscribes and waits."""
         await story.post(OTHER_EVENT)
         node = await story.room(session_id="S1")
 
@@ -78,7 +78,7 @@ class TestEventArrivesFirst:
 
 class TestFilterAndBroadcast:
     async def test_event_not_delivered_to_room_with_different_filter(self, story, memory):
-        """El evento de S2 no entra en la cola de S1, que sigue suscrita."""
+        """The event of S2 does not enter the queue of S1, which is subscribed."""
         first = await story.room(room_id="!s1:example.com", session_id="S1")
         second = await story.room(room_id="!s2:example.com", session_id="S2")
         await story.room_waits(first)
@@ -93,7 +93,7 @@ class TestFilterAndBroadcast:
         assert memory.subscription("!s2:example.com") is None
 
     async def test_event_delivered_to_every_matching_room(self, story, memory):
-        """Dos salas con el mismo filtro reciben el mismo evento."""
+        """Two rooms with the same filter receive the same event."""
         first = await story.room(room_id="!s1:example.com", session_id="S1")
         second = await story.room(room_id="!s2:example.com", session_id="S1")
         await story.room_waits(first)
@@ -109,7 +109,7 @@ class TestFilterAndBroadcast:
     async def test_room_without_running_algorithm_keeps_event_for_next_message(
         self, story, memory
     ):
-        """Sin algoritmo activo el evento se guarda; el siguiente mensaje lo entrega."""
+        """Without an active algorithm the event is saved; the next message delivers it."""
         node = await story.room()
         await story.enter(node)
 
@@ -125,7 +125,7 @@ class TestFilterAndBroadcast:
         assert memory.subscription(ROOM_ID) is None
 
     async def test_orphan_subscription_is_removed(self, story, memory):
-        """Si la sala ya no está en un nodo webhook, su suscripción se elimina."""
+        """If the room is no longer in a webhook node, its subscription is removed."""
         node = await story.room()
         await story.room_waits(node)
         memory.nodes[ROOM_ID] = type("OtherNode", (), {"type": "message"})()
@@ -138,7 +138,7 @@ class TestFilterAndBroadcast:
 
 class TestUserMessages:
     async def test_cancel_exits_by_cancel_case_and_unsubscribes(self, story, memory):
-        """Escribir cancelar sale por ese case y borra la suscripción."""
+        """Writing cancel exits by that case and removes the subscription."""
         node = await story.room()
         await story.room_waits(node)
 
@@ -148,7 +148,7 @@ class TestUserMessages:
         assert memory.subscription(ROOM_ID) is None
 
     async def test_invalid_text_keeps_waiting(self, story, memory, events):
-        """Un texto sin case avisa, sigue en el nodo y no repite NodeEntry."""
+        """A text without case alerts, stays in the node and does not repeat NodeEntry."""
         node = await story.room()
         await story.room_waits(node)
 
@@ -162,7 +162,7 @@ class TestUserMessages:
         assert event_types(events).count(MenuflowNodeEvents.NodeEntry) == 1
 
     async def test_typing_webhook_does_not_trigger_webhook_case(self, story):
-        """La palabra webhook escrita por el usuario no dispara el case del evento HTTP."""
+        """The word webhook written by the user does not trigger the HTTP event case."""
         node = await story.room()
         await story.room_waits(node)
 
@@ -174,7 +174,7 @@ class TestUserMessages:
 
 class TestTimeout:
     async def test_timeout_exits_by_timeout_case_and_unsubscribes(self, story, memory, events):
-        """Al vencer la espera la sala sale por timeout y se borra la suscripción."""
+        """When the timeout expires the room exits by timeout and the subscription is removed."""
         node = await story.room()
         await story.room_waits(node)
         node.room.route.state = RouteState.TIMEOUT
@@ -186,7 +186,7 @@ class TestTimeout:
         assert MenuflowNodeEvents.NodeInputTimeout in event_types(events)
 
     async def test_timeout_wins_over_stored_event(self, story, memory):
-        """Un evento guardado no gana: el timeout sigue saliendo por su case."""
+        """A saved event does not win: the timeout still exits by its case."""
         node = await story.room()
         await story.enter(node)
         await story.post(EVENT)
@@ -200,7 +200,7 @@ class TestTimeout:
 
 class TestSubscriptionCache:
     async def test_replaced_filter_is_not_removed_by_stale_subscription(self, story, memory):
-        """Borrar la suscripción vieja no quita la nueva ni de la caché ni de la tabla."""
+        """Removing the old subscription does not remove the new one neither from the cache nor from the table."""
         node = await story.room(session_id="S1")
         await story.enter(node)
         stale = Subscription.by_room_id[ROOM_ID]

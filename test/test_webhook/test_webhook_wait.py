@@ -16,7 +16,7 @@ def _deadline(node) -> float:
 
 class TestWebhookWait:
     async def test_wait_times_out_and_sets_timeout_state(self, story, matrix):
-        """Sin mensajes, la espera vence y la ruta queda en TIMEOUT."""
+        """Without messages, the wait expires and the route remains in TIMEOUT."""
         node = await story.room()
         node.content["inactivity_options"]["chat_timeout"] = SHORT_TIMEOUT
         node.room.route.state = RouteState.INPUT
@@ -27,7 +27,7 @@ class TestWebhookWait:
         assert node.room.route.state == RouteState.TIMEOUT
 
     async def test_wait_returns_webhook_payload(self, story, matrix):
-        """Un evento que entra en la cola durante la espera se devuelve tal cual."""
+        """An event that enters the queue during the wait is returned as is."""
         node = await story.room()
         node.content["inactivity_options"]["chat_timeout"] = 1
         payload = {"user_id": "S1", "status": "ok"}
@@ -39,7 +39,7 @@ class TestWebhookWait:
         assert await waiting == payload
 
     async def test_invalid_text_does_not_restart_deadline(self, story, matrix):
-        """Tras un mensaje, el plazo guardado no cambia y la siguiente espera usa el resto."""
+        """After a message, the saved deadline does not change and the next wait uses the rest."""
         node = await story.room()
         node.content["inactivity_options"]["chat_timeout"] = SHORT_TIMEOUT
 
@@ -56,7 +56,7 @@ class TestWebhookWait:
         assert _deadline(node) == deadline
 
     async def test_no_chat_timeout_does_not_wait(self, story, matrix):
-        """Sin chat_timeout la espera termina de inmediato."""
+        """Without chat_timeout the wait ends immediately."""
         node = await story.room()
         node.content["inactivity_options"] = {}
 
