@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from mautrix.types import (
     LocationMessageEventContent,
@@ -15,7 +15,6 @@ from ..events.event_generator import send_node_event
 from ..repository import Input as InputModel
 from ..room import Room
 from ..utils import Middlewares, Nodes, Util
-from ..utils.types import Scopes
 from .message import Message
 from .switch import Switch
 
@@ -24,13 +23,13 @@ if TYPE_CHECKING:
 
 
 class Input(Switch, Message):
-    def __init__(self, input_node_data: InputModel, room: Room, default_variables: Dict) -> None:
+    def __init__(self, input_node_data: InputModel, room: Room, default_variables: dict) -> None:
         Switch.__init__(self, input_node_data, room=room, default_variables=default_variables)
         Message.__init__(self, input_node_data, room=room, default_variables=default_variables)
         self.content = input_node_data
-        self.middlewares: Optional[
-            List[LLMMiddleware, ASRMiddleware, IRMMiddleware, TTMMiddleware]
-        ] = []
+        self.middlewares: (
+            list[LLMMiddleware, ASRMiddleware, IRMMiddleware, TTMMiddleware] | None
+        ) = []
 
     @property
     def variable(self) -> str:
@@ -41,7 +40,7 @@ class Input(Switch, Message):
         return MessageType(self.render_data(self.content.get("input_type", "m.text")))
 
     @property
-    def inactivity_options(self) -> Dict[str, Any]:
+    def inactivity_options(self) -> dict[str, Any]:
         inactivity = self.content.get("inactivity_options", {})
         if (
             "active" not in inactivity and inactivity
@@ -76,7 +75,9 @@ class Input(Switch, Message):
         await self.room.update_menu(o_connection or "default")
         return o_connection
 
-    async def input_text(self, text: str, middlewares_sorted: Dict[Middlewares, Any] = None):
+    async def input_text(
+        self, text: str, middlewares_sorted: dict[Middlewares, Any] | None = None
+    ):
         """It takes the input from the user and sets the variable to the input
 
         Parameters
@@ -142,13 +143,13 @@ class Input(Switch, Message):
         await self.room.update_menu(node_id=o_connection, state=None)
         await self._send_node_event(event_type=event_type, o_connection=o_connection)
 
-    async def run(self, evt: Optional[MessageEvent]):
+    async def run(self, evt: MessageEvent | None):
         """If the room is in input mode, then set the variable.
         Otherwise, show the message and enter input mode
 
         Parameters
         ----------
-        evt : Optional[MessageEvent]
+        evt : MessageEvent | None
             The event that triggered the node.
 
         """
