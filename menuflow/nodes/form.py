@@ -12,7 +12,7 @@ from ..utils import Nodes, NodeStatus
 from .input import Input
 
 
-class FormCase(Enum):
+class FormPrivateCase(Enum):
     SUBMITTED = "submitted"
 
 
@@ -62,7 +62,7 @@ class FormInput(Input):
         return form_message
 
     def reserved_cases(self) -> set[str]:
-        return super().reserved_cases() | {case.value for case in FormCase}
+        return super().reserved_cases() | {case.value for case in FormPrivateCase}
 
     async def __update_menu(self, case_id: str) -> str:
         o_connection = await self.get_case_by_id(case_id)
@@ -122,7 +122,7 @@ class FormInput(Input):
             self.room.set_node_var(
                 content=content.serialize() if isinstance(content, Obj) else content
             )
-            o_connection = await self.__update_menu(FormCase.SUBMITTED.value)
+            o_connection = await self.__update_menu(FormPrivateCase.SUBMITTED.value)
 
             await self._send_node_event(
                 event_type=MenuflowNodeEvents.NodeInputData, o_connection=o_connection

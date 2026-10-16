@@ -18,7 +18,7 @@ from ..webhook.webhook import Webhook as ControllerWebhook
 from .input import Input
 
 
-class WebhookCase(Enum):
+class WebhookPrivateCase(Enum):
     WEBHOOK = "webhook"
 
 
@@ -58,7 +58,7 @@ class Webhook(Input):
         return self.render_data(self.content.get("variables"))
 
     def reserved_cases(self) -> set[str]:
-        return super().reserved_cases() | {case.value for case in WebhookCase}
+        return super().reserved_cases() | {case.value for case in WebhookPrivateCase}
 
     async def get_webhook(self, filter: str) -> ControllerWebhook:
         """
@@ -108,7 +108,7 @@ class Webhook(Input):
 
     async def _handle_user_message(self, evt: MessageEvent) -> None:
         o_connection = None
-        if evt.content.body.lower() != WebhookCase.WEBHOOK.value:
+        if evt.content.body.lower() != WebhookPrivateCase.WEBHOOK.value:
             o_connection = await self.input_text(text=evt.content.body)
 
         if o_connection:
@@ -149,7 +149,7 @@ class Webhook(Input):
         if variables:
             await self.room.set_variables(variables=variables)
 
-        o_connection = await self.get_case_by_id(WebhookCase.WEBHOOK.value)
+        o_connection = await self.get_case_by_id(WebhookPrivateCase.WEBHOOK.value)
         if o_connection:
             await self.room.update_menu(o_connection)
 
