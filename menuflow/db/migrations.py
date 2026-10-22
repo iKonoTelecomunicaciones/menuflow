@@ -382,5 +382,15 @@ async def upgrade_v20(conn: Connection) -> None:
     # (room, client) was only indexed, never unique, so concurrent inserts
     # could leave same-client duplicates that the delete above preserves.
     await conn.execute(
-        "DELETE FROM route WHERE id NOT IN (SELECT MAX(id) FROM route GROUP BY room)"
+        """DELETE FROM route AS rt
+        USING (
+            SELECT room, client, MAX(id) AS keep_id
+            FROM route
+            GROUP BY room, client
+            HAVING COUNT(*) > 1
+        ) AS dup
+        WHERE rt.room = dup.room
+        AND rt.client = dup.client
+        AND rt.id < dup.keep_id
+        """
     )
