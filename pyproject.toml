@@ -9,3 +9,6 @@ line-length = 99
 
 [tool.pytest.ini_options]
 asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "compat: dependency compatibility contracts (test/compat)",
+]
