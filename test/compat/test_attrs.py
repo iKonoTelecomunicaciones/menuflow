@@ -39,7 +39,9 @@ def test_dataclass_ib_serialize_deserialize_roundtrip():
 
 
 def test_attrs_inheritance_with_defaults_roundtrip():
-    child = SampleChild(name="parent", count=1, tags=["t"], meta={"k": 1}, extra="x", nested={"a": 2})
+    child = SampleChild(
+        name="parent", count=1, tags=["t"], meta={"k": 1}, extra="x", nested={"a": 2}
+    )
     restored = SampleChild.deserialize(child.serialize())
     assert restored.name == "parent"
     assert restored.extra == "x"
@@ -56,7 +58,10 @@ def test_http_request_node_inherits_switch_roundtrip():
             "method": "GET",
             "url": "https://example.com/{{q}}",
             "variables": {"news": "data"},
-            "cases": [{"id": "200", "o_connection": "m1"}, {"id": "default", "o_connection": "m2"}],
+            "cases": [
+                {"id": "200", "o_connection": "m1"},
+                {"id": "default", "o_connection": "m2"},
+            ],
         }
     )
     assert isinstance(node, Switch)

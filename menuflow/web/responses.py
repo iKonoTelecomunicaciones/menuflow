@@ -79,26 +79,20 @@ class _Response:
 
     def mxid_mismatch(self, found: str) -> web.Response:
         return web.json_response(
-            {
-                "detail": {
-                    "message": f"""
+            {"detail": {"message": f"""
                         The Matrix user ID of the client and the user ID of the access token don't
                         match. Access token is for user {found}
-                    """
-                }
-            },
+                    """}},
             status=HTTPStatus.BAD_REQUEST,
         )
 
     def device_id_mismatch(self, found: str) -> web.Response:
         return web.json_response(
             {
-                "detail": {
-                    "message": """
+                "detail": {"message": """
                         The Matrix device ID of the client and the device ID of the access token
                         don't match. Access token is for device {found}
-                    """
-                },
+                    """},
                 "errcode": "mxid_mismatch",
             },
             status=HTTPStatus.BAD_REQUEST,

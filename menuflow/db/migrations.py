@@ -6,23 +6,18 @@ upgrade_table = UpgradeTable()
 
 @upgrade_table.register(description="Initial revision")
 async def upgrade_v1(conn: Connection) -> None:
-    await conn.execute(
-        """CREATE TABLE room (
+    await conn.execute("""CREATE TABLE room (
             id          SERIAL PRIMARY KEY,
             room_id     TEXT NOT NULL,
             variables   JSON,
             node_id     TEXT,
             state       TEXT
-        )"""
-    )
-    await conn.execute(
-        """CREATE TABLE "user" (
+        )""")
+    await conn.execute("""CREATE TABLE "user" (
             id          SERIAL PRIMARY KEY,
             mxid        TEXT NOT NULL
-        )"""
-    )
-    await conn.execute(
-        """CREATE TABLE client (
+        )""")
+    await conn.execute("""CREATE TABLE client (
             id           TEXT    PRIMARY KEY,
             homeserver   TEXT    NOT NULL,
             access_token TEXT    NOT NULL,
@@ -32,24 +27,21 @@ async def upgrade_v1(conn: Connection) -> None:
             filter_id  TEXT NOT NULL,
 
             autojoin BOOLEAN NOT NULL
-        )"""
-    )
+        )""")
 
     await conn.execute("ALTER TABLE room ADD CONSTRAINT idx_unique_room_id UNIQUE (room_id)")
 
 
 @upgrade_table.register(description="Add new table route")
 async def upgrade_v2(conn: Connection) -> None:
-    await conn.execute(
-        """CREATE TABLE route (
+    await conn.execute("""CREATE TABLE route (
             id          SERIAL PRIMARY KEY,
             room        INT NOT NULL,
             client      TEXT NOT NULL,
             node_id     TEXT,
             state       TEXT,
             variables   JSON
-        )"""
-    )
+        )""")
     await conn.execute("CREATE INDEX ind_route_room_client ON route (room, client)")
     await conn.execute(
         "ALTER TABLE route ADD CONSTRAINT FK_room_route FOREIGN KEY (room) references room (id)"
@@ -75,12 +67,10 @@ async def upgrade_v4(conn: Connection) -> None:
     await conn.execute("ALTER TABLE client ADD COLUMN flow INT")
 
     # Create flow table
-    await conn.execute(
-        """CREATE TABLE flow (
+    await conn.execute("""CREATE TABLE flow (
             id          SERIAL PRIMARY KEY,
             flow        JSONB DEFAULT '{}'::jsonb
-        )"""
-    )
+        )""")
 
     # Add foreign key to client table
     await conn.execute(
@@ -95,27 +85,23 @@ async def upgrade_v5(conn: Connection) -> None:
 
 @upgrade_table.register(description="Add new table flow_backup")
 async def upgrade_v6(conn: Connection) -> None:
-    await conn.execute(
-        """CREATE TABLE flow_backup (
+    await conn.execute("""CREATE TABLE flow_backup (
             id          SERIAL PRIMARY KEY,
             flow_id     INT NOT NULL,
             flow        JSONB DEFAULT '{}'::jsonb NOT NULL,
             created_at  TIMESTAMP  WITH TIME ZONE DEFAULT now()
-        )"""
-    )
+        )""")
 
 
 @upgrade_table.register(description="Add new table webhook")
 async def upgrade_v7(conn: Connection) -> None:
-    await conn.execute(
-        """CREATE TABLE webhook (
+    await conn.execute("""CREATE TABLE webhook (
             id          SERIAL PRIMARY KEY,
             room_id     TEXT NOT NULL,
             client      TEXT NOT NULL,
             filter      TEXT NOT NULL,
             subscription_time   BIGINT NOT NULL
-        )"""
-    )
+        )""")
     await conn.execute("CREATE INDEX ind_webhook_room ON webhook (room_id)")
     await conn.execute("CREATE INDEX ind_webhook_room_client ON webhook (room_id, client)")
     await conn.execute(
@@ -133,15 +119,13 @@ async def upgrade_v8(conn: Connection) -> None:
     await conn.execute("ALTER TABLE flow ADD COLUMN flow_vars JSONB DEFAULT '{}'::jsonb")
 
     # Create module table
-    await conn.execute(
-        """CREATE TABLE module (
+    await conn.execute("""CREATE TABLE module (
            id          SERIAL PRIMARY KEY,
            flow_id     INT NOT NULL,
            name        TEXT NOT NULL,
            nodes       JSONB DEFAULT '[]'::jsonb,
            position    JSONB DEFAULT '{}'::jsonb
-       )"""
-    )
+       )""")
 
     # Add foreign key to module table
     await conn.execute(
@@ -159,14 +143,12 @@ async def upgrade_v8(conn: Connection) -> None:
 
 @upgrade_table.register(description="Add webhook_queue table")
 async def upgrade_v9(conn: Connection) -> None:
-    await conn.execute(
-        """CREATE TABLE webhook_queue (
+    await conn.execute("""CREATE TABLE webhook_queue (
             id          SERIAL PRIMARY KEY,
             event       JSONB NOT NULL,
             ending_time BIGINT NOT NULL,
             creation_time BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)
-        )"""
-    )
+        )""")
     await conn.execute(
         "CREATE INDEX idx_webhook_queue_creation_time ON webhook_queue (creation_time)"
     )
@@ -191,8 +173,7 @@ async def upgrade_v11(conn: Connection) -> None:
     await conn.execute("DROP TABLE IF EXISTS tag")
 
     # Create tag table
-    await conn.execute(
-        """CREATE TABLE tag (
+    await conn.execute("""CREATE TABLE tag (
             id          SERIAL PRIMARY KEY,
             flow_id     INT NOT NULL,
             name        TEXT,
@@ -200,8 +181,7 @@ async def upgrade_v11(conn: Connection) -> None:
             author      TEXT,
             active      BOOLEAN NOT NULL DEFAULT false,
             flow_vars   JSONB DEFAULT '{}'::jsonb
-        )"""
-    )
+        )""")
 
     # Add foreign key constraint to flow table
     await conn.execute(
@@ -237,21 +217,17 @@ async def upgrade_v11(conn: Connection) -> None:
     )
 
     # Migrate existing flow_vars data to tag table (create default tags for existing flows)
-    await conn.execute(
-        """INSERT INTO tag (flow_id, flow_vars, active, name)
+    await conn.execute("""INSERT INTO tag (flow_id, flow_vars, active, name)
            SELECT id, flow_vars, true, 'current'
            FROM flow
-        """
-    )
+        """)
 
     # update existing modules to set tag_id to the active tag of the corresponding flow
-    await conn.execute(
-        """UPDATE module
+    await conn.execute("""UPDATE module
             SET tag_id = t.id
             FROM tag AS t
             WHERE module.flow_id = t.flow_id
-        """
-    )
+        """)
 
     # Set tag_id as NOT NULL
     await conn.execute("ALTER TABLE module ALTER COLUMN tag_id SET NOT NULL")
@@ -300,22 +276,18 @@ async def upgrade_v15(conn: Connection) -> None:
 
 @upgrade_table.register(description="Add scope conversation to room table in variables column")
 async def upgrade_v16(conn: Connection) -> None:
-    await conn.execute(
-        """UPDATE room
+    await conn.execute("""UPDATE room
             SET variables = variables || jsonb_build_object('conversation', '{}'::jsonb)
             WHERE variables IS NOT NULL
-        """
-    )
-    await conn.execute(
-        """UPDATE room AS r
+        """)
+    await conn.execute("""UPDATE room AS r
             SET variables = COALESCE(r.variables, '{}'::jsonb) || jsonb_build_object('conversation', rt.external_vars)
             FROM route AS rt WHERE rt.room = r.id
             AND rt.client = COALESCE(r.variables->'room'->>'current_bot_mxid', r.variables->>'current_bot_mxid')
             AND rt.external_vars IS NOT NULL
             AND rt.external_vars <> '{}'::jsonb
             AND COALESCE(r.variables->'room'->>'current_bot_mxid', r.variables->>'current_bot_mxid') IS NOT NULL
-        """
-    )
+        """)
     await conn.execute("ALTER TABLE route DROP COLUMN IF EXISTS external_vars")
 
 
@@ -345,28 +317,23 @@ async def upgrade_v18(conn: Connection) -> None:
 
 @upgrade_table.register(description="Add scope menu to room table in variables column")
 async def upgrade_v19(conn: Connection) -> None:
-    await conn.execute(
-        """UPDATE room
+    await conn.execute("""UPDATE room
             SET variables = variables || jsonb_build_object('menu', '{}'::jsonb)
             WHERE variables IS NOT NULL
-        """
-    )
-    await conn.execute(
-        """UPDATE room SET variables = COALESCE(variables, '{}'::jsonb)
+        """)
+    await conn.execute("""UPDATE room SET variables = COALESCE(variables, '{}'::jsonb)
             || jsonb_build_object('menu', COALESCE(variables->'menu', '{}'::jsonb)
             || jsonb_build_object('bot_mxid', COALESCE(variables->'room'->>'current_bot_mxid', variables->>'current_bot_mxid'))
             )
             WHERE COALESCE(variables->'room'->>'current_bot_mxid', variables->>'current_bot_mxid') IS NOT NULL
-        """
-    )
+        """)
 
 
 @upgrade_table.register(description="Enforce a single route per room")
 async def upgrade_v20(conn: Connection) -> None:
     # Keep only the route of the room's active bot. Rooms with no
     # current_bot_mxid predate the variable and lose every route.
-    await conn.execute(
-        """DELETE FROM route AS rt
+    await conn.execute("""DELETE FROM route AS rt
            USING room AS ro
            WHERE rt.room = ro.id
              AND (
@@ -376,13 +343,11 @@ async def upgrade_v20(conn: Connection) -> None:
                           ro.variables->'room'->>'current_bot_mxid',
                           ro.variables->>'current_bot_mxid')
              )
-        """
-    )
+        """)
 
     # (room, client) was only indexed, never unique, so concurrent inserts
     # could leave same-client duplicates that the delete above preserves.
-    await conn.execute(
-        """DELETE FROM route AS rt
+    await conn.execute("""DELETE FROM route AS rt
         USING (
             SELECT room, client, MAX(id) AS keep_id
             FROM route
@@ -392,5 +357,4 @@ async def upgrade_v20(conn: Connection) -> None:
         WHERE rt.room = dup.room
         AND rt.client = dup.client
         AND rt.id < dup.keep_id
-        """
-    )
+        """)
