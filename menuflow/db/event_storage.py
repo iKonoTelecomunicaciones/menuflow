@@ -35,16 +35,14 @@ class EventStorage:
     @classmethod
     def run_migrations(cls):
         try:
-            cls._db.execute(
-                """
+            cls._db.execute("""
                     CREATE TABLE event (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         event TEXT,
                         akn BOOLEAN,
                         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
-                """
-            )
+                """)
         except sqlite3.OperationalError as e:
             log.info(f"Failed to create table events: {e}")
 

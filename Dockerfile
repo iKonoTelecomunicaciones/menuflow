@@ -1,5 +1,5 @@
 #==================================== Builder Stage ==========================================
-FROM python:3.12.3-slim AS builder
+FROM python:3.13-slim AS builder
 
 WORKDIR /opt/menuflow
 
@@ -38,7 +38,7 @@ COPY . /opt/menuflow
 CMD ["/opt/menuflow/run.sh", "dev"]
 
 #==================================== Runtime Stage ==========================================
-FROM python:3.12.3-slim AS runtime
+FROM python:3.13-slim AS runtime
 
 WORKDIR /opt/menuflow
 

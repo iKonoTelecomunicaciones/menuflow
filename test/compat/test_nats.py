@@ -87,7 +87,9 @@ async def test_stream_handler_creates_when_missing_and_updates_when_present():
     updated: list[StreamConfig] = []
 
     js = MagicMock()
-    missing = StreamConfig(name="S_CEP", subjects=["s_cep.*"], retention=RetentionPolicy.WORK_QUEUE)
+    missing = StreamConfig(
+        name="S_CEP", subjects=["s_cep.*"], retention=RetentionPolicy.WORK_QUEUE
+    )
     existing = StreamConfig(
         name="S_MNTR",
         subjects=["s_mntr.*"],

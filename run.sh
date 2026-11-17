@@ -20,7 +20,7 @@ if [ "$1" = "dev" ]; then
 	fi
 	# Getting the version from git repository
 	python3 setup.py --version
-    watchmedo auto-restart -R -p="*.py" -d="." /opt/menuflow/run.sh
+    watchmedo auto-restart -R -p="**/*.py" -d="." /opt/menuflow/run.sh
 fi
 
 exec python3 -m menuflow -c /data/config.yaml
