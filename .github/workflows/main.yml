@@ -22,11 +22,7 @@ jobs:
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
 
       - name: Run pre-commit
-        run: |
-          pre-commit run -av trailing-whitespace
-          pre-commit run -av end-of-file-fixer
-          pre-commit run -av check-yaml
-          pre-commit run -av check-added-large-files
+        run: pre-commit run --all-files
 
   test:
 
