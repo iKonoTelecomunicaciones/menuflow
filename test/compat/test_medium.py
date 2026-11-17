@@ -5,6 +5,8 @@ from __future__ import annotations
 import inspect
 import warnings
 from datetime import date, datetime
+from io import StringIO
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import holidays
 import pytest
@@ -22,9 +24,11 @@ from phonenumbers import PhoneNumberFormat, carrier, format_number, geocoder, is
 from phonenumbers import parse as parse_phone
 from phonenumbers import timezone
 from pycountry import countries
+from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
 from menuflow.config import Config
+from menuflow.email_client import Email, EmailClient
 from menuflow.jinja.jinja_filters.phone_numbers import PhoneNumbers
 from menuflow.utils import JQ2Glom, Util
 
@@ -78,6 +82,24 @@ def test_ruamel_commented_map_with_recursive_dict():
     assert isinstance(commented, dict)
 
 
+def test_ruamel_roundtrip_and_middleware_pattern():
+    """Config/middleware path: YAML rt load + CommentedMap(**dict) like HTTP middleware."""
+    yaml = YAML(typ="rt")
+    raw = "menuflow:\n  database: postgresql://x\n  timeouts:\n    http_request: 30\n"
+    loaded = yaml.load(raw)
+    assert loaded["menuflow"]["timeouts"]["http_request"] == 30
+
+    out = StringIO()
+    yaml.dump(loaded, out)
+    assert "postgresql://x" in out.getvalue()
+
+    # Middlewares wrap JSON bodies as RecursiveDict(CommentedMap(**response_data)).
+    response_data = {"token": "abc", "nested": {"ok": True}}
+    serialized = RecursiveDict(CommentedMap(**response_data))
+    assert serialized["token"] == "abc"
+    assert serialized["nested"]["ok"] is True
+
+
 def test_aiosmtplib_smtp_signature_and_errors():
     sig = inspect.signature(SMTP.__init__)
     # Email client constructs SMTP and uses these exception classes.
@@ -89,6 +111,42 @@ def test_aiosmtplib_smtp_signature_and_errors():
     assert "username" in sig.parameters
     assert "password" in sig.parameters
     assert "use_tls" in sig.parameters or "start_tls" in sig.parameters
+
+
+@pytest.mark.asyncio
+async def test_email_client_login_and_send_reconnects_on_disconnect():
+    """Exercise EmailClient against aiosmtplib the way production constructs SMTP."""
+    client = EmailClient(
+        server_id="smtp-1",
+        host="smtp.example.com",
+        port="587",
+        username="bot@example.com",
+        password="secret",
+        start_tls=True,
+    )
+    smtp = MagicMock()
+    smtp.connect = AsyncMock()
+    smtp.ehlo = AsyncMock()
+    smtp.sendmail = AsyncMock(side_effect=[SMTPServerDisconnected("gone"), None])
+    smtp.is_connected = True
+
+    with patch("menuflow.email_client.SMTP", return_value=smtp) as smtp_cls:
+        await client.login()
+        smtp_cls.assert_called_once_with(
+            hostname="smtp.example.com",
+            port="587",
+            username="bot@example.com",
+            password="secret",
+            start_tls=True,
+        )
+        smtp.connect.assert_awaited()
+        smtp.ehlo.assert_awaited()
+
+        email = Email(subject="hi", text="<p>body</p>", recipients=["a@example.com"])
+        await client.send_email(email)
+
+    assert smtp.sendmail.await_count == 2
+    assert smtp.connect.await_count == 2
 
 
 def test_phonenumbers_colombia_contract():
@@ -105,14 +163,18 @@ def test_phonenumbers_colombia_contract():
     assert wrapped.format_for_number_e164 == "+573001234567"
 
 
-def test_holidays_prov_alias_without_deprecation():
+def test_holidays_subdiv_preferred_and_prov_none_safe():
     sig = inspect.signature(holidays.country_holidays)
-    assert "prov" in sig.parameters or "subdiv" in sig.parameters
+    assert "subdiv" in sig.parameters
 
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always", DeprecationWarning)
-        result = holidays.country_holidays("CO", prov=None)
-        assert date(2025, 12, 25) in result
+        # Preferred API for Menuflow going forward.
+        via_subdiv = holidays.country_holidays("CO", subdiv=None)
+        assert date(2025, 12, 25) in via_subdiv
+        # Current Util.is_holiday still passes prov=; None must not warn.
+        via_prov = holidays.country_holidays("CO", prov=None)
+        assert date(2025, 12, 25) in via_prov
     deprecations = [w for w in caught if issubclass(w.category, DeprecationWarning)]
     assert not deprecations, f"Unexpected DeprecationWarning: {deprecations}"
 
@@ -120,6 +182,8 @@ def test_holidays_prov_alias_without_deprecation():
 def test_util_is_holiday_and_country_helpers():
     assert Util.is_holiday(datetime(2025, 12, 25), "CO", None) is True
     assert Util.is_holiday(datetime(2025, 12, 24), "CO", None) is False
+    # Unknown country codes must not raise; Util catches NotImplementedError.
+    assert Util.is_holiday(datetime(2025, 12, 25), "ZZ", None) is False
 
     country = countries.get(alpha_2="CO")
     assert country is not None

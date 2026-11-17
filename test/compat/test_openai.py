@@ -80,6 +80,21 @@ def test_async_openai_accepts_api_key_and_timeout():
     assert "http_client" in sig.parameters
 
 
+def test_openai_sdk_stays_on_v2_httpx_surface():
+    """openai 3.x switches the default HTTP stack to HTTPX2 and drops transitive httpx.
+
+    Menuflow mocks and GPTAssistant tests inject httpx.AsyncClient / MockTransport.
+    Pin the major until those are migrated.
+    """
+    major = int(openai.__version__.split(".", 1)[0])
+    assert major == 2, (
+        f"openai {openai.__version__} detected; bump requires migrating "
+        "test/compat/test_openai.py and GPTAssistant http_client usage to httpx2"
+    )
+    assert httpx.AsyncClient is not None
+    assert httpx.MockTransport is not None
+
+
 @pytest.mark.asyncio
 async def test_files_create_sends_expires_after_and_returns_id():
     seen: dict[str, Any] = {}
