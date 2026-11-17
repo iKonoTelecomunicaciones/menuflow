@@ -29,7 +29,17 @@ def _assert_pillow():
     image = Image.new("RGB", (8, 8), color=(255, 0, 0))
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
-    assert buffer.getvalue()[:8] == b"\x89PNG\r\n\x1a\n"
+    png_bytes = buffer.getvalue()
+    assert png_bytes[:8] == b"\x89PNG\r\n\x1a\n"
+
+    # media.py only needs Image.open(...).size for width/height.
+    with Image.open(io.BytesIO(png_bytes)) as opened:
+        assert opened.size == (8, 8)
+
+    jpeg_buf = io.BytesIO()
+    Image.new("RGB", (4, 6), color=(0, 128, 255)).save(jpeg_buf, format="JPEG")
+    with Image.open(io.BytesIO(jpeg_buf.getvalue())) as jpeg:
+        assert jpeg.size == (4, 6)
 
 
 def _assert_magic():
