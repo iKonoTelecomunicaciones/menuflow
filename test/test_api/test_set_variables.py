@@ -172,9 +172,24 @@ async def test_custom_scope_reserved_scopes(mock_room):
     mock_room.set_conversation_variables.assert_not_awaited()
     mock_room.set_variable.assert_has_awaits(
         [
-            call(variable_id="trace_id", value="t1", scope=Scopes.ROUTE.value),
-            call(variable_id="locale", value="es", scope=Scopes.ROOM.value),
-            call(variable_id="step", value=2, scope=Scopes.NODE.value),
+            call(
+                variable_id="trace_id",
+                value="t1",
+                scope=Scopes.ROUTE.value,
+                use_locals=False,
+            ),
+            call(
+                variable_id="locale",
+                value="es",
+                scope=Scopes.ROOM.value,
+                use_locals=False,
+            ),
+            call(
+                variable_id="step",
+                value=2,
+                scope=Scopes.NODE.value,
+                use_locals=False,
+            ),
         ],
         any_order=True,
     )
@@ -195,8 +210,8 @@ async def test_custom_scope_multiple_keys_same_scope(mock_room):
     assert resp.status == HTTPStatus.OK
     mock_room.set_variable.assert_has_awaits(
         [
-            call(variable_id="a", value=1, scope=Scopes.ROUTE.value),
-            call(variable_id="b", value=2, scope=Scopes.ROUTE.value),
+            call(variable_id="a", value=1, scope=Scopes.ROUTE.value, use_locals=False),
+            call(variable_id="b", value=2, scope=Scopes.ROUTE.value, use_locals=False),
         ],
         any_order=True,
     )
@@ -212,7 +227,9 @@ async def test_custom_scope_existing_custom_scope_no_new_scope_log(mock_room, ca
         make_mock_request({"scope": None, "variables": {"catalog": {"sku": "X1"}}})
     )
 
-    mock_room.set_variable.assert_awaited_once_with(variable_id="sku", value="X1", scope="catalog")
+    mock_room.set_variable.assert_awaited_once_with(
+        variable_id="sku", value="X1", scope="catalog", use_locals=False
+    )
     assert not any("Detecting new scope (catalog)" in r.message for r in caplog.records)
 
 
@@ -226,7 +243,7 @@ async def test_custom_scope_new_scope_emits_info_log(mock_room, caplog):
     )
 
     mock_room.set_variable.assert_awaited_once_with(
-        variable_id="invoice_id", value=99, scope="billing"
+        variable_id="invoice_id", value=99, scope="billing", use_locals=False
     )
     assert any("Detecting new scope (billing)" in r.message for r in caplog.records)
 
@@ -277,7 +294,7 @@ async def test_custom_scope_skips_non_dict_values(mock_room, caplog, bad_value):
 
     assert resp.status == HTTPStatus.OK
     mock_room.set_variable.assert_awaited_once_with(
-        variable_id="k", value="v", scope=Scopes.ROUTE.value
+        variable_id="k", value="v", scope=Scopes.ROUTE.value, use_locals=False
     )
     assert any("Scope (weird) is not a dictionary" in r.message for r in caplog.records)
 
@@ -297,6 +314,6 @@ async def test_custom_scope_skips_empty_dict(mock_room, caplog):
 
     assert resp.status == HTTPStatus.OK
     mock_room.set_variable.assert_awaited_once_with(
-        variable_id="k", value="v", scope=Scopes.ROUTE.value
+        variable_id="k", value="v", scope=Scopes.ROUTE.value, use_locals=False
     )
     assert any("Scope (empty) is empty" in r.message for r in caplog.records)

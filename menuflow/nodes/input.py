@@ -11,7 +11,6 @@ from mautrix.types import (
 
 from ..db.route import RouteState
 from ..events import MenuflowNodeEvents
-from ..events.event_generator import send_node_event
 from ..repository import Input as InputModel
 from ..room import Room
 from ..utils import Middlewares, Nodes, Util
@@ -109,30 +108,6 @@ class Input(Switch, Message):
         # If the node has an output connection, then update the menu to the output connection.
         # Otherwise, run the node and update the menu to the output connection.
         return await Switch.run(self, generate_event=False)
-
-    async def _send_node_event(self, **kwargs):
-        """It sends the event to the room.
-
-        Parameters
-        ----------
-        kwargs: dict[str, Any]
-            The keyword arguments to send the event.
-        """
-
-        _variables = None
-        if kwargs.get("event_type") != MenuflowNodeEvents.NodeEntry:
-            _variables = self.room.all_variables | self.default_variables
-
-        await send_node_event(
-            config=self.room.config,
-            send_event=self.content.get("send_event"),
-            room_id=self.room.room_id,
-            sender=self.room.matrix_client.mxid,
-            node_id=self.id,
-            variables=_variables,
-            conversation_uuid=await self.room.get_variable("room.conversation_uuid"),
-            **kwargs,
-        )
 
     async def _handle_input_timeout(self) -> None:
         """It handles the timeout state for the input node."""

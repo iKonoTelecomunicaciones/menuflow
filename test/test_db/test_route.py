@@ -22,6 +22,7 @@ def _make_row(
     state: str = "start",
     variables: dict | None = None,
     stack: str = "{}",
+    fn_stack: list | None = None,
 ) -> dict:
     return {
         "id": route_id,
@@ -31,6 +32,7 @@ def _make_row(
         "state": state,
         "variables": variables if variables is not None else {"route": {}},
         "stack": stack,
+        "fn_stack": fn_stack if fn_stack is not None else [],
     }
 
 
@@ -125,3 +127,59 @@ async def test_get_by_room_create_true_inserts(mock_db):
     insert_sql = mock_db.execute.await_args.args[0]
     assert "INSERT INTO route" in insert_sql
     assert "ON CONFLICT" not in insert_sql
+
+
+def test_from_row_parses_fn_stack():
+    frame = {"call_id": "abc", "status": "running", "locals": {"x": 1}}
+    route = Route._from_row(_make_row(fn_stack=[frame]))
+    assert route.fn_stack == [frame]
+    assert route.current_frame == frame
+
+
+def test_from_row_defaults_fn_stack_when_missing():
+    row = _make_row()
+    del row["fn_stack"]
+    route = Route._from_row(row)
+    assert route.fn_stack == []
+
+
+def test_values_include_fn_stack():
+    route = Route(room=1, client=BOT_A, fn_stack=[{"call_id": "1"}])
+    values = route.values
+    assert len(values) == 7
+    assert '"call_id": "1"' in values[6] or '"call_id":"1"' in values[6].replace(" ", "")
+
+
+@pytest.mark.asyncio
+async def test_clean_up_clears_fn_stack(mock_db):
+    route = Route(room=ROOM_PK, client=BOT_A, fn_stack=[{"call_id": "1"}])
+    await route.clean_up()
+    assert route.fn_stack == []
+    assert "fn_stack = $7" in mock_db.execute.await_args.args[0]
+
+
+@pytest.mark.asyncio
+async def test_reassign_client_clears_fn_stack(mock_db):
+    mock_db.fetchrow.return_value = _make_row(client=BOT_A, fn_stack=[{"call_id": "1"}])
+    route = await Route.get_by_room(room=ROOM_PK, client=BOT_B, create=True)
+    assert route.fn_stack == []
+
+
+def test_push_pop_and_find_function_frame():
+    route = Route(room=1, client=BOT_A)
+    running = {
+        "call_id": "1",
+        "return_to": "call_1",
+        "status": "running",
+        "locals": {},
+    }
+    route.push_frame(running)
+    assert route.find_function_frame("call_1") is None
+
+    running["status"] = "returned"
+    assert route.find_function_frame("call_1") is running
+    assert route.find_function_frame("other") is None
+
+    popped = route.pop_frame()
+    assert popped is running
+    assert route.current_frame is None
