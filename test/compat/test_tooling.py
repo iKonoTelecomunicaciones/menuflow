@@ -47,9 +47,9 @@ def test_pre_commit_black_and_isort_match_requirements_dev():
     pins = _pinned_dev_versions()
     hooks = _pre_commit_hook_revs()
     assert "black" in pins and "isort" in pins
-    assert hooks.get("black") == pins["black"], (
-        f"pre-commit black={hooks.get('black')} != requirements-dev black={pins['black']}"
-    )
-    assert hooks.get("isort") == pins["isort"], (
-        f"pre-commit isort={hooks.get('isort')} != requirements-dev isort={pins['isort']}"
-    )
+    assert (
+        hooks.get("black") == pins["black"]
+    ), f"pre-commit black={hooks.get('black')} != requirements-dev black={pins['black']}"
+    assert (
+        hooks.get("isort") == pins["isort"]
+    ), f"pre-commit isort={hooks.get('isort')} != requirements-dev isort={pins['isort']}"
