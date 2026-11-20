@@ -10,6 +10,7 @@ from ...db.flow import Flow as DBFlow
 from ...db.flow_backup import FlowBackup
 from ...db.module import Module as DBModule
 from ...db.tag import Tag as DBTag
+from ...flow import Flow as RuntimeFlow
 from ...flow_sync import FlowSync
 from ...repository.flow import Flow
 from ..base import get_config, routes
@@ -25,6 +26,10 @@ from ..responses import resp
 from ..util import Util
 
 log: Logger = getLogger("menuflow.api.flow")
+
+
+def _flat_nodes_from_flow(incoming_flow: dict) -> list[dict]:
+    return incoming_flow.get("menu", {}).get("nodes", []) or []
 
 
 # Update or create new flow
@@ -54,6 +59,13 @@ async def create_or_update_flow(request: web.Request) -> web.Response:
     )
 
     nodes, positions = Util.parse_flow_to_module_fmt(incoming_flow)
+
+    if incoming_flow:
+        fn_errors, _fn_warnings = RuntimeFlow.validate_functions(
+            _flat_nodes_from_flow(incoming_flow)
+        )
+        if fn_errors:
+            return resp.bad_request("; ".join(fn_errors), uuid)
 
     if flow_id:
         flow = await DBFlow.get_by_id(flow_id)
@@ -352,6 +364,13 @@ async def import_flow(request: web.Request) -> web.Response:
     )
 
     nodes, positions = Util.parse_flow_to_module_fmt(incoming_flow)
+
+    if incoming_flow:
+        fn_errors, _fn_warnings = RuntimeFlow.validate_functions(
+            _flat_nodes_from_flow(incoming_flow)
+        )
+        if fn_errors:
+            return resp.bad_request("; ".join(fn_errors), uuid)
 
     flow = await DBFlow.get_by_id(flow_id)
     if not flow:

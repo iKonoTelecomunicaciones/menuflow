@@ -1,5 +1,3 @@
-from typing import Dict
-
 from markdown import markdown
 from mautrix.errors.request import MForbidden
 from mautrix.types import Format, MessageType, TextMessageEventContent
@@ -16,11 +14,11 @@ from .base import Base
 
 class Message(Base):
     def __init__(
-        self, message_node_data: MessageModel, room: Room, default_variables: Dict
+        self, message_node_data: MessageModel, room: Room, default_variables: dict
     ) -> None:
         Base.__init__(self, room=room, default_variables=default_variables)
         self.log = self.log.getChild(message_node_data.get("id"))
-        self.content: Dict = message_node_data
+        self.content: dict = message_node_data
 
     @property
     def message_type(self) -> MessageType:
@@ -92,9 +90,14 @@ class Message(Base):
                 await self._update_node(None)
                 return
 
-        o_connection = await self.o_connection
-        if update_state:
-            await self._update_node(o_connection)
+        # Skip o_connection resolution when neither updating state nor emitting
+        # events (Input prompt path). Resolving would trigger an implicit
+        # function return for nodes without a top-level o_connection.
+        o_connection = None
+        if update_state or generate_event:
+            o_connection = await self.o_connection
+            if update_state:
+                await self._update_node(o_connection)
 
         if generate_event:
             await send_node_event(
