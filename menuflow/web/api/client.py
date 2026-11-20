@@ -174,7 +174,9 @@ async def set_variables(request: web.Request) -> web.Response:
                     if scope not in all_scopes:
                         log.info(f"({uuid}) -> Detecting new scope ({scope}), will be created")
                     for key, value in values.items():
-                        await room.set_variable(variable_id=key, value=value, scope=scope)
+                        await room.set_variable(
+                            variable_id=key, value=value, scope=scope, use_locals=False
+                        )
     except Exception as e:
         return resp.server_error(str(e), uuid)
 

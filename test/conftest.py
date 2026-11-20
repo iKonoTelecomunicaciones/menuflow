@@ -29,6 +29,7 @@ async def _update_variables_no_db(self) -> None:
 async def _update_route_variables_no_db(self) -> None:
     """Simulates JSONB: normalizes keys and types like in the DB."""
     self.variables = json.loads(json.dumps(self.variables))
+    self.fn_stack = json.loads(json.dumps(self.fn_stack))
 
 
 @pytest_asyncio.fixture(autouse=True)
