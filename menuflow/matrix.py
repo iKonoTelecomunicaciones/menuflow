@@ -169,6 +169,8 @@ class MatrixHandler(MatrixClient):
         self.QUEUE_MESSAGE.pop(_room_id, None)
         self.unlock_room(room_id=_room_id, evt=evt)
 
+        await RoomMonitor.drop(_room_id)
+
         # If an invite user is in progress, notify that leave cleanup is complete
         key = (_room_id, PrimitiveType.LEAVE_DONE)
         leave_done = RoomSyncPrimitives.room_sync_primitives.get(key)

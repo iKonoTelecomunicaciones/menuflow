@@ -10,6 +10,7 @@ from menuflow.utils.types import ProtectedVars
 
 from .config import Config
 from .db.room import Room as DBRoom
+from .utils import Util
 
 
 class RoomMonitor:
@@ -38,6 +39,7 @@ class RoomMonitor:
         self.running_restore_task = False
         self.task_name = f"{room_id}_message_traceback"
         self._is_bot: bool | None = None
+        self._pending_call: asyncio.TimerHandle | None = None
 
     @classmethod
     def init_cls(cls, api, domain, config: Config) -> None:
@@ -58,6 +60,23 @@ class RoomMonitor:
             cls.MONITORING_ROOMS[room_id] = RoomMonitor(room_id=room_id)
         return cls.MONITORING_ROOMS[room_id]
 
+    def _schedule_conversation_status(self, delay: float, ignore: bool = False) -> None:
+        if self._pending_call is not None:
+            self._pending_call.cancel()
+            self._pending_call = None
+        loop = asyncio.get_event_loop()
+        self._pending_call = loop.call_later(delay, self.conversation_status, ignore)
+
+    @classmethod
+    async def drop(cls, room_id: RoomID) -> None:
+        monitor = cls.MONITORING_ROOMS.pop(room_id, None)
+        if monitor is None:
+            return
+        if monitor._pending_call is not None:
+            monitor._pending_call.cancel()
+            monitor._pending_call = None
+        await Util.cancel_task(task_name=monitor.task_name)
+
     async def ignore_room(self) -> bool:
         """
         Run bot-war checks and timers for an incoming message
@@ -66,12 +85,10 @@ class RoomMonitor:
         """
         monitor = self._get_or_create(self.room_id)
 
-        loop: asyncio.AbstractEventLoop | None = None
         if monitor.ignore is False:
             if monitor.running_limit_task is False:
                 monitor.running_limit_task = True
-                loop = asyncio.get_event_loop()
-                loop.call_later(monitor.init_checker_limit_timer, monitor.conversation_status)
+                monitor._schedule_conversation_status(monitor.init_checker_limit_timer)
             return False
 
         if monitor.running_restore_task is False:
@@ -79,8 +96,7 @@ class RoomMonitor:
                 f"[{monitor.room_id}] Ignoring messages for {monitor.time_to_ignore} seconds..."
             )
             monitor.running_restore_task = True
-            loop = asyncio.get_event_loop()
-            loop.call_later(monitor.time_to_ignore, monitor.conversation_status, True)
+            monitor._schedule_conversation_status(monitor.time_to_ignore, True)
         return True
 
     def conversation_status(self, ignore: bool = False):
@@ -93,6 +109,8 @@ class RoomMonitor:
         self._get_or_create(self.room_id).message_counter += 1
 
     async def check_message_limit(self) -> None:
+        if self.MONITORING_ROOMS.get(self.room_id) is not self:
+            return
         self.log.debug(f"[{self.room_id}] Checking message limit...")
         if self.message_counter >= self.message_threshold:
             self.log.warning(
@@ -105,6 +123,8 @@ class RoomMonitor:
             self.message_counter = 0
 
     async def restore_state(self) -> None:
+        if self.MONITORING_ROOMS.get(self.room_id) is not self:
+            return
         self.ignore = False
         self.message_counter = 0
         self.running_limit_task = False
