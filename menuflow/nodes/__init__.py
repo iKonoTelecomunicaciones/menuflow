@@ -7,7 +7,6 @@ from .email import Email
 from .form import FormInput
 from .function import Function
 from .function_call import FunctionCall
-from .function_caller import FunctionCaller
 from .function_raise import FunctionRaise
 from .function_return import FunctionReturn
 from .gpt_assistant import GPTAssistant

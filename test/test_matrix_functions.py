@@ -365,8 +365,8 @@ async def test_algorithm_recursive_error_caught_by_previous_depth(
     def node_with_conditional_boom(self, room=None):
         node = original_node(self, room)
         if node and node.id == "fn_recurse_switch":
-            locals_ = room.route.current_frame["locals"] if room.route.current_frame else {}
-            n = locals_.get("n")
+            frame_locals = room.route.current_frame["locals"] if room.route.current_frame else {}
+            n = frame_locals.get("n")
             if n == 2:
                 crash_depths.append(n)
 

@@ -110,7 +110,7 @@ class Flow:
         return functions
 
     def get_function(self, ref: str) -> dict | None:
-        """Resolve a function definition by name, falling back to node id."""
+        """Resolve a ``type: function`` node by ``name``, falling back to node id."""
         if not ref:
             return None
         if fn := self.functions_by_name.get(ref):
@@ -122,7 +122,7 @@ class Flow:
 
     @classmethod
     def validate_functions(cls, nodes: list[dict]) -> tuple[list[str], list[str]]:
-        """Validate function definitions. Returns (errors, warnings)."""
+        """Static checks: required ``name``, unique names, subroutine reachability warnings."""
         errors: list[str] = []
         warnings: list[str] = []
         seen_names: dict[str, str] = {}

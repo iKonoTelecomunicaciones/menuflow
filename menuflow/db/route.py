@@ -3,13 +3,15 @@ from __future__ import annotations
 import json
 from logging import getLogger
 from queue import LifoQueue
-from typing import TYPE_CHECKING, ClassVar, Tuple
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from asyncpg import Record
 from attr import dataclass, ib
 from mautrix.types import SerializableEnum, UserID
 from mautrix.util.async_db import Database
 from mautrix.util.logging import TraceLogger
+
+from ..utils.types import FrameStatus, FunctionErrorPayload, FunctionFrame
 
 fake_db = Database.create("") if TYPE_CHECKING else None
 
@@ -37,16 +39,15 @@ class Route:
     state: RouteState = ib(default=RouteState.START)
     variables: dict = ib(factory=lambda: {"route": {}})
     stack: str = ib(default="{}")
+    fn_stack: list[FunctionFrame] = ib(factory=list)
 
     @staticmethod
-    def _parse_jsonb(value: str | dict | None) -> dict:
+    def _parse_jsonb(value: str | dict | list | None, default: dict | list | None = None):
         if value is None:
-            data = {}
-        elif isinstance(value, dict):
-            data = value
-        else:
-            data = json.loads(value)
-        return data
+            return {} if default is None else default
+        if isinstance(value, (dict, list)):
+            return value
+        return json.loads(value)
 
     @classmethod
     def _from_row(cls, row: Record) -> Route | None:
@@ -56,14 +57,19 @@ class Route:
         except ValueError:
             state = ""
 
-        variables = cls._parse_jsonb(data["variables"])
+        variables = cls._parse_jsonb(data["variables"], default={})
+        if not isinstance(variables, dict):
+            variables = {}
         variables.setdefault("route", {})
         data["variables"] = variables
+
+        fn_stack = cls._parse_jsonb(data.get("fn_stack"), default=[])
+        data["fn_stack"] = fn_stack if isinstance(fn_stack, list) else []
 
         return cls(state=state, **data)
 
     @property
-    def values(self) -> Tuple:
+    def values(self) -> tuple:
         return (
             self.room,
             self.client,
@@ -71,9 +77,10 @@ class Route:
             self.state.value if self.state else None,
             json.dumps(self.variables),
             self.stack,
+            json.dumps(self.fn_stack),
         )
 
-    _columns = "room, client, node_id, state, variables, stack"
+    _columns = "room, client, node_id, state, variables, stack, fn_stack"
 
     @property
     def _variables(self) -> dict:
@@ -89,6 +96,33 @@ class Route:
             except KeyError:
                 stack.queue = []
         return stack
+
+    @property
+    def current_frame(self) -> FunctionFrame | None:
+        """Top ``fn_stack`` frame, or ``None`` if empty."""
+        return self.fn_stack[-1] if self.fn_stack else None
+
+    def push_frame(self, frame: FunctionFrame) -> None:
+        """Push a function frame onto ``fn_stack``."""
+        self.fn_stack.append(frame)
+
+    def pop_frame(self) -> FunctionFrame | None:
+        """Pop the top function frame, or ``None`` if empty."""
+        if not self.fn_stack:
+            return None
+        return self.fn_stack.pop()
+
+    @staticmethod
+    def is_running(frame: FunctionFrame | None) -> bool:
+        """True when the frame exists and ``status`` is ``running``."""
+        return bool(frame and frame.get("status") == FrameStatus.RUNNING.value)
+
+    def find_function_frame(self, caller_id: str) -> FunctionFrame | None:
+        """Top frame closed for ``caller_id`` (``return_to`` match, not running)."""
+        frame = self.current_frame
+        if frame and frame.get("return_to") == caller_id and not self.is_running(frame):
+            return frame
+        return None
 
     @classmethod
     async def get_by_room(
@@ -116,14 +150,16 @@ class Route:
         stack = json.loads(self.stack) if self.stack else {}
         stack = {client: stack.get(self.client, [])}
         self.client, self.stack = client, json.dumps(stack)
+        self.fn_stack = []
 
     async def insert(self) -> None:
-        q = f"INSERT INTO route ({self._columns}) VALUES ($1, $2, $3, $4, $5, $6)"
+        q = f"INSERT INTO route ({self._columns}) VALUES ($1, $2, $3, $4, $5, $6, $7)"
         await self.db.execute(q, *self.values)
 
     async def update(self) -> None:
         q = """
-            UPDATE route SET client = $2, node_id = $3, state = $4, variables = $5, stack = $6
+            UPDATE route SET client = $2, node_id = $3, state = $4, variables = $5, stack = $6,
+                fn_stack = $7
             WHERE room = $1
         """
         await self.db.execute(q, *self.values)
@@ -143,8 +179,25 @@ class Route:
         self.variables["route"] = {}
 
         self.stack = json.dumps({self.client: []})
+        self.fn_stack = []
         await self.update()
 
     async def update_variables(self) -> None:
-        q = "UPDATE route SET variables = $2 WHERE room = $1"
-        await self.db.execute(q, self.room, json.dumps(self.variables))
+        q = "UPDATE route SET variables = $2, fn_stack = $3 WHERE room = $1"
+        await self.db.execute(q, self.room, json.dumps(self.variables), json.dumps(self.fn_stack))
+
+    def close_frame(
+        self,
+        status: FrameStatus,
+        *,
+        result: Any = None,
+        error: FunctionErrorPayload | None = None,
+        implicit: bool = False,
+    ) -> FunctionFrame:
+        """Mutate the top frame to ``returned``/``raised`` without popping it."""
+        frame = self.current_frame
+        frame["status"] = status.value  # type: ignore[typeddict-item]
+        frame["result"] = result
+        frame["error"] = error
+        frame["implicit"] = implicit
+        return frame

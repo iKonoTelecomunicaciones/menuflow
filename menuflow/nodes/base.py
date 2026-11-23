@@ -195,12 +195,11 @@ class Base:
         )
 
     async def get_o_connection(self) -> str:
-        """It returns the ID of the next node to be executed.
+        """Resolve the next node id from ``o_connection``.
 
-        Returns
-        -------
-            The ID of the next node to be executed.
-
+        Empty / ``finish`` inside a running function closes the frame as an
+        implicit return (``resume`` may render ``returns.value``). Otherwise
+        falls back to the subroutine stack when applicable.
         """
         # Get the next node from the content of node
         o_connection = self.render_data(self.content.get("o_connection", ""))

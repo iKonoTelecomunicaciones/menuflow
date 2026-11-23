@@ -19,7 +19,8 @@ from .db.route import Route, RouteState
 from .repository.room_events import RoomEvents
 from .scope import Scope
 from .utils import JQ2Glom, Util
-from .utils.types import ProtectedVars, Scopes
+from .utils.function_errors import FunctionFault
+from .utils.types import FrameStatus, FunctionErrorPayload, FunctionErrors, ProtectedVars, Scopes
 
 if TYPE_CHECKING:
     from .matrix import MatrixHandler
@@ -213,7 +214,11 @@ class Room(DBRoom):
 
     @property
     def all_variables(self) -> dict:
-        return {**self._variables, **self.route.variables}
+        variables = {**self._variables, **self.route.variables}
+        if frame := self.route.current_frame:
+            base = {} if frame.get("isolate") else variables.get(Scopes.ROUTE.value, {})
+            variables[Scopes.ROUTE.value] = {**base, **frame.get("locals", {})}
+        return variables
 
     @classmethod
     @async_getter_lock
@@ -258,7 +263,7 @@ class Room(DBRoom):
     def remove_from_cache(cls, room_id: RoomID) -> None:
         cls.by_room_id.pop(room_id, None)
 
-    async def clean_up(self):
+    async def clean_up(self) -> None:
         await Util.cancel_task(task_name=self.room_id)
         await self.route.clean_up()
 
@@ -303,6 +308,7 @@ class Room(DBRoom):
         value: Any,
         scope: str | None = None,
         bypass_protection: bool = False,
+        use_locals: bool = True,
     ) -> None:
         """The function sets a variable value in either the room or route scope
         and updates the corresponding JSON data.
@@ -321,6 +327,9 @@ class Room(DBRoom):
         bypass_protection : bool, optional
             If True, bypasses the ProtectedVars guard. Only internal callers
             (MatrixHandler bootstrap) should set this to True.
+        use_locals : bool, optional
+            If True (default), writes to function locals when a frame is active.
+            If False, always writes to the global route scope (used by the API).
         """
         if not variable_id:
             return
@@ -345,7 +354,7 @@ class Room(DBRoom):
             self.log.warning(f"{_msg} Cannot set protected variable")
             return
 
-        new_variables = self.scope.get(scope)
+        new_variables = self.scope.get(scope, use_locals=use_locals)
         new_value = value.serialize() if isinstance(value, Obj) else value
 
         try:
@@ -369,7 +378,9 @@ class Room(DBRoom):
         for variable in variables:
             await self.set_variable(variable_id=variable, value=variables[variable])
 
-    async def del_variable(self, variable_id: str, bypass_protection: bool = False) -> None:
+    async def del_variable(
+        self, variable_id: str, bypass_protection: bool = False, use_locals: bool = True
+    ) -> None:
         """The function delete a variable in either the room or route scope
         and updates the corresponding JSON data.
 
@@ -382,6 +393,9 @@ class Room(DBRoom):
         bypass_protection : bool, optional
             If True, bypasses the ProtectedVars guard. Only internal callers
             (MatrixHandler bootstrap) should set this to True.
+        use_locals : bool, optional
+            If True (default), deletes from function locals when a frame is active.
+            If False, always deletes from the global route scope.
         """
         if not variable_id:
             return
@@ -402,7 +416,7 @@ class Room(DBRoom):
             self.log.warning(f"{_msg} Cannot delete protected variable")
             return
 
-        variables = self.scope.get(scope)
+        variables = self.scope.get(scope, use_locals=use_locals)
         if not variables:
             self.log.debug(f"Variables in scope {scope} are empty")
             return
@@ -432,7 +446,7 @@ class Room(DBRoom):
 
     async def update_menu(
         self, node_id: str, state: RouteState | None = None, update_node_vars: bool = True
-    ):
+    ) -> None:
         """Updates the menu's node_id and state.
 
         Parameters
@@ -501,6 +515,29 @@ class Room(DBRoom):
 
         for variable in variables:
             await self.set_variable(variable_id=f"{scope}.{variable}", value=variables[variable])
+
+    async def _close_frame(self, status: FrameStatus, **kwargs) -> str:
+        """Close the top frame and jump to its ``return_to`` caller node."""
+        if not self.route.current_frame:
+            raise FunctionFault.not_in_function()
+        frame = self.route.close_frame(status, **kwargs)
+        await self.update_menu(node_id=frame["return_to"])
+        return frame["return_to"]
+
+    async def fn_return(self, result: Any = None, implicit: bool = False) -> str:
+        """Mark the active frame ``returned`` and jump to the caller.
+
+        ``implicit=True`` is used when a node ends without ``o_connection``;
+        ``resume`` may then render ``returns.value`` from the function definition.
+        """
+        return await self._close_frame(FrameStatus.RETURNED, result=result, implicit=implicit)
+
+    async def fn_raise(
+        self, code: str = FunctionErrors.ERROR.value, message: str | None = None, data: Any = None
+    ) -> str:
+        """Mark the active frame ``raised`` with ``{code, message, data}`` and jump to the caller."""
+        error = FunctionErrorPayload(code=code, message=message, data=data)
+        return await self._close_frame(FrameStatus.RAISED, error=error)
 
     # TODO: Remove when the old variables have been fully migrated to the new scopes.
     def resolve_legacy_var(self, key: str, type: str) -> tuple[str, str]:
