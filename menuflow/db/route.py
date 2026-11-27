@@ -44,7 +44,7 @@ class Route:
     @staticmethod
     def _parse_jsonb(value: str | dict | list | None, default: dict | list | None = None):
         if value is None:
-            return {} if default is None else default
+            return {} if default is None else default or {}
         if isinstance(value, (dict, list)):
             return value
         return json.loads(value)

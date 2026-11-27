@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 from unittest.mock import AsyncMock
 
 import nest_asyncio
@@ -559,9 +560,6 @@ async def test_input_inside_function_persists_frame(function_flow: Flow, room: R
     assert room.route.current_frame["function"] == "ask_doc"
     assert room.route.current_frame["status"] == FrameStatus.RUNNING.value
     assert not room.route.current_frame.get("implicit")
-
-    # Simulate persistence round-trip
-    import json
 
     room.route.fn_stack = json.loads(json.dumps(room.route.fn_stack))
     room.route.variables = json.loads(json.dumps(room.route.variables))
