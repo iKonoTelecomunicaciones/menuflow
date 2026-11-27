@@ -25,6 +25,7 @@ from .config import Config
 from .db.room import Room as DBRoom
 from .db.route import RouteState
 from .flow_sync import FlowSync
+from .function_recovery import FunctionRecovery
 from .nodes import Base, FormInput, GPTAssistant, Input, InteractiveInput, Webhook
 from .nodes.invite_user import InviteCase
 from .repository.room_events import RoomEvents
@@ -33,6 +34,7 @@ from .room_monitor import RoomMonitor
 from .room_sync_primitives import PrimitiveType, RoomSyncPrimitives
 from .user import User
 from .utils import Util
+from .utils.function_errors import FunctionFault
 from .utils.types import ProtectedVars, QueueSignal, Scopes
 
 if TYPE_CHECKING:
@@ -739,9 +741,24 @@ class MatrixHandler(MatrixClient):
                 )
                 break
             except Exception as e:
-                self.log.exception(
-                    f"[{room.room_id}] Exception has occurred in the algorithm: \n{e}"
-                )
+                if isinstance(e, FunctionFault):
+                    self.log.warning(
+                        f"[{room.room_id}] Function fault in algorithm: {e.code}: {e.message}"
+                    )
+                else:
+                    self.log.exception(
+                        f"[{room.room_id}] Exception has occurred in the algorithm: \n{e}"
+                    )
+                try:
+                    recovered = await FunctionRecovery.recover(room=room, node=node, error=e)
+                    if recovered:
+                        self.log.info(
+                            f"[{room.room_id}] Function recovery successful, continuing..."
+                        )
+                        continue
+                except Exception:
+                    self.log.exception(f"[{room.room_id}] Function recovery failed")
+
                 room.route.state = RouteState.ERROR
                 break
 
@@ -770,6 +787,7 @@ class MatrixHandler(MatrixClient):
                 msg = "Maximum recursion depth exceeded in comparison"
 
             self.log.info(f"[{room.room_id}] {msg}. Updating to start")
+            room.route.fn_stack.clear()
             await room.update_menu(node_id="start")
 
         self.QUEUE_MESSAGE.pop(room.room_id, None)

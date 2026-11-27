@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import logging
-from typing import Union
+from typing import Any, Union
 
 from mautrix.util.logging import TraceLogger
 
 from .config import Config
 from .flow_utils import FlowUtils
+from .function_recovery import FunctionRecovery
 from .middlewares import ASRMiddleware, HTTPMiddleware, IRMMiddleware, LLMMiddleware, TTMMiddleware
 from .nodes import (
     CheckHoliday,
@@ -15,6 +16,10 @@ from .nodes import (
     Delay,
     Email,
     FormInput,
+    Function,
+    FunctionCall,
+    FunctionRaise,
+    FunctionReturn,
     GPTAssistant,
     HTTPRequest,
     Input,
@@ -52,6 +57,10 @@ Node = Union[
     FormInput,
     Webhook,
     Debug,
+    Function,
+    FunctionCall,
+    FunctionReturn,
+    FunctionRaise,
 ]
 
 
@@ -63,6 +72,7 @@ class Flow:
         self.data: Flow = None
         self.nodes: list[dict] = []
         self.nodes_by_id: dict[str, dict] = {}
+        self.functions_by_name: dict[str, dict] = {}
 
     @property
     def flow_variables(self) -> dict:
@@ -81,6 +91,113 @@ class Flow:
         self.data = await FlowModel.load_flow(flow_mxid=flow_mxid, content=content, config=config)
         self.nodes = self.data.nodes or []
         self.nodes_by_id: dict[str, dict] = {}
+        self.functions_by_name = self._build_functions_by_name(self.nodes)
+        errors, warnings = self.validate_functions(self.nodes)
+        for error in errors:
+            self.log.error("Function validation: %s", error)
+        for warning in warnings:
+            self.log.warning("Function validation: %s", warning)
+
+    @staticmethod
+    def _build_functions_by_name(nodes: list[dict]) -> dict[str, dict]:
+        functions: dict[str, dict] = {}
+        for node in nodes or []:
+            if node.get("type") != "function":
+                continue
+            name = node.get("name")
+            if name:
+                functions[name] = node
+        return functions
+
+    def get_function(self, ref: str) -> dict | None:
+        """Resolve a ``type: function`` node by ``name``, falling back to node id."""
+        if not ref:
+            return None
+        if fn := self.functions_by_name.get(ref):
+            return fn
+        node = self.get_node_by_id(ref)
+        if node and node.get("type") == "function":
+            return node
+        return None
+
+    @classmethod
+    def validate_functions(cls, nodes: list[dict]) -> tuple[list[str], list[str]]:
+        """Static checks: required ``name``, unique names, subroutine reachability warnings."""
+        errors: list[str] = []
+        warnings: list[str] = []
+        seen_names: dict[str, str] = {}
+        nodes = nodes or []
+        nodes_by_id = {n.get("id"): n for n in nodes if n.get("id")}
+
+        for node in nodes:
+            if node.get("type") != "function":
+                continue
+            node_id = node.get("id", "")
+            name = node.get("name")
+            if not name:
+                errors.append(f"Function node '{node_id}' is missing required field 'name'")
+                continue
+            if name in seen_names:
+                errors.append(
+                    f"Duplicate function name '{name}' in nodes "
+                    f"'{seen_names[name]}' and '{node_id}'"
+                )
+            else:
+                seen_names[name] = node_id
+
+            warning = cls._subroutine_warning_in_body(node, nodes_by_id)
+            if warning:
+                warnings.append(warning)
+
+        return errors, warnings
+
+    @classmethod
+    def _subroutine_warning_in_body(
+        cls, function_node: dict, nodes_by_id: dict[str, dict]
+    ) -> str | None:
+        """Return a warning if a subroutine is reachable via literal connections."""
+        start = function_node.get("o_connection")
+        if not cls._is_literal(start):
+            return None
+
+        visited: set[str] = set()
+        pending = [start]
+        while pending:
+            node_id = pending.pop()
+            if node_id in visited or node_id in ("", "finish"):
+                continue
+            visited.add(node_id)
+            node = nodes_by_id.get(node_id)
+            if not node:
+                continue
+            if node.get("type") == "subroutine":
+                return (
+                    f"Function '{function_node.get('name')}' ({function_node.get('id')}) "
+                    f"can reach subroutine '{node_id}' via literal connections; "
+                    f"subroutine is not allowed inside a function at runtime"
+                )
+            if node.get("type") in ("function", "function_return", "function_raise"):
+                continue
+            for target in cls._literal_connections(node):
+                if target not in visited:
+                    pending.append(target)
+        return None
+
+    @staticmethod
+    def _is_literal(conn: Any) -> bool:
+        return isinstance(conn, str) and bool(conn) and "{{" not in conn
+
+    @classmethod
+    def _literal_connections(cls, node: dict) -> list[str]:
+        targets: list[str] = []
+        for conn in (
+            node.get("o_connection"),
+            *(case.get("o_connection") for case in node.get("cases") or []),
+            node.get("go_sub"),
+        ):
+            if cls._is_literal(conn):
+                targets.append(conn)
+        return targets
 
     def _add_node_to_cache(self, node_data: dict):
         self.nodes_by_id[node_data.get("id")] = node_data
@@ -152,6 +269,9 @@ class Flow:
 
     def node(self, room: Room) -> Node | None:
         node_data = self.get_node_by_id(node_id=room.route.node_id)
+
+        if fault_node := FunctionRecovery.intercept(room, node_data):
+            return fault_node
 
         if not node_data:
             return
@@ -251,6 +371,29 @@ class Flow:
         elif node_data.get("type") == "debug":
             node_initialized = Debug(
                 debug_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
+        elif node_data.get("type") == "function":
+            node_initialized = Function(
+                function_node_data=node_data, room=room, default_variables=self.flow_variables
+            )
+        elif node_data.get("type") == "function_call":
+            node_initialized = FunctionCall(
+                function_call_node_data=node_data,
+                room=room,
+                default_variables=self.flow_variables,
+                flow=self,
+            )
+        elif node_data.get("type") == "function_return":
+            node_initialized = FunctionReturn(
+                function_return_node_data=node_data,
+                room=room,
+                default_variables=self.flow_variables,
+            )
+        elif node_data.get("type") == "function_raise":
+            node_initialized = FunctionRaise(
+                function_raise_node_data=node_data,
+                room=room,
+                default_variables=self.flow_variables,
             )
         else:
             return

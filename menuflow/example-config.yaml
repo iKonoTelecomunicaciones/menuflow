@@ -78,6 +78,11 @@ menuflow:
     # Maximum number of attempts for the same node
     max_node_attempts: 64
 
+    # Function call settings
+    functions:
+        # Maximum nesting depth for function calls (including recursion)
+        max_depth: 256
+
     # If true, the route will be cleaned up when the leave event is received.
     clean_up_route_on_leave: true
 

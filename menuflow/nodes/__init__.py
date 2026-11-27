@@ -5,6 +5,10 @@ from .debug import Debug
 from .delay import Delay
 from .email import Email
 from .form import FormInput
+from .function import Function
+from .function_call import FunctionCall
+from .function_raise import FunctionRaise
+from .function_return import FunctionReturn
 from .gpt_assistant import GPTAssistant
 from .http_request import HTTPRequest
 from .input import Input

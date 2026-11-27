@@ -197,7 +197,7 @@ async def _flush_room_variables(self) -> None:
 @pytest.fixture
 def events(mocker):
     """Captures NodeEntry, NodeInputData and NodeInputTimeout."""
-    return mocker.patch("menuflow.nodes.input.send_node_event", AsyncMock())
+    return mocker.patch("menuflow.nodes.base.send_node_event", AsyncMock())
 
 
 @pytest.fixture

@@ -1,10 +1,10 @@
 import json
 from queue import LifoQueue
-from typing import Dict
 
 from ..db.route import RouteState
 from ..repository import Subroutine as SubroutineModel
 from ..room import Room
+from ..utils.function_errors import FunctionFault
 from .base import Base
 
 
@@ -12,11 +12,11 @@ class Subroutine(Base):
     """This class is used to handle the subroutine node."""
 
     def __init__(
-        self, subroutine_node_data: SubroutineModel, room: Room, default_variables: Dict
+        self, subroutine_node_data: SubroutineModel, room: Room, default_variables: dict
     ) -> None:
         Base.__init__(self, room=room, default_variables=default_variables)
         self.log = self.log.getChild(subroutine_node_data.get("id"))
-        self.content: Dict = subroutine_node_data
+        self.content: dict = subroutine_node_data
 
     @property
     def go_sub(self) -> str:
@@ -26,9 +26,15 @@ class Subroutine(Base):
         """This function runs the subroutine node."""
         self.log.info(f"[{self.room.room_id}] Entering subroutine node {self.id}")
 
+        if self.room.route.fn_stack:
+            self.log.error(
+                f"[{self.room.room_id}] Subroutine '{self.id}' is not allowed inside a function"
+            )
+            raise FunctionFault.subroutine_not_allowed(self.id)
+
         # Get current stack data
         lifo_stack: LifoQueue = self.room.route._stack
-        stack: Dict = json.loads(self.room.route.stack)
+        stack: dict = json.loads(self.room.route.stack)
         last_node = None
         _go_sub = self.go_sub
 

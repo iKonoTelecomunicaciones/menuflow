@@ -14,8 +14,11 @@ from mautrix.util.logging import TraceLogger
 from menuflow.utils.util import Util
 
 from ..config import Config
+from ..events import MenuflowNodeEvents
+from ..events.event_generator import send_node_event
 from ..room import Room
 from ..utils.flags import RenderFlags
+from ..utils.types import FrameStatus
 
 
 def convert_to_bool(item) -> dict | list | str:
@@ -87,6 +90,32 @@ class Base:
     @abstractmethod
     async def run(self):
         pass
+
+    async def _send_node_event(
+        self,
+        o_connection: str | None = None,
+        event_type: MenuflowNodeEvents = MenuflowNodeEvents.NodeEntry,
+        **kwargs,
+    ) -> None:
+        """Send a node event with common room/node fields filled in."""
+        variables = None
+        if event_type != MenuflowNodeEvents.NodeEntry:
+            variables = self.room.all_variables | self.default_variables
+
+        kwargs.setdefault("node_type", self.type)
+
+        await send_node_event(
+            config=self.room.config,
+            send_event=self.content.get("send_event"),
+            event_type=event_type,
+            room_id=self.room.room_id,
+            sender=self.room.matrix_client.mxid if self.room.matrix_client else None,
+            node_id=self.id,
+            o_connection=o_connection,
+            variables=variables,
+            conversation_uuid=self.room.conversation_uuid,
+            **kwargs,
+        )
 
     async def set_typing(self, room_id: RoomID):
         """It sets the typing notification for a random amount of time between 1 and 3 seconds
@@ -166,20 +195,27 @@ class Base:
         )
 
     async def get_o_connection(self) -> str:
-        """It returns the ID of the next node to be executed.
+        """Resolve the next node id from ``o_connection``.
 
-        Returns
-        -------
-            The ID of the next node to be executed.
-
+        Empty / ``finish`` inside a running function closes the frame as an
+        implicit return (``resume`` may render ``returns.value``). Otherwise
+        falls back to the subroutine stack when applicable.
         """
         # Get the next node from the content of node
         o_connection = self.render_data(self.content.get("o_connection", ""))
 
-        # If the o_connection is None or empty, get the o_connection from the stack
+        # If the o_connection is None or empty, prefer an implicit function return
         if o_connection is None or o_connection in ["finish", ""]:
+            frame = self.room.route.current_frame
+            if self.room.route.is_running(frame):
+                frame = self.room.route.close_frame(FrameStatus.RETURNED, implicit=True)
+                o_connection = frame.get("return_to")
+                self.log.debug(
+                    f"[{self.room.room_id}] Implicit function return to '{o_connection}' "
+                    f"from node [{self.id}]"
+                )
             # If the stack is not empty, get the last node from the stack
-            if not self.room.route._stack.empty() and self.type != "subroutine":
+            elif not self.room.route._stack.empty() and self.type != "subroutine":
                 self.log.debug(
                     f"[{self.room.room_id}] Getting o_connection from route stack: {self.room.route._stack.queue}"
                 )

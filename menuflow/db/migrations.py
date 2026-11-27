@@ -358,3 +358,10 @@ async def upgrade_v20(conn: Connection) -> None:
         AND rt.client = dup.client
         AND rt.id < dup.keep_id
         """)
+
+
+@upgrade_table.register(description="Add fn_stack column to route table")
+async def upgrade_v21(conn: Connection) -> None:
+    await conn.execute(
+        "ALTER TABLE route ADD COLUMN IF NOT EXISTS fn_stack JSONB NOT NULL DEFAULT '[]'::jsonb"
+    )

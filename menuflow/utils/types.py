@@ -1,6 +1,9 @@
 from enum import Enum
+from typing import Any, Literal, TypedDict
 
 from mautrix.types import SerializableEnum
+
+FrameStatusValue = Literal["running", "returned", "raised"]
 
 
 class Nodes(SerializableEnum):
@@ -22,6 +25,10 @@ class Nodes(SerializableEnum):
     webhook = "webhook"
     debug = "debug"
     form = "form"
+    function = "function"
+    function_call = "function_call"
+    function_return = "function_return"
+    function_raise = "function_raise"
 
 
 class Middlewares(SerializableEnum):
@@ -45,6 +52,47 @@ class NodeStatus(SerializableEnum):
     ATTEMPT_EXCEEDED = "attempt_exceeded"
     DEFAULT = "default"
     TIMEOUT = "timeout"
+
+
+class FrameStatus(SerializableEnum):
+    RUNNING = "running"
+    RETURNED = "returned"
+    RAISED = "raised"
+
+
+class FunctionErrors(SerializableEnum):
+    MISSING_ARG = "missing_arg"
+    UNEXPECTED_ARG = "unexpected_arg"
+    INVALID_ARG = "invalid_arg"
+    MAX_DEPTH_EXCEEDED = "max_depth_exceeded"
+    FUNCTION_NOT_FOUND = "function_not_found"
+    SUBROUTINE_NOT_ALLOWED = "subroutine_not_allowed"
+    NOT_IN_FUNCTION = "not_in_function"
+    INTERNAL_ERROR = "internal_error"
+    NODE_NOT_FOUND = "node_not_found"
+    MAX_NODE_ATTEMPTS = "max_node_attempts"
+    ERROR = "error"
+
+
+class FunctionErrorPayload(TypedDict):
+    code: str
+    message: str | None
+    data: Any
+
+
+class FunctionFrame(TypedDict):
+    call_id: str
+    function: str
+    function_id: str
+    return_to: str
+    isolate: bool
+    locals: dict[str, Any]
+    saved_node: dict[str, Any]
+    status: FrameStatusValue
+    implicit: bool
+    result: Any
+    error: FunctionErrorPayload | None
+    context: dict[str, Any]
 
 
 class QueueSignal:

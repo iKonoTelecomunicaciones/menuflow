@@ -44,3 +44,29 @@ class TestFlow:
         assert sample_flow_1.nodes != sample_flow_2.nodes
         assert sample_flow_1.data != sample_flow_2.data
         assert sample_flow_1.get_node_by_id("input-1") != sample_flow_2.get_node_by_id("input-1")
+
+    def test_validate_functions_missing_name(self):
+        errors, _warnings = Flow.validate_functions(
+            [{"id": "fn1", "type": "function", "o_connection": "x"}]
+        )
+        assert any("missing required field 'name'" in e for e in errors)
+
+    def test_validate_functions_duplicate_name(self):
+        errors, _warnings = Flow.validate_functions(
+            [
+                {"id": "fn1", "type": "function", "name": "dup", "o_connection": "a"},
+                {"id": "fn2", "type": "function", "name": "dup", "o_connection": "b"},
+            ]
+        )
+        assert any("Duplicate function name" in e for e in errors)
+
+    def test_get_function_by_name_and_id(self, sample_flow_1: Flow):
+        sample_flow_1.nodes.append(
+            {"id": "fn_x", "type": "function", "name": "my_fn", "o_connection": "start"}
+        )
+        sample_flow_1.functions_by_name = sample_flow_1._build_functions_by_name(
+            sample_flow_1.nodes
+        )
+        assert sample_flow_1.get_function("my_fn")["id"] == "fn_x"
+        assert sample_flow_1.get_function("fn_x")["id"] == "fn_x"
+        assert sample_flow_1.get_function("missing") is None
